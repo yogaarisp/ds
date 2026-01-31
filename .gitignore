@@ -1,0 +1,31 @@
+# Common folders to ignore
+node_modules/
+frontend/node_modules/
+backend/vendor/
+
+# Environment files
+.env
+backend/.env
+frontend/.env
+*.env.local
+
+# Build outputs
+dist/
+frontend/dist/
+backend/public/assets/
+backend/public/index.html
+backend/public/vite.svg
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Laravel specific
+backend/storage/*.log
+backend/storage/framework/sessions/*
+backend/storage/framework/views/*.php
+backend/storage/framework/cache/data/*
+
+# App specific
+*.zip
+*.tar.gz

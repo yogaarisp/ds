@@ -1,0 +1,136 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+
+class Transaction extends Model
+{
+    use HasFactory;
+
+    protected $fillable = [
+        'invoice_number',
+        'user_id',
+        'customer_id',
+        'order_type',
+        'scheduled_date',
+        'scheduled_time',
+        'subtotal',
+        'discount',
+        'total',
+        'paid_amount',
+        'change_amount',
+        'status',
+        'notes',
+        'payment_method_id',
+    ];
+
+    protected function casts(): array
+    {
+        return [
+            'scheduled_date' => 'date',
+        ];
+    }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    public function customer()
+    {
+        return $this->belongsTo(Customer::class);
+    }
+
+    public function paymentMethod()
+    {
+        return $this->belongsTo(PaymentMethod::class);
+    }
+
+    public function items()
+    {
+        return $this->hasMany(TransactionItem::class);
+    }
+
+    public function inventoryTransactions()
+    {
+        return $this->hasMany(InventoryTransaction::class);
+    }
+
+    public function isInstant(): bool
+    {
+        return $this->order_type === 'instant';
+    }
+
+    public function isScheduled(): bool
+    {
+        return $this->order_type === 'scheduled';
+    }
+
+    public function isPending(): bool
+    {
+        return $this->status === 'pending';
+    }
+
+    public function isCompleted(): bool
+    {
+        return $this->status === 'completed';
+    }
+
+    public function isCancelled(): bool
+    {
+        return $this->status === 'cancelled';
+    }
+
+    // Generate invoice number
+    public static function generateInvoiceNumber(): string
+    {
+        $now = now();
+        // Format: DSddMMyyHHmm (e.g. DS0401261830)
+        // Matches frontend preview format
+        $prefix = 'DS' . $now->format('dmyHi');
+        
+        // Check if invoice number already exists
+        if (self::where('invoice_number', $prefix)->exists()) {
+            // If exists, append seconds
+            $prefix .= $now->format('s');
+            
+            // If still exists (very fast transactions), append random number
+            if (self::where('invoice_number', $prefix)->exists()) {
+                return $prefix . rand(10, 99);
+            }
+        }
+
+        return $prefix;
+    }
+
+    public function scopeToday($query)
+    {
+        return $query->whereDate('created_at', today());
+    }
+
+    public function scopeCompleted($query)
+    {
+        return $query->where('status', 'completed');
+    }
+
+    public function scopeScheduled($query)
+    {
+        return $query->where('order_type', 'scheduled');
+    }
+
+    public function scopeUpcoming($query)
+    {
+        return $query->scheduled()
+            ->where(function($q) {
+                // Show pending orders (regardless of date)
+                $q->where('status', 'pending')
+                  // OR show completed orders that are still upcoming (not past due)
+                  ->orWhere(function($subQ) {
+                      $subQ->where('status', 'completed')
+                           ->where('scheduled_date', '>=', now()->toDateString());
+                  });
+            });
+    }
+}

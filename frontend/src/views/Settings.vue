@@ -1,0 +1,831 @@
+<script setup>
+import { ref, onMounted } from 'vue'
+import { settingApi, userApi, paymentMethodApi } from '../api'
+import { useSettingsStore } from '../stores/settings'
+import SettingsCustomerTypes from './SettingsCustomerTypes.vue'
+import Swal from 'sweetalert2'
+
+const settingsStore = useSettingsStore()
+const activeTab = ref('store') // store | users | payments
+const loading = ref(false)
+const saving = ref(false)
+
+// Store settings
+const settings = ref({
+  store_name: '',
+  store_logo: null,
+  store_favicon: null,
+  store_address: '',
+  store_phone: '',
+})
+const logoPreview = ref(null)
+const logoFile = ref(null)
+
+const faviconPreview = ref(null)
+const faviconFile = ref(null)
+
+// Users
+const users = ref([])
+const showUserModal = ref(false)
+const editingUser = ref(null)
+const userForm = ref({
+  name: '',
+  email: '',
+  password: '',
+  role: 'kasir',
+  is_active: true,
+})
+
+// Payment Methods
+const paymentMethods = ref([])
+const showPaymentModal = ref(false)
+const editingPayment = ref(null)
+const paymentForm = ref({
+  name: '',
+  type: 'cash',
+  account_name: '',
+  account_number: '',
+  is_active: true,
+})
+
+onMounted(() => {
+  loadSettings()
+  loadUsers()
+  loadPaymentMethods()
+})
+
+async function loadSettings() {
+  loading.value = true
+  try {
+    const response = await settingApi.getAll()
+    settings.value = { ...settings.value, ...response.data }
+    if (settings.value.store_logo) {
+      logoPreview.value = `/storage/${settings.value.store_logo}`
+    }
+    if (settings.value.store_favicon) {
+      faviconPreview.value = `/storage/${settings.value.store_favicon}`
+    }
+  } catch (error) {
+    console.error('Error loading settings:', error)
+  } finally {
+    loading.value = false
+  }
+}
+
+async function loadUsers() {
+  try {
+    const response = await userApi.getAll()
+    users.value = response.data.data || response.data
+  } catch (error) {
+    console.error('Error loading users:', error)
+  }
+}
+
+async function loadPaymentMethods() {
+  try {
+    const response = await paymentMethodApi.getAll()
+    paymentMethods.value = response.data
+  } catch (error) {
+    console.error('Error loading payment methods:', error)
+  }
+}
+
+async function saveSettings() {
+  saving.value = true
+  try {
+    if (logoFile.value) {
+      await settingApi.uploadLogo(logoFile.value)
+    }
+
+    if (faviconFile.value) {
+      await settingApi.uploadFavicon(faviconFile.value)
+    }
+
+    await settingApi.update({
+      store_name: settings.value.store_name,
+      store_address: settings.value.store_address,
+      store_phone: settings.value.store_phone,
+    })
+
+    await Swal.fire({
+      icon: 'success',
+      title: 'Berhasil!',
+      text: 'Pengaturan berhasil disimpan',
+      timer: 1500,
+      showConfirmButton: false,
+      width: '300px',
+      customClass: {
+        popup: 'rounded-xl text-sm',
+        title: 'text-lg font-bold',
+        htmlContainer: 'text-xs'
+      }
+    })
+
+    logoFile.value = null
+    faviconFile.value = null
+    await loadSettings()
+    await settingsStore.loadSettings()
+  } catch (error) {
+    console.error('Error saving settings:', error)
+    Swal.fire({
+      icon: 'error',
+      title: 'Gagal',
+      text: 'Gagal menyimpan pengaturan',
+      width: '300px',
+      customClass: {
+        popup: 'rounded-xl text-sm',
+        title: 'text-lg font-bold',
+        htmlContainer: 'text-xs'
+      }
+    })
+  } finally {
+    saving.value = false
+  }
+}
+
+function handleLogoChange(event) {
+  const file = event.target.files[0]
+  if (file) {
+    logoFile.value = file
+    logoPreview.value = URL.createObjectURL(file)
+  }
+}
+
+function handleFaviconChange(event) {
+  const file = event.target.files[0]
+  if (file) {
+    faviconFile.value = file
+    faviconPreview.value = URL.createObjectURL(file)
+  }
+}
+
+async function deleteLogo() {
+  const result = await Swal.fire({
+    title: 'Hapus Logo?',
+    text: 'Logo akan dihapus',
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#ef4444',
+    confirmButtonText: 'Ya, Hapus',
+    cancelButtonText: 'Batal',
+    width: '300px',
+    customClass: {
+      popup: 'rounded-xl text-sm',
+      title: 'text-lg font-bold',
+      htmlContainer: 'text-xs'
+    }
+  })
+
+  if (result.isConfirmed) {
+    try {
+      await settingApi.deleteLogo()
+      logoPreview.value = null
+      settings.value.store_logo = null
+      await settingsStore.loadSettings()
+    } catch (error) {
+      console.error('Error deleting logo:', error)
+    }
+  }
+}
+
+// User management
+function openAddUser() {
+  editingUser.value = null
+  userForm.value = {
+    name: '',
+    email: '',
+    password: '',
+    role: 'kasir',
+    is_active: true,
+  }
+  showUserModal.value = true
+}
+
+function openEditUser(user) {
+  editingUser.value = user
+  userForm.value = {
+    name: user.name,
+    email: user.email,
+    password: '',
+    role: user.role,
+    is_active: user.is_active,
+  }
+  showUserModal.value = true
+}
+
+async function saveUser() {
+  try {
+    const data = { ...userForm.value }
+    if (!data.password) delete data.password
+
+    if (editingUser.value) {
+      await userApi.update(editingUser.value.id, data)
+    } else {
+      await userApi.create(data)
+    }
+
+    showUserModal.value = false
+    await loadUsers()
+
+    Swal.fire({
+      icon: 'success',
+      title: 'Berhasil!',
+      text: editingUser.value ? 'User berhasil diupdate' : 'User berhasil ditambahkan',
+      timer: 1500,
+      showConfirmButton: false,
+      width: '300px',
+      customClass: {
+        popup: 'rounded-xl text-sm',
+        title: 'text-lg font-bold',
+        htmlContainer: 'text-xs'
+      }
+    })
+  } catch (error) {
+    console.error('Error saving user:', error)
+    Swal.fire({
+      icon: 'error',
+      title: 'Gagal',
+      text: error.response?.data?.message || 'Gagal menyimpan user',
+      width: '300px',
+      customClass: {
+        popup: 'rounded-xl text-sm',
+        title: 'text-lg font-bold',
+        htmlContainer: 'text-xs'
+      }
+    })
+  }
+}
+
+async function deleteUser(user) {
+  const result = await Swal.fire({
+    title: 'Hapus User?',
+    text: `User "${user.name}" akan dihapus`,
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#ef4444',
+    confirmButtonText: 'Ya, Hapus',
+    cancelButtonText: 'Batal',
+    width: '300px',
+    customClass: {
+      popup: 'rounded-xl text-sm',
+      title: 'text-lg font-bold',
+      htmlContainer: 'text-xs'
+    }
+  })
+
+  if (result.isConfirmed) {
+    try {
+      await userApi.delete(user.id)
+      await loadUsers()
+      Swal.fire({
+        icon: 'success',
+        title: 'Berhasil!',
+        text: 'User berhasil dihapus',
+        timer: 1500,
+        showConfirmButton: false,
+        width: '300px',
+        customClass: {
+          popup: 'rounded-xl text-sm',
+          title: 'text-lg font-bold',
+          htmlContainer: 'text-xs'
+        }
+      })
+    } catch (error) {
+      console.error('Error deleting user:', error)
+    }
+  }
+}
+
+// Payment Method Management
+function openAddPayment() {
+  editingPayment.value = null
+  paymentForm.value = {
+    name: '',
+    type: 'cash',
+    account_name: '',
+    account_number: '',
+    is_active: true,
+  }
+  showPaymentModal.value = true
+}
+
+function openEditPayment(payment) {
+  editingPayment.value = payment
+  paymentForm.value = {
+    name: payment.name,
+    type: payment.type,
+    account_name: payment.account_name,
+    account_number: payment.account_number,
+    is_active: payment.is_active,
+  }
+  showPaymentModal.value = true
+}
+
+async function savePayment() {
+  try {
+    if (editingPayment.value) {
+      await paymentMethodApi.update(editingPayment.value.id, paymentForm.value)
+    } else {
+      await paymentMethodApi.create(paymentForm.value)
+    }
+
+    showPaymentModal.value = false
+    await loadPaymentMethods()
+
+    Swal.fire({
+      icon: 'success',
+      title: 'Berhasil!',
+      text: editingPayment.value ? 'Metode pembayaran berhasil diupdate' : 'Metode pembayaran berhasil ditambahkan',
+      timer: 1500,
+      showConfirmButton: false,
+      width: '300px',
+      customClass: {
+        popup: 'rounded-xl text-sm',
+        title: 'text-lg font-bold',
+        htmlContainer: 'text-xs'
+      }
+    })
+  } catch (error) {
+    console.error('Error saving payment method:', error)
+    Swal.fire({
+      icon: 'error',
+      title: 'Gagal',
+      text: error.response?.data?.message || 'Gagal menyimpan metode pembayaran',
+      width: '300px',
+      customClass: {
+        popup: 'rounded-xl text-sm',
+        title: 'text-lg font-bold',
+        htmlContainer: 'text-xs'
+      }
+    })
+  }
+}
+
+async function deletePayment(payment) {
+  const result = await Swal.fire({
+    title: 'Hapus Metode?',
+    text: `Metode "${payment.name}" akan dihapus`,
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#ef4444',
+    confirmButtonText: 'Ya, Hapus',
+    cancelButtonText: 'Batal',
+    width: '300px',
+    customClass: {
+      popup: 'rounded-xl text-sm',
+      title: 'text-lg font-bold',
+      htmlContainer: 'text-xs'
+    }
+  })
+
+  if (result.isConfirmed) {
+    try {
+      await paymentMethodApi.delete(payment.id)
+      await loadPaymentMethods()
+      Swal.fire({
+        icon: 'success',
+        title: 'Berhasil!',
+        text: 'Metode pembayaran berhasil dihapus',
+        timer: 1500,
+        showConfirmButton: false,
+        width: '300px',
+        customClass: {
+          popup: 'rounded-xl text-sm',
+          title: 'text-lg font-bold',
+          htmlContainer: 'text-xs'
+        }
+      })
+    } catch (error) {
+      console.error('Error deleting payment method:', error)
+    }
+  }
+}
+
+function getRoleLabel(role) {
+  const labels = { owner: 'Owner', kasir: 'Kasir', gudang: 'Gudang' }
+  return labels[role] || role
+}
+
+function getPaymentTypeLabel(type) {
+  const labels = { cash: 'Cash', transfer: 'Transfer', qris: 'QRIS', other: 'Lainnya' }
+  return labels[type] || type
+}
+
+function getPaymentTypeIcon(type) {
+  const icons = {
+    cash: '💵',
+    transfer: '🏦',
+    qris: '📱',
+    other: '💳'
+  }
+  return icons[type] || '💳'
+}
+</script>
+
+<template>
+  <div class="h-full overflow-y-auto p-4 md:p-6 custom-scrollbar">
+    <div class="space-y-6">
+      <div class="flex flex-col md:flex-row md:items-end justify-between gap-4">
+        <div>
+          <h1 class="text-2xl font-bold text-slate-800 tracking-tight">Pengaturan</h1>
+          <p class="text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-1">Konfigurasi Toko & Sistem</p>
+        </div>
+      </div>
+
+      <!-- Modern Tabs -->
+      <div class="bg-slate-100/80 p-1 rounded-2xl flex gap-1 shadow-inner overflow-x-auto no-scrollbar shrink-0">
+        <button
+          v-for="tab in [
+            { id: 'store', label: 'Toko', icon: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4' },
+            { id: 'users', label: 'User', icon: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z' },
+            { id: 'customer_types', label: 'Tipe', icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z' },
+            { id: 'payments', label: 'Bayar', icon: 'M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z' }
+          ]"
+          :key="tab.id"
+          @click="activeTab = tab.id"
+          class="flex-1 min-w-[90px] px-4 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all flex items-center justify-center gap-2 whitespace-nowrap"
+          :class="activeTab === tab.id ? 'bg-white text-primary-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" :d="tab.icon" />
+          </svg>
+          {{ tab.label }}
+        </button>
+      </div>
+
+    <!-- Store Settings -->
+    <div v-if="activeTab === 'store'" class="w-full animate-fade-in-up">
+      <div class="bg-white rounded-xl p-6 shadow-xl shadow-slate-200/50 border border-slate-100">
+        <h2 class="text-lg font-bold text-slate-800 mb-6 flex items-center gap-3">
+           <div class="w-9 h-9 rounded-xl bg-primary-100 flex items-center justify-center text-primary-600 shadow-sm shadow-primary-500/10">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+           </div>
+           Profil Toko
+        </h2>
+
+        <!-- Logo & Favicon Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+          <!-- Logo Uploader -->
+          <div>
+            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1 mb-2 block">Logo Toko</label>
+            <div class="group relative border-2 border-dashed border-slate-200 rounded-xl p-4 flex flex-col items-center justify-center text-center hover:border-primary-500 hover:bg-primary-50 transition-all cursor-pointer h-48" @click="$refs.logoInput.click()">
+              <div v-if="logoPreview" class="relative w-28 h-28 mb-2">
+                 <img :src="logoPreview" alt="Logo" class="w-full h-full object-contain drop-shadow-sm" />
+                 <div class="absolute inset-0 bg-black/40 rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                     <span class="text-white font-medium text-sm">Ganti Logo</span>
+                 </div>
+              </div>
+              <div v-else class="flex flex-col items-center justify-center text-gray-400">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 mb-2 text-gray-300 group-hover:text-primary-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                <span class="text-sm font-medium text-gray-600">Klik untuk upload logo</span>
+                <span class="text-xs text-gray-400 mt-1">PNG, JPG (Max 2MB)</span>
+              </div>
+              <input ref="logoInput" type="file" accept="image/*" class="hidden" @change="handleLogoChange" />
+            
+              <!-- Delete Button -->
+              <button v-if="logoPreview" @click.stop="deleteLogo" class="absolute top-2 right-2 p-1.5 bg-white text-red-500 rounded-full shadow-sm hover:bg-red-50 border border-gray-200 transition-colors z-10" title="Hapus Logo">
+                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                 </svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- Favicon Uploader -->
+          <div>
+            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1 mb-2 block">Favicon Website</label>
+             <div class="group relative border-2 border-dashed border-slate-200 rounded-xl p-4 flex flex-col items-center justify-center text-center hover:border-primary-500 hover:bg-primary-50 transition-all cursor-pointer h-48" @click="$refs.faviconInput.click()">
+              <div v-if="faviconPreview" class="relative w-20 h-20 mb-2">
+                 <img :src="faviconPreview" alt="Favicon" class="w-full h-full object-contain" />
+                  <div class="absolute inset-0 bg-black/40 rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                     <span class="text-white font-medium text-sm">Ganti Icon</span>
+                 </div>
+              </div>
+              <div v-else class="flex flex-col items-center justify-center text-gray-400">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 mb-2 text-gray-300 group-hover:text-primary-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+                </svg>
+                <span class="text-sm font-medium text-gray-600">Klik untuk upload favicon</span>
+                <span class="text-xs text-gray-400 mt-1">ICO, PNG (Max 1MB)</span>
+              </div>
+              <input ref="faviconInput" type="file" accept="image/*" class="hidden" @change="handleFaviconChange" />
+            </div>
+          </div>
+        </div>
+
+        <div class="space-y-6">
+           <!-- Store Name -->
+          <div class="space-y-1.5">
+            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Nama Toko</label>
+            <input v-model="settings.store_name" type="text" class="w-full bg-slate-50 border-none rounded-xl px-5 py-3.5 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-primary-500/10" placeholder="Nama Toko..." />
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Address -->
+            <div class="space-y-1.5">
+              <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Alamat Toko</label>
+              <textarea v-model="settings.store_address" class="w-full bg-slate-50 border-none rounded-xl px-5 py-3.5 text-sm text-slate-700 min-h-[100px] focus:ring-2 focus:ring-primary-500/10" placeholder="Alamat lengkap..."></textarea>
+            </div>
+
+            <div class="space-y-6">
+              <!-- Phone -->
+              <div class="space-y-1.5">
+                <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">No. WhatsApp</label>
+                <div class="relative">
+                  <span class="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400">📱</span>
+                  <input v-model="settings.store_phone" type="text" class="w-full bg-slate-50 border-none rounded-xl pl-12 pr-5 py-3.5 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-primary-500/10" placeholder="08xxxxxxxxxx" />
+                </div>
+              </div>
+              
+              <!-- Save Button -->
+              <button @click="saveSettings" :disabled="saving" class="w-full bg-primary-500 py-3.5 rounded-xl text-white font-bold text-[11px] tracking-widest uppercase shadow-lg shadow-primary-500/20 hover:bg-primary-600 transition-all active:scale-[0.98]">
+                {{ saving ? 'Menyimpan...' : 'Simpan Perubahan' }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Customer Types Management -->
+    <div v-if="activeTab === 'customer_types'" class="animate-fade-in-up">
+      <SettingsCustomerTypes />
+    </div>
+
+    <!-- Users Management -->
+    <div v-if="activeTab === 'users'" class="animate-fade-in-up space-y-4">
+      <div class="flex justify-between items-center bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+        <h2 class="text-lg font-bold text-slate-800 ml-2">Manajemen User</h2>
+        <button @click="openAddUser" class="px-4 py-2 rounded-xl bg-primary-500 text-white font-bold text-xs hover:bg-primary-600 transition-all shadow-md shadow-primary-500/20 flex items-center justify-center gap-2">
+           <span>+ Tambah User</span>
+        </button>
+      </div>
+
+      <div class="bg-white rounded-xl overflow-hidden shadow-xl shadow-slate-200/40 border border-slate-100">
+        <div class="overflow-x-auto">
+          <table class="w-full">
+            <thead>
+              <tr class="bg-slate-50/50">
+                <th class="px-6 py-5 text-left text-[9px] font-bold text-slate-400 uppercase tracking-widest">Profil</th>
+                <th class="px-6 py-5 text-left text-[9px] font-bold text-slate-400 uppercase tracking-widest hidden md:table-cell">Akses</th>
+                <th class="px-6 py-5 text-left text-[9px] font-bold text-slate-400 uppercase tracking-widest">Status</th>
+                <th class="px-6 py-5 text-right text-[9px] font-bold text-slate-400 uppercase tracking-widest">Aksi</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+              <tr v-for="user in users" :key="user.id" class="hover:bg-slate-50/50 transition-colors">
+                <td class="px-6 py-4">
+                  <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-xl bg-slate-50 text-slate-500 flex items-center justify-center font-bold text-sm shrink-0 border border-slate-100 shadow-sm">
+                      {{ user.name.charAt(0).toUpperCase() }}
+                    </div>
+                    <div class="min-w-0">
+                      <p class="font-bold text-slate-700 text-sm truncate leading-tight">{{ user.name }}</p>
+                      <p class="text-[10px] font-semibold text-slate-400 truncate mt-0.5">{{ user.email }}</p>
+                    </div>
+                  </div>
+                </td>
+                <td class="px-6 py-4 hidden md:table-cell">
+                  <span :class="['px-3 py-1 rounded-lg text-[9px] font-bold uppercase tracking-widest', 
+                    user.role === 'owner' ? 'bg-purple-50 text-purple-600 border border-purple-100' :
+                    user.role === 'kasir' ? 'bg-blue-50 text-blue-600 border border-blue-100' :
+                    'bg-emerald-50 text-emerald-600 border border-emerald-100'
+                  ]">
+                    {{ getRoleLabel(user.role) }}
+                  </span>
+                </td>
+                <td class="px-6 py-4">
+                  <div :class="['flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest', user.is_active ? 'text-emerald-500' : 'text-slate-400']">
+                    <div :class="['w-1.5 h-1.5 rounded-full', user.is_active ? 'bg-emerald-500' : 'bg-slate-300']"></div>
+                    {{ user.is_active ? 'Aktif' : 'Off' }}
+                  </div>
+                </td>
+                <td class="px-6 py-4 text-right">
+                  <div class="flex items-center justify-end gap-1">
+                    <button @click="openEditUser(user)" class="w-8 h-8 rounded-xl text-slate-400 hover:text-primary-500 hover:bg-primary-50 transition-all flex items-center justify-center">
+                       <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                       </svg>
+                    </button>
+                    <button @click="deleteUser(user)" class="w-8 h-8 rounded-xl text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all flex items-center justify-center">
+                       <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                       </svg>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Payment Methods Management -->
+    <div v-if="activeTab === 'payments'" class="animate-fade-in-up space-y-4">
+      <div class="flex justify-between items-center bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+        <h2 class="text-lg font-bold text-slate-800 ml-2">Metode Bayar</h2>
+        <button @click="openAddPayment" class="px-4 py-2 rounded-xl bg-primary-500 text-white font-bold text-xs hover:bg-primary-600 transition-all shadow-md shadow-primary-500/20 flex items-center justify-center gap-2">
+           <span>+ Tambah Metode</span>
+        </button>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6 pb-20">
+          <div v-for="payment in paymentMethods" :key="payment.id" class="group bg-white rounded-2xl p-6 shadow-xl shadow-slate-200/40 border border-slate-100 hover:border-primary-200 transition-all active:scale-[0.99] relative">
+              <div class="flex items-start justify-between mb-4">
+                  <div class="flex items-center gap-4">
+                      <div class="w-12 h-12 rounded-xl bg-slate-50 flex items-center justify-center text-2xl shrink-0 shadow-inner border border-slate-100">
+                          {{ getPaymentTypeIcon(payment.type) }}
+                      </div>
+                      <div class="min-w-0">
+                          <h3 class="font-bold text-slate-800 truncate text-base leading-tight">{{ payment.name }}</h3>
+                          <span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1 block">{{ getPaymentTypeLabel(payment.type) }}</span>
+                      </div>
+                  </div>
+                   <div :class="['w-2 h-2 rounded-full mt-2', payment.is_active ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]' : 'bg-slate-300']"></div>
+              </div>
+
+              <div class="space-y-3 bg-slate-50 p-4 rounded-3xl min-h-[80px] flex flex-col justify-center border border-slate-100/50">
+                  <div v-if="payment.account_number">
+                      <p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">No. Rek / ID</p>
+                      <p class="font-bold text-slate-700 text-sm tracking-tight">{{ payment.account_number }}</p>
+                  </div>
+                  <div v-if="payment.account_name">
+                       <p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Atas Nama</p>
+                       <p class="font-bold text-slate-600 text-xs">{{ payment.account_name }}</p>
+                  </div>
+                  <div v-if="!payment.account_number && !payment.account_name" class="flex items-center gap-2 text-slate-300 italic text-[10px] font-bold">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      Detail tidak tersedia
+                  </div>
+              </div>
+
+              <!-- Action Buttons -->
+              <div class="flex gap-2 mt-4">
+                <button @click="openEditPayment(payment)" class="flex-1 py-2.5 bg-slate-50 rounded-xl text-slate-500 hover:text-primary-600 hover:bg-primary-50 font-bold text-[10px] uppercase tracking-widest transition-all">
+                  Edit
+                </button>
+                <button @click="deletePayment(payment)" class="py-2.5 px-3 bg-red-50/50 rounded-xl text-red-400 hover:text-red-500 hover:bg-red-50 transition-all active:scale-95 flex items-center justify-center">
+                   <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                   </svg>
+                </button>
+              </div>
+          </div>
+      </div>
+    </div>
+
+    <!-- User Modal -->
+    <div v-if="showUserModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-3">
+      <div class="bg-white rounded-xl w-full max-w-sm shadow-2xl overflow-hidden flex flex-col">
+        <div class="px-6 pt-6 pb-2 flex justify-between items-center text-slate-800">
+          <h2 class="text-xl font-bold tracking-tight">{{ editingUser ? 'Edit User' : 'User Baru' }}</h2>
+          <button @click="showUserModal = false" class="w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 text-slate-400 hover:bg-red-50 hover:text-red-500 transition-all">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <div class="p-6 pt-2 space-y-3">
+          <div class="space-y-1">
+            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Nama Lengkap</label>
+            <input v-model="userForm.name" type="text" class="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-primary-500/10" placeholder="Nama..." required />
+          </div>
+
+          <div class="space-y-1">
+            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Email</label>
+            <input v-model="userForm.email" type="email" class="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm text-slate-600 focus:ring-2 focus:ring-primary-500/10" placeholder="email@toko.com" required />
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div class="space-y-1">
+              <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Role</label>
+              <select v-model="userForm.role" class="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-[13px] font-bold text-slate-700 focus:ring-2 focus:ring-primary-500/10 appearance-none">
+                <option value="owner">Owner</option>
+                <option value="kasir">Kasir</option>
+                <option value="gudang">Gudang</option>
+              </select>
+            </div>
+            <div class="space-y-1">
+              <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Password</label>
+              <input v-model="userForm.password" type="password" class="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm text-slate-700 focus:ring-2 focus:ring-primary-500/10" :placeholder="editingUser ? 'Kosongkan...' : '••••••'" />
+            </div>
+          </div>
+
+          <div class="flex items-center gap-3 p-3 bg-slate-100/50 rounded-xl border border-slate-100">
+            <input v-model="userForm.is_active" type="checkbox" id="user_is_active_new" class="w-5 h-5 text-primary-600 rounded-lg border-slate-300 focus:ring-primary-500" />
+            <label for="user_is_active_new" class="text-xs font-bold text-slate-500 uppercase tracking-widest cursor-pointer select-none">Status Aktif</label>
+          </div>
+
+          <div class="flex gap-3 pt-3">
+            <button type="button" @click="showUserModal = false" class="flex-1 py-3.5 rounded-xl text-slate-400 font-bold text-xs hover:bg-slate-50 transition-all">
+              Batal
+            </button>
+            <button @click="saveUser" class="flex-[2] bg-primary-500 py-3.5 rounded-xl text-white font-bold text-xs uppercase tracking-widest shadow-lg shadow-primary-500/20 hover:bg-primary-600 transition-all active:scale-[0.97]">
+              Simpan User
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Payment Modal -->
+    <div v-if="showPaymentModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-3">
+      <div class="bg-white rounded-xl w-full max-w-sm shadow-2xl overflow-hidden flex flex-col">
+        <div class="px-6 pt-6 pb-2 flex justify-between items-center text-slate-800">
+          <h2 class="text-xl font-bold tracking-tight">{{ editingPayment ? 'Edit Metode' : 'Metode Baru' }}</h2>
+          <button @click="showPaymentModal = false" class="w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 text-slate-400 hover:bg-red-50 hover:text-red-500 transition-all">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <div class="p-6 pt-2 space-y-4">
+          <div class="space-y-1">
+            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Nama Metode</label>
+            <input v-model="paymentForm.name" type="text" class="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-primary-500/10" placeholder="Contoh: BCA, OVO, Tunai" required />
+          </div>
+
+          <div class="space-y-1">
+            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Tipe Pembayaran</label>
+            <select v-model="paymentForm.type" class="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-[13px] font-bold text-slate-700 focus:ring-2 focus:ring-primary-500/10 appearance-none">
+              <option value="cash">Cash (Tunai)</option>
+              <option value="transfer">Transfer Bank</option>
+              <option value="qris">QRIS</option>
+              <option value="other">Lainnya</option>
+            </select>
+          </div>
+
+          <div v-if="paymentForm.type === 'transfer' || paymentForm.type === 'qris'" class="space-y-3 animate-fade-in-up">
+            <div class="space-y-1">
+              <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">No. Rek / ID</label>
+              <input v-model="paymentForm.account_number" type="text" class="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-primary-500/10" placeholder="Nomor rekening..." />
+            </div>
+            <div class="space-y-1">
+              <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Atas Nama</label>
+              <input v-model="paymentForm.account_name" type="text" class="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-primary-500/10" placeholder="Nama pemilik..." />
+            </div>
+          </div>
+
+          <div class="flex items-center gap-3 p-3 bg-slate-100/50 rounded-xl border border-slate-100">
+            <input v-model="paymentForm.is_active" type="checkbox" id="pay_is_active_new" class="w-5 h-5 text-primary-600 rounded-lg border-slate-300 focus:ring-primary-500" />
+            <label for="pay_is_active_new" class="text-xs font-bold text-slate-500 uppercase tracking-widest cursor-pointer select-none">Metode Aktif</label>
+          </div>
+
+          <div class="flex gap-3 pt-2">
+            <button type="button" @click="showPaymentModal = false" class="flex-1 py-3.5 rounded-xl text-slate-400 font-bold text-xs hover:bg-slate-50 transition-all">
+              Batal
+            </button>
+            <button @click="savePayment" class="flex-[2] bg-primary-500 py-3.5 rounded-xl text-white font-bold text-xs uppercase tracking-widest shadow-lg shadow-primary-500/20 hover:bg-primary-600 transition-all">
+              Simpan Metode
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</template>
+
+<style scoped>
+.input {
+  @apply rounded-xl border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 transition-all duration-200;
+}
+.btn {
+  @apply rounded-xl font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2;
+}
+.btn-primary {
+  @apply bg-primary-600 text-white hover:bg-primary-700 focus:ring-primary-500 border-transparent;
+}
+.btn-secondary {
+  @apply bg-white text-gray-700 hover:bg-gray-50 border-gray-300 focus:ring-gray-500;
+}
+.label {
+    @apply block text-sm font-medium text-gray-700 mb-1;
+}
+
+/* Animations */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in-up {
+  animation: fadeInUp 0.4s ease-out;
+}
+
+@keyframes scaleIn {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+}
+.animate-scale-in {
+    animation: scaleIn 0.2s ease-out;
+}
+</style>

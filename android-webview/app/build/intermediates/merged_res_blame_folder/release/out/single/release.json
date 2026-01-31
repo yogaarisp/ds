@@ -1,0 +1,58 @@
+[
+    {
+        "merged": "com.keetech.dimsumpos.app-merged_res-17:/drawable_splash_simple.xml.flat",
+        "source": "com.keetech.dimsumpos.app-main-18:/drawable/splash_simple.xml"
+    },
+    {
+        "merged": "com.keetech.dimsumpos.app-merged_res-17:/mipmap-xhdpi_ic_launcher_round.png.flat",
+        "source": "com.keetech.dimsumpos.app-main-18:/mipmap-xhdpi/ic_launcher_round.png"
+    },
+    {
+        "merged": "com.keetech.dimsumpos.app-merged_res-17:/drawable_logo_small.png.flat",
+        "source": "com.keetech.dimsumpos.app-main-18:/drawable/logo_small.png"
+    },
+    {
+        "merged": "com.keetech.dimsumpos.app-merged_res-17:/drawable_logo_splash.png.flat",
+        "source": "com.keetech.dimsumpos.app-main-18:/drawable/logo_splash.png"
+    },
+    {
+        "merged": "com.keetech.dimsumpos.app-merged_res-17:/mipmap-mdpi_ic_launcher.png.flat",
+        "source": "com.keetech.dimsumpos.app-main-18:/mipmap-mdpi/ic_launcher.png"
+    },
+    {
+        "merged": "com.keetech.dimsumpos.app-merged_res-17:/drawable_loading_animation.xml.flat",
+        "source": "com.keetech.dimsumpos.app-main-18:/drawable/loading_animation.xml"
+    },
+    {
+        "merged": "com.keetech.dimsumpos.app-merged_res-17:/mipmap-hdpi_ic_launcher_round.png.flat",
+        "source": "com.keetech.dimsumpos.app-main-18:/mipmap-hdpi/ic_launcher_round.png"
+    },
+    {
+        "merged": "com.keetech.dimsumpos.app-merged_res-17:/layout_activity_main.xml.flat",
+        "source": "com.keetech.dimsumpos.app-main-18:/layout/activity_main.xml"
+    },
+    {
+        "merged": "com.keetech.dimsumpos.app-merged_res-17:/drawable_splash_background.xml.flat",
+        "source": "com.keetech.dimsumpos.app-main-18:/drawable/splash_background.xml"
+    },
+    {
+        "merged": "com.keetech.dimsumpos.app-merged_res-17:/mipmap-xhdpi_ic_launcher.png.flat",
+        "source": "com.keetech.dimsumpos.app-main-18:/mipmap-xhdpi/ic_launcher.png"
+    },
+    {
+        "merged": "com.keetech.dimsumpos.app-merged_res-17:/xml_file_paths.xml.flat",
+        "source": "com.keetech.dimsumpos.app-main-18:/xml/file_paths.xml"
+    },
+    {
+        "merged": "com.keetech.dimsumpos.app-merged_res-17:/drawable_splash_final.xml.flat",
+        "source": "com.keetech.dimsumpos.app-main-18:/drawable/splash_final.xml"
+    },
+    {
+        "merged": "com.keetech.dimsumpos.app-merged_res-17:/mipmap-mdpi_ic_launcher_round.png.flat",
+        "source": "com.keetech.dimsumpos.app-main-18:/mipmap-mdpi/ic_launcher_round.png"
+    },
+    {
+        "merged": "com.keetech.dimsumpos.app-merged_res-17:/mipmap-hdpi_ic_launcher.png.flat",
+        "source": "com.keetech.dimsumpos.app-main-18:/mipmap-hdpi/ic_launcher.png"
+    }
+]
