@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Route;
 
 // Auth routes
 Route::post('/login', [AuthController::class, 'login']);
+Route::post('/register', [AuthController::class, 'register']);
 
 // Public Settings
 Route::get('/settings', [SettingController::class, 'index']);

@@ -79,6 +79,33 @@ class AuthController extends Controller
         ]);
     }
 
+    public function register(Request $request)
+    {
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required_without:phone|email|unique:customers,email|nullable',
+            'phone' => 'required_without:email|string|unique:customers,phone|nullable',
+            'password' => 'required|string|min:6', // removed confirmed for simplicity unless frontend sends password_confirmation
+        ]);
+
+        $customer = Customer::create([
+            'name' => $request->name,
+            'email' => $request->email,
+            'phone' => $request->phone,
+            'password' => Hash::make($request->password),
+            'address' => $request->address ?? '-',
+            'is_active' => true,
+        ]);
+
+        $token = $customer->createToken('customer-token')->plainTextToken;
+
+        return response()->json([
+            'user' => $customer,
+            'token' => $token,
+            'is_customer' => true
+        ], 201);
+    }
+
     public function logout(Request $request)
     {
         $request->user()->currentAccessToken()->delete();
