@@ -24,7 +24,15 @@ const form = ref({
 })
 
 async function handleRegister() {
-  if (!form.value.name || !form.value.email || !form.value.password || !form.value.phone) return
+  if (!form.value.name || !form.value.password) {
+    alert('Nama dan password wajib diisi!')
+    return
+  }
+
+  if (!form.value.email && !form.value.phone) {
+    alert('Email atau Nomor HP wajib diisi salah satu!')
+    return
+  }
   
   if (form.value.password !== form.value.password_confirmation) {
     alert('Konfirmasi password tidak cocok!')
@@ -127,7 +135,6 @@ async function handleRegister() {
               id="email" 
               class="block px-5 pb-2.5 pt-5 w-full text-sm text-slate-900 bg-white/50 rounded-2xl border border-slate-200/60 appearance-none focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 peer transition-all duration-300 h-[50px] shadow-sm group-hover:bg-white/80"
               placeholder=" "
-              required
             />
             <label 
               for="email" 
@@ -145,7 +152,6 @@ async function handleRegister() {
               id="phone" 
               class="block px-5 pb-2.5 pt-5 w-full text-sm text-slate-900 bg-white/50 rounded-2xl border border-slate-200/60 appearance-none focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 peer transition-all duration-300 h-[50px] shadow-sm group-hover:bg-white/80"
               placeholder=" "
-              required
             />
             <label 
               for="phone" 

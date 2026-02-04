@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { productApi } from '../api'
+import { STORAGE_BASE_URL } from '../api'
 import Skeleton from '../components/Skeleton.vue'
 
 const products = ref([])
@@ -62,7 +63,7 @@ function openModal(product = null) {
   editingProduct.value = product
   if (product) {
     form.value = { ...product, image: null }
-    imagePreview.value = product.image ? `/storage/${product.image}` : null
+    imagePreview.value = product.image ? `${STORAGE_BASE_URL}/${product.image}` : null
   } else {
     form.value = { name: '', sku: '', base_price: '', stock: 0, min_stock: 10, image: null }
     imagePreview.value = null
@@ -242,7 +243,7 @@ function formatPrice(price) {
           <div class="w-14 h-14 flex-shrink-0 bg-gray-100 rounded-xl overflow-hidden">
             <img 
               v-if="product.image" 
-              :src="`/storage/${product.image}`" 
+              :src="`${STORAGE_BASE_URL}/${product.image}`" 
               class="w-full h-full object-cover"
               alt="Product Image"
             />

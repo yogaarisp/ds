@@ -2,7 +2,7 @@
 import { ref, onMounted, watch, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { usePosStore } from '../stores/pos'
-import { customerApi } from '../api'
+import { customerApi, STORAGE_BASE_URL } from '../api'
 import QuickAddCustomerModal from '../components/QuickAddCustomerModal.vue'
 import CheckoutModal from '../components/CheckoutModal.vue'
 import OrderPreviewModal from '../components/OrderPreviewModal.vue'
@@ -369,7 +369,7 @@ function handleCheckoutClose() {
             class="bg-white rounded-xl p-2.5 shadow-sm border border-slate-100 flex items-center gap-3"
           >
             <div class="w-12 h-12 bg-slate-50 rounded-xl flex items-center justify-center overflow-hidden">
-              <LazyImage v-if="item.image" :src="`/storage/${item.image}`" :alt="item.name" :placeholder="item.type === 'package' ? '📦' : '🥟'" />
+              <LazyImage v-if="item.image" :src="`${STORAGE_BASE_URL}/${item.image}`" :alt="item.name" :placeholder="item.type === 'package' ? '📦' : '🥟'" />
               <span v-else class="text-xl">{{ item.type === 'package' ? '📦' : '🥟' }}</span>
             </div>
 

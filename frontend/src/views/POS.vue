@@ -2,7 +2,7 @@
 import { ref, onMounted, onUnmounted, watch, computed, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { usePosStore } from '../stores/pos'
-import { customerApi } from '../api'
+import { customerApi, STORAGE_BASE_URL } from '../api'
 import MixModal from '../components/MixModal.vue'
 import CheckoutModal from '../components/CheckoutModal.vue'
 import QuickAddCustomerModal from '../components/QuickAddCustomerModal.vue'
@@ -432,7 +432,7 @@ const filteredPackagingItems = computed(() => {
                   class="bg-white rounded-2xl p-2 shadow-[0_2px_8px_rgba(0,0,0,0.02)] border border-slate-100 flex items-center gap-3 animate-fade-in"
                >
                   <div class="w-16 h-16 shrink-0 bg-slate-50 rounded-xl flex items-center justify-center overflow-hidden border border-slate-50 relative">
-                    <LazyImage v-if="product.image" :src="`/storage/${product.image}`" :alt="product.name" class="w-full h-full object-cover" />
+                    <LazyImage v-if="product.image" :src="`${STORAGE_BASE_URL}/${product.image}`" :alt="product.name" class="w-full h-full object-cover" />
                     <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5 text-slate-300"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
                     <div v-if="product.discount > 0" class="absolute top-0 left-0 bg-red-500 text-white text-[7px] font-black px-1 py-0.5 rounded-br-lg shadow-sm uppercase">OFF</div>
                   </div>
@@ -505,7 +505,7 @@ const filteredPackagingItems = computed(() => {
                    class="group bg-white rounded-2xl p-2 shadow-[0_2px_8px_rgba(0,0,0,0.02)] border border-slate-100 flex gap-3 text-left active:scale-[0.98] transition-all"
                 >
                    <div class="w-20 h-20 shrink-0 bg-gradient-to-br from-orange-50 to-primary-50 rounded-xl flex items-center justify-center overflow-hidden relative border border-primary-50">
-                      <LazyImage v-if="pkg.image" :src="`/storage/${pkg.image}`" :alt="pkg.name" :placeholder="pkg.type === 'mix' ? '🍱' : '📦'" class="w-full h-full object-cover" />
+                      <LazyImage v-if="pkg.image" :src="`${STORAGE_BASE_URL}/${pkg.image}`" :alt="pkg.name" :placeholder="pkg.type === 'mix' ? '🍱' : '📦'" class="w-full h-full object-cover" />
                       <span v-else class="text-2xl">{{ pkg.type === 'mix' ? '🍱' : '📦' }}</span>
                       
                       <!-- Quantity Overlay -->
@@ -547,7 +547,7 @@ const filteredPackagingItems = computed(() => {
                   class="bg-white rounded-2xl p-2 shadow-[0_2px_8px_rgba(0,0,0,0.02)] border border-slate-100 flex items-center gap-3 animate-fade-in"
                >
                   <div class="w-16 h-16 shrink-0 bg-slate-50 rounded-xl flex items-center justify-center overflow-hidden border border-slate-50 relative">
-                    <LazyImage v-if="item.image" :src="`/storage/${item.image}`" :alt="item.name" placeholder="🥡" class="w-full h-full object-cover" />
+                    <LazyImage v-if="item.image" :src="`${STORAGE_BASE_URL}/${item.image}`" :alt="item.name" placeholder="🥡" class="w-full h-full object-cover" />
                     <span v-else class="text-2xl">🥡</span>
                   </div>
                   
@@ -707,7 +707,7 @@ const filteredPackagingItems = computed(() => {
                   class="group bg-white rounded-lg p-2.5 border border-slate-100 shadow-[0_1px_8px_rgba(0,0,0,0.02)] hover:shadow-[0_6px_20px_rgba(0,0,0,0.04)] hover:border-primary-100 transition-all duration-300 flex flex-col"
                 >
                   <div class="w-full aspect-[3/2] bg-slate-50 rounded-md mb-2 flex items-center justify-center overflow-hidden relative border border-slate-50/50">
-                    <LazyImage v-if="product.image" :src="`/storage/${product.image}`" :alt="product.name" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                    <LazyImage v-if="product.image" :src="`${STORAGE_BASE_URL}/${product.image}`" :alt="product.name" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
                     <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="w-8 h-8 text-slate-300"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
                     <div v-if="product.discount > 0" class="absolute top-0 right-0 bg-red-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded-bl shadow-sm uppercase">OFF</div>
                     <div class="absolute bottom-1.5 left-1.5 px-1.5 py-0.5 bg-white/95 backdrop-blur-md rounded border border-slate-100 shadow-sm">
@@ -775,7 +775,7 @@ const filteredPackagingItems = computed(() => {
                    class="group bg-white rounded-lg p-2.5 border border-slate-100 shadow-[0_1px_8px_rgba(0,0,0,0.02)] hover:shadow-[0_6px_20px_rgba(0,0,0,0.04)] hover:border-primary-100 transition-all duration-300 flex flex-col items-start relative overflow-hidden"
                 >
                    <div class="w-full aspect-[3/2] bg-gradient-to-br from-orange-50 to-primary-50 rounded-md mb-2 flex items-center justify-center overflow-hidden border border-primary-50/50 relative">
-                      <LazyImage v-if="pkg.image" :src="`/storage/${pkg.image}`" :alt="pkg.name" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                      <LazyImage v-if="pkg.image" :src="`${STORAGE_BASE_URL}/${pkg.image}`" :alt="pkg.name" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
                       <span v-else class="text-2xl transform group-hover:scale-110 transition-transform duration-500">{{ pkg.type === 'mix' ? '🍱' : '📦' }}</span>
                       <div class="absolute top-1.5 right-1.5 bg-primary-600 text-white text-[8px] font-black px-1.5 py-0.5 rounded shadow-sm uppercase">
                         {{ pkg.total_quantity }} PCS
@@ -805,7 +805,7 @@ const filteredPackagingItems = computed(() => {
                    class="group bg-white rounded-lg p-2.5 border border-slate-100 shadow-[0_1px_8px_rgba(0,0,0,0.02)] hover:shadow-[0_6px_20px_rgba(0,0,0,0.04)] hover:border-primary-100 transition-all duration-300 flex flex-col"
                 >
                    <div class="w-full aspect-[3/2] bg-slate-50 rounded-md mb-2 flex items-center justify-center overflow-hidden relative border border-slate-50/50">
-                      <LazyImage v-if="item.image" :src="`/storage/${item.image}`" :alt="item.name" placeholder="🥡" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                      <LazyImage v-if="item.image" :src="`${STORAGE_BASE_URL}/${item.image}`" :alt="item.name" placeholder="🥡" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
                       <span v-else class="text-2xl transform group-hover:scale-110 transition-transform duration-500">🥡</span>
                       <div class="absolute bottom-1.5 left-1.5 px-1.5 py-0.5 bg-white/95 backdrop-blur-md rounded border border-slate-100 shadow-sm">
                         <span class="text-[8px] text-slate-400 font-bold uppercase">Stok {{ item.stock }}</span>

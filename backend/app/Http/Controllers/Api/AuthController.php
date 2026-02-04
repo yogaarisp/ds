@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\Customer;
+use App\Models\CustomerType;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
@@ -18,23 +19,30 @@ class AuthController extends Controller
             'password' => 'required',
         ]);
 
-        // Check if this is a customer login attempt
-        if ($request->boolean('is_customer')) {
-            // Determine if input is email or phone
-            $field = filter_var($request->email, FILTER_VALIDATE_EMAIL) ? 'email' : 'phone';
-            
-            $customer = Customer::where($field, $request->email)->first();
+        $identity = $request->email;
+        $password = $request->password;
 
-            if (!$customer || !Hash::check($request->password, $customer->password)) {
-                throw ValidationException::withMessages([
-                    'email' => ['Kredensial customer tidak valid.'],
-                ]);
+        // 1. Try Standard User Login (Admin/Staff)
+        $user = User::where('email', $identity)->first();
+        if ($user && Hash::check($password, $user->password)) {
+            if (!$user->is_active) {
+                throw ValidationException::withMessages(['email' => ['Akun tidak aktif.']]);
             }
+            $token = $user->createToken('pos-token')->plainTextToken;
+            return response()->json([
+                'user' => $user,
+                'token' => $token,
+                'is_customer' => false
+            ]);
+        }
 
+        // 2. Try Customer Login (Email or Phone)
+        $field = filter_var($identity, FILTER_VALIDATE_EMAIL) ? 'email' : 'phone';
+        $customer = Customer::where($field, $identity)->first();
+
+        if ($customer && Hash::check($password, $customer->password)) {
             if (!$customer->is_active) {
-                throw ValidationException::withMessages([
-                    'email' => ['Akun customer tidak aktif.'],
-                ]);
+                throw ValidationException::withMessages(['email' => ['Akun customer tidak aktif.']]);
             }
 
             $token = $customer->createToken('customer-token')->plainTextToken;
@@ -49,33 +57,16 @@ class AuthController extends Controller
             }]);
 
             return response()->json([
-                'user' => $customer, // Return as 'user' for frontend compatibility or handle separately
+                'user' => $customer,
                 'customer' => $customer,
                 'token' => $token,
                 'is_customer' => true
             ]);
         }
 
-        // Standard User Login (Admin/Staff)
-        $user = User::where('email', $request->email)->first();
-
-        if (!$user || !Hash::check($request->password, $user->password)) {
-            throw ValidationException::withMessages([
-                'email' => ['Kredensial tidak valid.'],
-            ]);
-        }
-
-        if (!$user->is_active) {
-            throw ValidationException::withMessages([
-                'email' => ['Akun tidak aktif.'],
-            ]);
-        }
-
-        $token = $user->createToken('pos-token')->plainTextToken;
-
-        return response()->json([
-            'user' => $user,
-            'token' => $token,
+        // 3. Both failed
+        throw ValidationException::withMessages([
+            'email' => ['Kredensial tidak valid. Silakan periksa kembali email/nomor HP dan password Anda.'],
         ]);
     }
 

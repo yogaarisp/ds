@@ -3,7 +3,7 @@ import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useCartStore } from '@/stores/cart'
 import { useAuthStore } from '@/stores/auth'
-import api from '@/api'
+import api, { STORAGE_BASE_URL } from '@/api'
 import Swal from 'sweetalert2'
 import LazyImage from '@/components/LazyImage.vue'
 
@@ -271,7 +271,7 @@ function handleDeliveryTypeSelection(type) {
             >
               <!-- Image -->
               <div class="w-12 h-12 bg-slate-50 rounded-lg shrink-0 overflow-hidden border border-slate-100 self-center">
-                <LazyImage v-if="item.image" :src="`/storage/${item.image}`" class="w-full h-full object-cover" />
+                <LazyImage v-if="item.image" :src="`${STORAGE_BASE_URL}/${item.image}`" class="w-full h-full object-cover" />
                 <div v-else class="w-full h-full flex items-center justify-center text-lg">📦</div>
               </div>
               

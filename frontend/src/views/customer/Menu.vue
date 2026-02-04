@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import api from '@/api'
+import api, { STORAGE_BASE_URL } from '@/api'
 import LazyImage from '@/components/LazyImage.vue'
 import CombinationDetailModal from '@/components/CombinationDetailModal.vue'
 import CartPreviewModal from '@/components/CartPreviewModal.vue'
@@ -277,7 +277,7 @@ function goToCheckout() {
                    <div class="w-20 h-20 shrink-0 bg-slate-50 rounded-lg overflow-hidden border border-transparent">
                       <LazyImage 
                         v-if="combo.image" 
-                        :src="`/storage/${combo.image}`" 
+                        :src="`${STORAGE_BASE_URL}/${combo.image}`" 
                         class="w-full h-full object-cover"
                       />
                       <div v-else class="w-full h-full flex items-center justify-center text-2xl">📦</div>
@@ -322,7 +322,7 @@ function goToCheckout() {
                    <div class="w-20 h-20 shrink-0 bg-slate-50 rounded-lg overflow-hidden border border-transparent">
                       <LazyImage 
                         v-if="product.image" 
-                        :src="`/storage/${product.image}`" 
+                        :src="`${STORAGE_BASE_URL}/${product.image}`" 
                         class="w-full h-full object-cover"
                       />
                       <div v-else class="w-full h-full flex items-center justify-center text-2xl">🥟</div>

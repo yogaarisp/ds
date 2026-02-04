@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed } from 'vue'
+import { STORAGE_BASE_URL } from '../api'
 import LazyImage from './LazyImage.vue'
 
 const props = defineProps({
@@ -95,7 +96,7 @@ function formatCurrency(value) {
           <div class="h-56 w-full bg-slate-100 relative">
             <LazyImage 
               v-if="combination.image" 
-              :src="`/storage/${combination.image}`" 
+              :src="`${STORAGE_BASE_URL}/${combination.image}`" 
               class="w-full h-full object-cover"
             />
             <div v-else class="w-full h-full flex items-center justify-center text-4xl">📦</div>

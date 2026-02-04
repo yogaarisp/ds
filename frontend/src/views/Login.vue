@@ -33,36 +33,15 @@ async function handleLogin() {
   const password = form.value.password
   
   try {
-    let response
-    let isCustomer = false
-
-    // ATTEMPT 1: Try Standard Login (User/Staff/Admin)
-    try {
-       response = await authApi.login({ 
-         email, 
-         password 
-       })
-    } catch (err) {
-       // Only fallback if credentials issue (401/422) or not found (404)
-       const status = err.response?.status
-       if (status === 401 || status === 422 || status === 404) {
-          console.log('Standard login failed, trying customer login...')
-          
-          // ATTEMPT 2: Try Customer Login
-          response = await authApi.login({
-              email,
-              password,
-              is_customer: true
-          })
-          isCustomer = true
-       } else {
-         throw err // Network error or 500
-       }
-    }
+    const response = await authApi.login({ 
+      email, 
+      password 
+    })
 
     if (response?.data?.token) {
       const token = response.data.token
       const userData = response.data.user || response.data.customer
+      const isCustomer = response.data.is_customer
       
       // 1. Save to LocalStorage
       localStorage.setItem('token', token)
@@ -73,7 +52,7 @@ async function handleLogin() {
       authStore.user = userData
       
       // 3. Redirect based on Role/Type
-      if (isCustomer || userData.role === 'customer' || userData.is_customer) {
+      if (isCustomer) {
          router.push('/customer/home')
       } else {
          router.push('/')

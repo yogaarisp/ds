@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useCartStore } from '@/stores/cart'
+import { STORAGE_BASE_URL } from '@/api'
 import LazyImage from './LazyImage.vue'
 
 const props = defineProps({
@@ -75,7 +76,7 @@ function handleClearAll() {
              <div class="w-12 h-12 shrink-0 bg-slate-50 rounded-lg overflow-hidden border border-slate-100">
                 <LazyImage 
                   v-if="item.image" 
-                  :src="`/storage/${item.image}`" 
+                  :src="`${STORAGE_BASE_URL}/${item.image}`" 
                   class="w-full h-full object-cover"
                 />
                 <div v-else class="w-full h-full flex items-center justify-center text-lg">📦</div>

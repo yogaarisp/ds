@@ -5,12 +5,17 @@ const isCapacitor = window.Capacitor !== undefined
 
 // API Base URL configuration
 const API_BASE_URL = isCapacitor
-  ? 'https://ds.keetech.my.id/api'  // Production API for mobile (corrected domain)
-  : '/api'                         // Development proxy
+  ? 'https://ds.keetech.my.id/api'
+  : '/api'
+
+const STORAGE_BASE_URL = isCapacitor
+  ? 'https://ds.keetech.my.id/storage'
+  : '/storage'
 
 console.log('🔧 API Configuration:', {
   isCapacitor,
   API_BASE_URL,
+  STORAGE_BASE_URL,
   userAgent: navigator.userAgent,
   platform: window.Capacitor?.getPlatform?.() || 'web'
 })
@@ -110,6 +115,7 @@ api.interceptors.response.use(
   }
 )
 
+export { STORAGE_BASE_URL }
 export default api
 
 // Auth

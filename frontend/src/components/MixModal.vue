@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { STORAGE_BASE_URL } from '../api'
 import LazyImage from './LazyImage.vue'
 
 const props = defineProps({
@@ -138,7 +139,7 @@ onUnmounted(() => {
             <div class="w-10 h-10 flex-shrink-0 bg-slate-50 rounded-lg overflow-hidden border border-slate-100">
               <LazyImage 
                 v-if="combination.image" 
-                :src="`/storage/${combination.image}`" 
+                :src="`${STORAGE_BASE_URL}/${combination.image}`" 
                 :alt="combination.name"
                 placeholder="📦"
               />

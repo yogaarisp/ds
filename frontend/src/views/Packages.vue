@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { packageApi, productApi, customerTypeApi } from '../api'
+import { STORAGE_BASE_URL } from '../api'
 
 const packages = ref([])
 const products = ref([])
@@ -70,7 +71,7 @@ function openPackageModal(pkg = null) {
   editingPackage.value = pkg
   if (pkg) {
     packageForm.value = { ...pkg, image: null }
-    imagePreview.value = pkg.image ? `http://localhost:8000/storage/${pkg.image}` : null
+    imagePreview.value = pkg.image ? `${STORAGE_BASE_URL}/${pkg.image}` : null
   } else {
     packageForm.value = { name: '', code: '', type: 'bundle', total_quantity: 10, variant_count: 2, image: null }
     imagePreview.value = null
@@ -132,7 +133,7 @@ function openCombinationModal(pkg, combination = null) {
       }))
     }
     // Set combination image preview
-    combinationImagePreview.value = combination.image ? `http://localhost:8000/storage/${combination.image}` : null
+    combinationImagePreview.value = combination.image ? `${STORAGE_BASE_URL}/${combination.image}` : null
   } else {
     // Create mode
     combinationForm.value = {
@@ -343,7 +344,7 @@ function handleCombinationFileUpload(event) {
               <div class="w-14 h-14 md:w-16 md:h-16 shrink-0 bg-slate-50 rounded-xl overflow-hidden border border-slate-100 relative shadow-inner">
                 <img 
                   v-if="pkg.image" 
-                  :src="`http://localhost:8000/storage/${pkg.image}`" 
+                  :src="`${STORAGE_BASE_URL}/${pkg.image}`" 
                   class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                   alt="Package"
                 />
@@ -405,7 +406,7 @@ function handleCombinationFileUpload(event) {
               >
                 <!-- Combination Image -->
                 <div class="w-10 h-10 shrink-0 bg-slate-50 rounded-xl overflow-hidden border border-slate-100 group-hover/item:border-primary-100 transition-colors shadow-sm">
-                  <img v-if="combination.image" :src="`http://localhost:8000/storage/${combination.image}`" class="w-full h-full object-cover" />
+                  <img v-if="combination.image" :src="`${STORAGE_BASE_URL}/${combination.image}`" class="w-full h-full object-cover" />
                   <div v-else class="w-full h-full flex items-center justify-center text-slate-200">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-5 h-5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
                   </div>

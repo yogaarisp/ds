@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import api from '@/api'
+import api, { STORAGE_BASE_URL } from '@/api'
 import LazyImage from '@/components/LazyImage.vue'
 
 const route = useRoute()
@@ -66,8 +66,8 @@ function getStatusLabel(status) {
 }
 
 function getItemImage(item) {
-  if (item.product?.image) return `/storage/${item.product.image}`
-  if (item.package?.image) return `/storage/${item.package.image}`
+  if (item.product?.image) return `${STORAGE_BASE_URL}/${item.product.image}`
+  if (item.package?.image) return `${STORAGE_BASE_URL}/${item.package.image}`
   return null
 }
 

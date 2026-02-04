@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { settingApi } from '../api'
+import { settingApi, STORAGE_BASE_URL } from '../api'
 
 export const useSettingsStore = defineStore('settings', () => {
   const settings = ref({
@@ -14,24 +14,14 @@ export const useSettingsStore = defineStore('settings', () => {
   const storeName = computed(() => settings.value.store_name || 'Dimsum Sarang')
   const storeLogo = computed(() => {
     if (settings.value.store_logo) {
-      // Detect if running in mobile app
-      const isCapacitor = window.Capacitor !== undefined
-      if (isCapacitor) {
-        return `https://ds.keetech.my.id/storage/${settings.value.store_logo}`
-      }
-      return `/storage/${settings.value.store_logo}`
+      return `${STORAGE_BASE_URL}/${settings.value.store_logo}`
     }
     return null
   })
 
   const storeFavicon = computed(() => {
     if (settings.value.store_favicon) {
-      // Detect if running in mobile app
-      const isCapacitor = window.Capacitor !== undefined
-      if (isCapacitor) {
-        return `https://ds.keetech.my.id/storage/${settings.value.store_favicon}`
-      }
-      return `/storage/${settings.value.store_favicon}`
+      return `${STORAGE_BASE_URL}/${settings.value.store_favicon}`
     }
     return null
   })

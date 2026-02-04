@@ -1,6 +1,6 @@
 <script setup>
 import { ref, onMounted } from 'vue'
-import { settingApi, userApi, paymentMethodApi } from '../api'
+import { settingApi, userApi, paymentMethodApi, STORAGE_BASE_URL } from '../api'
 import { useSettingsStore } from '../stores/settings'
 import SettingsCustomerTypes from './SettingsCustomerTypes.vue'
 import Swal from 'sweetalert2'
@@ -60,10 +60,10 @@ async function loadSettings() {
     const response = await settingApi.getAll()
     settings.value = { ...settings.value, ...response.data }
     if (settings.value.store_logo) {
-      logoPreview.value = `/storage/${settings.value.store_logo}`
+      logoPreview.value = `${STORAGE_BASE_URL}/${settings.value.store_logo}`
     }
     if (settings.value.store_favicon) {
-      faviconPreview.value = `/storage/${settings.value.store_favicon}`
+      faviconPreview.value = `${STORAGE_BASE_URL}/${settings.value.store_favicon}`
     }
   } catch (error) {
     console.error('Error loading settings:', error)

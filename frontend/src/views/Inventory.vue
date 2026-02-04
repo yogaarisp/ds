@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { inventoryApi, productApi } from '../api'
+import { STORAGE_BASE_URL } from '../api'
 
 const items = ref([])
 const products = ref([])
@@ -282,7 +283,7 @@ async function saveProduct() {
           <div class="w-10 h-10 flex-shrink-0 bg-slate-50 rounded-xl overflow-hidden border border-slate-100 group-hover:border-primary-100 transition-colors">
             <img 
               v-if="product.image" 
-              :src="`http://localhost:8000/storage/${product.image}`" 
+              :src="`${STORAGE_BASE_URL}/${product.image}`" 
               class="w-full h-full object-cover"
             />
             <div v-else class="w-full h-full flex items-center justify-center text-slate-200">
