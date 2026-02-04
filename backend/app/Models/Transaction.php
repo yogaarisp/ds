@@ -21,6 +21,11 @@ class Transaction extends Model
         'total',
         'paid_amount',
         'change_amount',
+        'dp_amount',
+        'remaining_amount',
+        'payment_status',
+        'dp_paid_at',
+        'fully_paid_at',
         'status',
         'notes',
         'payment_method_id',
@@ -30,6 +35,8 @@ class Transaction extends Model
     {
         return [
             'scheduled_date' => 'date',
+            'dp_paid_at' => 'datetime',
+            'fully_paid_at' => 'datetime',
         ];
     }
 
@@ -81,6 +88,32 @@ class Transaction extends Model
     public function isCancelled(): bool
     {
         return $this->status === 'cancelled';
+    }
+
+    // DP Payment Status Helpers
+    public function isDp(): bool
+    {
+        return $this->payment_status === 'dp';
+    }
+
+    public function isFullyPaid(): bool
+    {
+        return $this->payment_status === 'paid';
+    }
+
+    public function isUnpaid(): bool
+    {
+        return $this->payment_status === 'unpaid';
+    }
+
+    public function hasRemainingBalance(): bool
+    {
+        return $this->remaining_amount > 0;
+    }
+
+    public function getRemainingToPayAttribute(): int
+    {
+        return max(0, $this->total - $this->paid_amount - $this->dp_amount);
     }
 
     // Generate invoice number

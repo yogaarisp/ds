@@ -51,6 +51,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('payment-methods', PaymentMethodController::class);
     Route::post('/transactions/{transaction}/complete', [TransactionController::class, 'complete']);
     Route::post('/transactions/{transaction}/cancel', [TransactionController::class, 'cancel']);
+    Route::post('/transactions/{transaction}/pay-remaining', [TransactionController::class, 'payRemaining']);
     Route::get('/transactions-summary/today', [TransactionController::class, 'todaySummary']);
     Route::get('/transactions-summary/upcoming', [TransactionController::class, 'upcomingOrders']);
 

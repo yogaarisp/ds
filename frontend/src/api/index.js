@@ -4,7 +4,7 @@ import axios from 'axios'
 const isCapacitor = window.Capacitor !== undefined
 
 // API Base URL configuration
-const API_BASE_URL = isCapacitor 
+const API_BASE_URL = isCapacitor
   ? 'https://ds.keetech.my.id/api'  // Production API for mobile (corrected domain)
   : '/api'                         // Development proxy
 
@@ -27,17 +27,17 @@ const api = axios.create({
 // Test connectivity on app start
 if (isCapacitor) {
   console.log('🔍 Testing API connectivity...')
-  
+
   // Block Cloudflare analytics for mobile app
   const originalFetch = window.fetch
-  window.fetch = function(url, options) {
+  window.fetch = function (url, options) {
     if (typeof url === 'string' && url.includes('cloudflareinsights.com')) {
       console.log('🚫 Blocked Cloudflare script:', url)
       return Promise.reject(new Error('Blocked by mobile app'))
     }
     return originalFetch.apply(this, arguments)
   }
-  
+
   fetch(API_BASE_URL.replace('/api', '/api/settings'))
     .then(response => {
       console.log('✅ API Test Response:', {
@@ -61,20 +61,20 @@ api.interceptors.request.use((config) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }
-  
+
   // Add mobile app identifier
   if (isCapacitor) {
     config.headers['X-Mobile-App'] = 'ds-pos'
     config.headers['X-App-Version'] = '1.0.5'
   }
-  
+
   console.log('API Request:', {
     url: config.url,
     method: config.method,
     baseURL: config.baseURL,
     headers: config.headers
   })
-  
+
   return config
 })
 
@@ -95,7 +95,7 @@ api.interceptors.response.use(
       data: error.response?.data,
       message: error.message
     })
-    
+
     if (error.response?.status === 401) {
       localStorage.removeItem('token')
       localStorage.removeItem('user')
@@ -209,7 +209,15 @@ export const transactionApi = {
   get: (id) => api.get(`/transactions/${id}`),
   create: (data) => api.post('/transactions', data),
   update: (id, data) => api.put(`/transactions/${id}`, data),
-  complete: (id, paidAmount, paymentMethodId) => api.post(`/transactions/${id}/complete`, {
+  // Complete transaction - supports both full payment and DP
+  complete: (id, paidAmount, paymentMethodId, paymentType = 'full', dpAmount = 0) => api.post(`/transactions/${id}/complete`, {
+    paid_amount: paidAmount,
+    payment_method_id: paymentMethodId,
+    payment_type: paymentType, // 'full' or 'dp'
+    dp_amount: dpAmount
+  }),
+  // Pay remaining balance after DP
+  payRemaining: (id, paidAmount, paymentMethodId) => api.post(`/transactions/${id}/pay-remaining`, {
     paid_amount: paidAmount,
     payment_method_id: paymentMethodId
   }),

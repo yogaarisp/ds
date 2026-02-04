@@ -526,14 +526,81 @@ export const usePosStore = defineStore('pos', () => {
       transaction = createRes.data
     }
 
-    // Complete transaction immediately
-    const completeRes = await transactionApi.complete(transaction.id, paidAmount, paymentMethodId)
+    // Complete transaction immediately (full payment)
+    const completeRes = await transactionApi.complete(transaction.id, paidAmount, paymentMethodId, 'full', 0)
 
     // Clear everything since transaction is completed
     clearCart()
     currentPendingTransactionId.value = null
     selectedCustomer.value = null // Clear customer as requested
     refreshProducts() // Reset products to default prices
+
+    return completeRes.data
+  }
+
+  // Checkout with DP (Down Payment)
+  async function checkoutWithDp(dpAmount, paymentMethodId) {
+    if (cart.value.length === 0) {
+      throw new Error('Keranjang kosong')
+    }
+
+    // Validate scheduled order
+    if (orderType.value === 'scheduled' && !scheduledDate.value) {
+      throw new Error('Tanggal harus diisi untuk pre-order')
+    }
+
+    const items = cart.value.map(item => ({
+      type: item.type,
+      product_id: item.product_id,
+      package_combination_id: item.package_combination_id,
+      quantity: item.quantity,
+      is_frozen: item.is_frozen || false,
+      unit_price: item.unit_price,
+      subtotal: item.subtotal,
+      inventory_id: item.type === 'inventory' ? item.inventory_id : null
+    }))
+
+    const data = {
+      customer_id: selectedCustomer.value?.id,
+      order_type: orderType.value,
+      items,
+      subtotal: cartSubtotal.value,
+      total: cartTotal.value,
+    }
+
+    // Add scheduled fields only if order type is scheduled
+    if (orderType.value === 'scheduled') {
+      data.scheduled_date = scheduledDate.value
+      if (scheduledTime.value) {
+        data.scheduled_time = scheduledTime.value
+      }
+    }
+
+    let transaction
+
+    // SIMPLE LOGIC: If we have currentPendingTransactionId, UPDATE it. Otherwise CREATE new.
+    if (currentPendingTransactionId.value) {
+      try {
+        const updateRes = await transactionApi.update(currentPendingTransactionId.value, data)
+        transaction = updateRes.data
+      } catch (error) {
+        // If update fails, create new
+        const createRes = await transactionApi.create(data)
+        transaction = createRes.data
+      }
+    } else {
+      const createRes = await transactionApi.create(data)
+      transaction = createRes.data
+    }
+
+    // Complete transaction with DP
+    const completeRes = await transactionApi.complete(transaction.id, 0, paymentMethodId, 'dp', dpAmount)
+
+    // Clear everything since transaction is completed (with DP status)
+    clearCart()
+    currentPendingTransactionId.value = null
+    selectedCustomer.value = null
+    refreshProducts()
 
     return completeRes.data
   }
@@ -642,6 +709,7 @@ export const usePosStore = defineStore('pos', () => {
     removeCartItem,
     clearCart,
     checkout,
+    checkoutWithDp,
     createOrder,
     continuePendingTransaction,
     createNewInvoice,

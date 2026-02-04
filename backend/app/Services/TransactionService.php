@@ -221,6 +221,60 @@ class TransactionService
     }
 
     /**
+     * Process DP (Down Payment) - partial payment
+     */
+    public function processDpPayment(Transaction $transaction, int $dpAmount, ?int $paymentMethodId = null): Transaction
+    {
+        return DB::transaction(function () use ($transaction, $dpAmount, $paymentMethodId) {
+            $remainingAmount = $transaction->total - $dpAmount;
+
+            $transaction->update([
+                'dp_amount' => $dpAmount,
+                'remaining_amount' => $remainingAmount,
+                'payment_status' => 'dp',
+                'dp_paid_at' => now(),
+                'status' => 'completed', // Mark as completed but with DP status
+                'payment_method_id' => $paymentMethodId,
+            ]);
+
+            // Proses stok hanya untuk order instant
+            if ($transaction->isInstant()) {
+                $transaction->load('items.product', 'items.packageCombination.items.product');
+                $this->stockService->processTransactionStock($transaction);
+            }
+
+            // Update customer stats jika ada customer
+            if ($transaction->customer_id) {
+                $transaction->customer->increment('points');
+                $transaction->customer->updateStats();
+            }
+
+            return $transaction->fresh();
+        });
+    }
+
+    /**
+     * Pay remaining balance after DP
+     */
+    public function payDpRemaining(Transaction $transaction, int $paidAmount, ?int $paymentMethodId = null): Transaction
+    {
+        return DB::transaction(function () use ($transaction, $paidAmount, $paymentMethodId) {
+            $remainingAmount = $transaction->remaining_amount;
+            $changeAmount = max(0, $paidAmount - $remainingAmount);
+
+            $transaction->update([
+                'paid_amount' => $paidAmount,
+                'change_amount' => $changeAmount,
+                'remaining_amount' => 0,
+                'payment_status' => 'paid',
+                'fully_paid_at' => now(),
+            ]);
+
+            return $transaction->fresh();
+        });
+    }
+
+    /**
      * Cancel transaksi
      */
     public function cancelTransaction(Transaction $transaction): Transaction

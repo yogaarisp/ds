@@ -124,12 +124,42 @@ class TransactionController extends Controller
     {
         $request->validate([
             'payment_method_id' => 'required|exists:payment_methods,id',
+            'payment_type' => 'nullable|in:full,dp', // full = bayar lunas, dp = bayar DP
+            'dp_amount' => 'nullable|integer|min:0',
         ]);
 
         $paymentMethod = \App\Models\PaymentMethod::findOrFail($request->payment_method_id);
         $paidAmount = $request->input('paid_amount');
+        $paymentType = $request->input('payment_type', 'full');
+        $dpAmount = $request->input('dp_amount', 0);
 
-        // Logic check: only cash needs validation
+        // Handle DP payment
+        if ($paymentType === 'dp') {
+            if ($dpAmount <= 0) {
+                return response()->json([
+                    'message' => 'Jumlah DP harus lebih dari 0',
+                    'errors' => ['dp_amount' => ['Jumlah DP tidak valid']]
+                ], 422);
+            }
+
+            if ($dpAmount >= $transaction->total) {
+                return response()->json([
+                    'message' => 'Jumlah DP harus kurang dari total. Gunakan pembayaran lunas jika ingin bayar penuh.',
+                    'errors' => ['dp_amount' => ['DP harus kurang dari total']]
+                ], 422);
+            }
+
+            // Process DP payment
+            $transaction = $this->transactionService->processDpPayment(
+                $transaction,
+                $dpAmount,
+                $paymentMethod->id
+            );
+
+            return response()->json($transaction->load(['items.product', 'items.package', 'items.packageCombination', 'customer', 'user', 'paymentMethod']));
+        }
+
+        // Full payment logic (existing)
         if ($paymentMethod->type === 'cash') {
             if ($paidAmount < $transaction->total) {
                 return response()->json([
@@ -143,6 +173,44 @@ class TransactionController extends Controller
         }
 
         $transaction = $this->transactionService->completeTransaction(
+            $transaction,
+            $paidAmount,
+            $paymentMethod->id
+        );
+
+        return response()->json($transaction->load(['items.product', 'items.package', 'items.packageCombination', 'customer', 'user', 'paymentMethod']));
+    }
+
+    /**
+     * Pay the remaining balance after DP
+     */
+    public function payRemaining(Request $request, Transaction $transaction)
+    {
+        if ($transaction->payment_status !== 'dp') {
+            return response()->json(['message' => 'Transaksi ini tidak memiliki sisa pembayaran DP'], 422);
+        }
+
+        $request->validate([
+            'payment_method_id' => 'required|exists:payment_methods,id',
+        ]);
+
+        $paymentMethod = \App\Models\PaymentMethod::findOrFail($request->payment_method_id);
+        $paidAmount = $request->input('paid_amount');
+        $remainingAmount = $transaction->remaining_amount;
+
+        // For cash, validate amount
+        if ($paymentMethod->type === 'cash') {
+            if ($paidAmount < $remainingAmount) {
+                return response()->json([
+                    'message' => 'Nominal pembayaran kurang dari sisa tagihan',
+                    'errors' => ['paid_amount' => ['Nominal pembayaran kurang']]
+                ], 422);
+            }
+        } else {
+            $paidAmount = $remainingAmount;
+        }
+
+        $transaction = $this->transactionService->payDpRemaining(
             $transaction,
             $paidAmount,
             $paymentMethod->id
