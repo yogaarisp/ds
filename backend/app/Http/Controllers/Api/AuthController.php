@@ -88,12 +88,15 @@ class AuthController extends Controller
             'password' => 'required|string|min:6', // removed confirmed for simplicity unless frontend sends password_confirmation
         ]);
 
+        $type = CustomerType::where('name', 'Reguler')->first() ?? CustomerType::first();
+
         $customer = Customer::create([
             'name' => $request->name,
             'email' => $request->email,
             'phone' => $request->phone,
             'password' => Hash::make($request->password),
             'address' => $request->address ?? '-',
+            'customer_type_id' => $type ? $type->id : 1,
             'is_active' => true,
         ]);
 
