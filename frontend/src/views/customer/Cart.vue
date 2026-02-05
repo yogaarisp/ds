@@ -191,7 +191,7 @@ function handleDeliveryTypeSelection(type) {
 
     <!-- Main Content (Scrollable Body) -->
     <!-- pt-16 allows header space, pb-32 allows footer space -->
-    <div class="pt-16 pb-32 px-4 space-y-4">
+    <div class="pt-20 pb-32 px-4 space-y-4">
       
       <!-- Empty Cart State -->
       <div v-if="cartStore.cart.length === 0" class="min-h-[60vh] flex flex-col items-center justify-center text-center">
