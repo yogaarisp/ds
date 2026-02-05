@@ -46,6 +46,8 @@ class TransactionService
                 'invoice_number' => Transaction::generateInvoiceNumber(),
                 'user_id' => $data['user_id'],
                 'customer_id' => $data['customer_id'] ?? null,
+                'customer_name' => $data['customer_name'] ?? null,
+                'table_id' => $data['table_id'] ?? null,
                 'order_type' => $data['order_type'],
                 'scheduled_date' => $data['scheduled_date'] ?? null,
                 'scheduled_time' => $data['scheduled_time'] ?? null,
@@ -92,6 +94,7 @@ class TransactionService
             // Update data transaksi
             $transaction->update([
                 'customer_id' => $data['customer_id'] ?? null,
+                'table_id' => $data['table_id'] ?? null,
                 'order_type' => $data['order_type'],
                 'scheduled_date' => $data['scheduled_date'] ?? null,
                 'scheduled_time' => $data['scheduled_time'] ?? null,

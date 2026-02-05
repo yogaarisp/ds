@@ -13,7 +13,7 @@ class TransactionController extends Controller
 
     public function index(Request $request)
     {
-        $query = Transaction::with(['user', 'customer', 'items.product', 'items.package', 'items.packageCombination', 'paymentMethod']);
+        $query = Transaction::with(['user', 'customer', 'table', 'items.product', 'items.package', 'items.packageCombination', 'paymentMethod']);
 
         if ($request->has('status')) {
             $query->where('status', $request->status);
@@ -64,6 +64,7 @@ class TransactionController extends Controller
     {
         $validated = $request->validate([
             'customer_id' => 'nullable|exists:customers,id',
+            'customer_name' => 'nullable|string|max:100',
             'order_type' => 'required|in:instant,scheduled',
             'scheduled_date' => 'required_if:order_type,scheduled|date|after_or_equal:today',
             'scheduled_time' => 'nullable|regex:/^\d{2}:\d{2}(:\d{2})?$/',
@@ -74,9 +75,19 @@ class TransactionController extends Controller
             'items.*.product_id' => 'required_if:items.*.type,product|exists:products,id',
             'items.*.package_combination_id' => 'required_if:items.*.type,package|exists:package_combinations,id',
             'items.*.quantity' => 'required|integer|min:1',
+            'table_code' => 'nullable|string|exists:tables,code',
         ]);
 
-        $validated['user_id'] = $request->user()->id;
+        $validated['user_id'] = $request->user() ? $request->user()->id : null;
+
+        // Handle table code
+        if (!empty($validated['table_code'])) {
+            $table = \App\Models\Table::where('code', $validated['table_code'])->first();
+            if ($table) {
+                $validated['table_id'] = $table->id;
+            }
+            unset($validated['table_code']);
+        }
 
         $transaction = $this->transactionService->createTransaction($validated);
 
@@ -113,6 +124,7 @@ class TransactionController extends Controller
         return response()->json($transaction->load([
             'user',
             'customer',
+            'table',
             'items.product',
             'items.package',
             'items.packageCombination.items.product',
@@ -228,6 +240,12 @@ class TransactionController extends Controller
         $transaction = $this->transactionService->cancelTransaction($transaction);
 
         return response()->json($transaction);
+    }
+
+    public function destroy(Transaction $transaction)
+    {
+        $transaction->delete();
+        return response()->json(['message' => 'Transaksi berhasil dihapus']);
     }
 
     public function todaySummary()

@@ -137,6 +137,22 @@ onUnmounted(() => {
           </div>
         </div>
 
+        <!-- Table Info (if QR Order) -->
+        <div v-if="posStore.selectedTable" class="bg-emerald-50 rounded-2xl p-3 border border-emerald-100 flex items-center gap-3">
+          <div class="w-8 h-8 bg-white rounded-xl shadow-sm flex items-center justify-center text-emerald-600">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 10V7h18v3m-3 0v11M6 10v11m-3-11h18" />
+            </svg>
+          </div>
+          <div>
+            <p class="text-[9px] font-extrabold text-emerald-600 uppercase tracking-widest leading-none mb-1">Dipesan di Meja</p>
+            <p class="font-bold text-slate-800 text-sm leading-tight">{{ posStore.selectedTable.name }}</p>
+          </div>
+          <div class="ml-auto">
+             <div class="bg-emerald-500 text-white text-[8px] font-bold px-2 py-0.5 rounded-full shadow-sm">VIA SCAN QR</div>
+          </div>
+        </div>
+
         <!-- Order Items List Refined -->
         <div class="space-y-3">
           <p class="text-[10px] font-semibold text-slate-400 uppercase tracking-widest px-1">Daftar Item</p>

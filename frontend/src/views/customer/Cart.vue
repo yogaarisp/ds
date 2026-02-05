@@ -17,9 +17,16 @@ const showPaymentMethods = ref(false)
 const loading = ref(false)
 const processing = ref(false)
 const isMounted = ref(false)
+const guestName = ref('')
 
 onMounted(async () => {
   isMounted.value = true
+  
+  // Prompt auth if guest without table
+  if (!authStore.isAuthenticated && !cartStore.hasTable) {
+    authStore.promptAuthChoice()
+  }
+  
   await fetchPaymentMethods()
 })
 
@@ -80,26 +87,7 @@ const getPaymentIcon = (method) => {
 }
 
 function handlePaymentSelection(method) {
-  const type = method.type.toLowerCase()
-  const name = method.name.toLowerCase()
-  
-  if (type === 'cash') {
-    selectedPaymentMethod.value = method.id
-  } else {
-    Swal.fire({
-      icon: 'info',
-      title: 'Coming Soon',
-      text: 'Segera hadir',
-      confirmButtonText: 'Oke',
-      confirmButtonColor: '#F97316',
-      width: '280px',
-      customClass: {
-        popup: 'rounded-2xl text-xs',
-        title: 'text-sm font-bold',
-        confirmButton: 'text-xs px-4 py-1.5'
-      }
-    })
-  }
+  selectedPaymentMethod.value = method.id
 }
 
 async function handleCheckout() {
@@ -131,12 +119,14 @@ async function handleCheckout() {
       items: items,
       total_amount: cartStore.subtotal,
       paid_amount: 0, // Customer order usually starts unpaid or payment gateway
-      payment_status: 'pending'
+      payment_status: 'pending',
+      table_code: cartStore.tableCode || null, // Include table if scanning QR
+      customer_name: guestName.value || null
     }
 
     const response = await api.post('/transactions', payload)
     
-    // Clear Cart
+    // Clear Cart (Keep Table for redirect authorization)
     cartStore.clearCart()
     
     await Swal.fire({
@@ -145,14 +135,16 @@ async function handleCheckout() {
       text: 'Pesanan Anda sedang diproses.',
       timer: 2000,
       showConfirmButton: false,
+      width: '280px',
       customClass: {
-        popup: 'rounded-2xl',
-        title: 'font-bold'
+        popup: 'rounded-3xl p-4',
+        title: 'text-lg font-bold',
+        htmlContainer: 'text-xs text-slate-500'
       }
     })
 
-    // Redirect to Orders or Home
-    router.push('/customer/order')
+    // Redirect to Order Detail
+    router.push(`/customer/order/${response.data.id}`)
 
   } catch (error) {
     console.error('Checkout failed:', error)
@@ -171,7 +163,7 @@ async function handleCheckout() {
     }
   }
 }
-const deliveryType = ref('pickup')
+const deliveryType = ref(cartStore.hasTable ? 'dine_in' : 'takeaway')
 
 function handleDeliveryTypeSelection(type) {
   if (type === 'delivery') {
@@ -223,36 +215,86 @@ function handleDeliveryTypeSelection(type) {
       
       <!-- Cart Content -->
       <template v-else>
-        <!-- Delivery Method Switcher -->
-        <div class="bg-slate-200/50 p-1 rounded-xl flex relative">
-          <div 
-             class="absolute top-1 bottom-1 w-[calc(50%-4px)] bg-white rounded-lg shadow-sm transition-all duration-300 ease-out z-0"
-             :class="deliveryType === 'pickup' ? 'left-1' : 'left-[calc(50%+4px)]'"
-          ></div>
-          
-          <button 
-            @click="handleDeliveryTypeSelection('pickup')"
-            class="flex-1 py-2 px-4 text-xs font-bold rounded-lg relative z-10 transition-colors flex items-center justify-center gap-2"
-            :class="deliveryType === 'pickup' ? 'text-primary-600' : 'text-slate-500 hover:text-slate-700'"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-              <path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z" />
-            </svg>
-            Ambil Sendiri
-          </button>
-          
-          <button 
-            @click="handleDeliveryTypeSelection('delivery')"
-            class="flex-1 py-2 px-4 text-xs font-bold rounded-lg relative z-10 transition-colors flex items-center justify-center gap-2"
-            :class="deliveryType === 'delivery' ? 'text-primary-600' : 'text-slate-400'"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-              <path d="M8 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM15 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z" />
-              <path d="M3 4a1 1 0 00-1 1v10a1 1 0 001 1h1.05a2.5 2.5 0 014.9 0H10a1 1 0 001-1V5a1 1 0 00-1-1H3zM14 7a1 1 0 00-1 1v6.05A2.5 2.5 0 0115.95 16H17a1 1 0 001-1v-5a1 1 0 00-.293-.707l-2-2A1 1 0 0015 7h-1z" />
-            </svg>
-            Delivery
-            <span class="bg-gray-800 text-white text-[8px] px-1.5 py-0.5 rounded ml-1 absolute -top-1 right-2 lg:static lg:top-auto lg:right-auto opacity-70">Soon</span>
-          </button>
+
+        <!-- Group Container for Delivery & Table Info -->
+        <div class="space-y-2">
+          <!-- Delivery Method Switcher -->
+          <div class="bg-slate-200/50 p-1 rounded-xl flex relative h-10">
+            <!-- Indicator -->
+            <div 
+               class="absolute top-1 bottom-1 w-[calc(33.33%-4px)] bg-white rounded-lg shadow-sm transition-all duration-300 ease-out z-0"
+               :style="{ 
+                 left: deliveryType === 'dine_in' ? '4px' : 
+                       deliveryType === 'takeaway' ? 'calc(33.33% + 2px)' : 
+                       'calc(66.66% + 2px)' 
+               }"
+            ></div>
+            
+            <button 
+              @click="handleDeliveryTypeSelection('dine_in')"
+              class="flex-1 px-2 text-[10px] font-bold rounded-lg relative z-10 transition-colors flex items-center justify-center gap-1"
+              :class="deliveryType === 'dine_in' ? 'text-primary-600' : 'text-slate-500 hover:text-slate-700'"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3 10V7h18v3m-3 0v11M6 10v11m-3-11h18" />
+              </svg>
+              Dine In
+            </button>
+
+            <button 
+              @click="handleDeliveryTypeSelection('takeaway')"
+              class="flex-1 px-2 text-[10px] font-bold rounded-lg relative z-10 transition-colors flex items-center justify-center gap-1"
+              :class="deliveryType === 'takeaway' ? 'text-primary-600' : 'text-slate-500 hover:text-slate-700'"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
+                <path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z" />
+              </svg>
+              Takeaway
+            </button>
+            
+            <button 
+              @click="handleDeliveryTypeSelection('delivery')"
+              class="flex-1 px-2 text-[10px] font-bold rounded-lg relative z-10 transition-colors flex items-center justify-center gap-1"
+              :class="deliveryType === 'delivery' ? 'text-primary-600' : 'text-slate-400'"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
+                <path d="M8 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM15 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z" />
+                <path d="M3 4a1 1 0 00-1 1v10a1 1 0 001 1h1.05a2.5 2.5 0 014.9 0H10a1 1 0 001-1V5a1 1 0 00-1-1H3zM14 7a1 1 0 00-1 1v6.05A2.5 2.5 0 0115.95 16H17a1 1 0 001-1v-5a1 1 0 00-.293-.707l-2-2A1 1 0 0015 7h-1z" />
+              </svg>
+              Delivery
+            </button>
+          </div>
+
+          <!-- Table Information (Conditional) -->
+          <div v-if="cartStore.hasTable" class="bg-orange-50 border border-orange-100 rounded-xl p-2.5 space-y-3 relative overflow-hidden">
+            <div class="absolute -right-3 -top-3 w-12 h-12 bg-orange-100/50 rounded-full blur-xl"></div>
+            
+            <div class="flex items-center gap-3">
+              <div class="w-9 h-9 bg-white rounded-lg shadow-sm flex items-center justify-center text-orange-500 shrink-0">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M3 10V7h18v3m-3 0v11M6 10v11m-3-11h18" />
+                </svg>
+              </div>
+              <div>
+                <p class="text-[8px] font-extrabold text-orange-500 uppercase tracking-widest leading-tight">Meja Anda</p>
+                <h3 class="font-bold text-slate-800 text-sm leading-tight">{{ cartStore.tableName }}</h3>
+              </div>
+              <div class="ml-auto">
+                <div class="bg-emerald-500 text-white text-[8px] font-bold px-2 py-0.5 rounded-full shadow-sm">AKTIF</div>
+              </div>
+            </div>
+
+            <!-- Customer Name Input for Guest -->
+            <div class="relative z-10">
+              <p class="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1 px-1">Nama Pemesan</p>
+              <input 
+                v-model="guestName"
+                type="text" 
+                placeholder="Masukkan nama Anda..."
+                class="w-full bg-white border border-orange-200 rounded-lg px-3 py-2 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all placeholder:text-slate-300"
+              />
+            </div>
+          </div>
         </div>
 
         <!-- Order Items Section -->
@@ -375,7 +417,7 @@ function handleDeliveryTypeSelection(type) {
                 <p class="text-xs font-bold text-slate-700">
                   {{ paymentMethods.find(p => p.id === selectedPaymentMethod)?.name || 'Pilih Metode Pembayaran' }}
                 </p>
-                <p class="text-[10px] text-slate-400">Ketuk untuk ubah</p>
+                <p class="text-[10px] text-slate-400">Bayar di Kasir</p>
              </div>
              <div class="text-primary-500 text-xs font-bold">Ubah</div>
           </div>
@@ -396,7 +438,7 @@ function handleDeliveryTypeSelection(type) {
     </div>
     
     <!-- Footer (Fixed Bottom) -->
-    <div v-if="cartStore.cart.length > 0" class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-100 px-4 py-3 pb-6 z-[100] shadow-[0_-4px_20px_rgba(0,0,0,0.05)] flex items-center justify-between gap-4">
+    <div v-if="cartStore.cart.length > 0" class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-100 px-4 py-2.5 pb-2 z-[100] shadow-[0_-4px_20px_rgba(0,0,0,0.05)] flex items-center justify-between gap-4">
       <!-- Total Info (Footer Content) -->
       <div class="flex flex-col">
         <span class="text-xs text-slate-500 font-medium">Total Pembayaran</span>

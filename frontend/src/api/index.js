@@ -233,6 +233,7 @@ export const transactionApi = {
   getPendingByCustomer: (customerId) => api.get('/transactions/pending-by-customer', {
     params: customerId ? { customer_id: customerId } : {}
   }),
+  delete: (id) => api.delete(`/transactions/${id}`),
 }
 
 // Payment Methods

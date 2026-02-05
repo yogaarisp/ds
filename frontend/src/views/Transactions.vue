@@ -5,6 +5,7 @@ import { transactionApi } from '../api'
 import { usePosStore } from '../stores/pos'
 import { useSettingsStore } from '../stores/settings'
 import CheckoutModal from '../components/CheckoutModal.vue'
+import Swal from 'sweetalert2'
 
 const router = useRouter()
 const route = useRoute()
@@ -149,7 +150,8 @@ function performSearch() {
     const invoiceMatch = transaction.invoice_number?.toLowerCase().includes(query)
     
     // Search by customer name
-    const customerMatch = transaction.customer?.name?.toLowerCase().includes(query)
+    const customerMatch = (transaction.customer?.name?.toLowerCase().includes(query)) || 
+                          (transaction.customer_name?.toLowerCase().includes(query))
     
     return invoiceMatch || customerMatch
   })
@@ -254,7 +256,7 @@ function sendWhatsapp() {
 
   const t = selectedTransaction.value
   const phone = t.customer?.phone?.replace(/^0/, '62') || ''
-  const customerName = t.customer?.name || 'Pelanggan'
+  const customerName = t.customer?.name || t.customer_name || 'Pelanggan'
   const storeName = settingsStore.storeName || 'DIMSUM SARANG'
   
   let text = `*INVOICE #${t.invoice_number}*\n`
@@ -319,7 +321,7 @@ function printReceipt() {
   const logoUrl = settingsStore.storeLogo
   const storeName = settingsStore.storeName || 'DIMSUM SARANG'
   const storeAddress = settingsStore.settings.store_address || ''
-  const customerName = t.customer?.name || 'Umum'
+  const customerName = t.customer?.name || t.customer_name || 'Umum'
 
   doc.open()
   doc.write(`
@@ -404,6 +406,61 @@ function printReceipt() {
         document.body.removeChild(iframe)
       }, 1000)
     }, 500)
+  }
+}
+
+async function deleteTransaction(transaction) {
+  if (!transaction) return
+
+  const result = await Swal.fire({
+    title: 'Hapus Transaksi?',
+    text: `Hapus transaksi ${transaction.invoice_number}? Tindakan ini tidak dapat dibatalkan!`,
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#ef4444',
+    cancelButtonColor: '#64748b',
+    confirmButtonText: 'Ya, Hapus!',
+    cancelButtonText: 'Batal',
+    reverseButtons: true,
+    width: '320px',
+    customClass: {
+      popup: 'rounded-2xl text-sm',
+      title: 'text-lg font-bold',
+      htmlContainer: 'text-xs'
+    }
+  })
+
+  if (result.isConfirmed) {
+    try {
+      await transactionApi.delete(transaction.id)
+      Swal.fire({
+        icon: 'success',
+        title: 'Berhasil Dihapus',
+        timer: 1500,
+        showConfirmButton: false,
+        width: '300px',
+        customClass: {
+          popup: 'rounded-2xl text-sm',
+          title: 'text-lg font-bold'
+        }
+      })
+      if (selectedTransaction.value?.id === transaction.id) {
+        selectedTransaction.value = null
+      }
+      loadTransactions(pagination.value.current_page)
+    } catch (error) {
+      console.error(error)
+      Swal.fire({
+        icon: 'error',
+        title: 'Gagal Menghapus',
+        text: error.response?.data?.message || 'Terjadi kesalahan sistem',
+        width: '300px',
+        customClass: {
+          popup: 'rounded-2xl text-sm',
+          title: 'text-lg font-bold'
+        }
+      })
+    }
   }
 }
 </script>
@@ -544,8 +601,41 @@ function printReceipt() {
             </div>
           </div>
 
-          <!-- Scheduled Tag (Top Right) -->
-          <div v-if="transaction.order_type === 'scheduled'" class="absolute top-0 right-0">
+          <!-- Table Tag (Top Right) -->
+          <div v-if="transaction.table" class="absolute top-0 right-0 z-10 flex items-start">
+            <div class="bg-emerald-50 text-emerald-600 px-3 py-1.5 rounded-bl-2xl border-l border-b border-emerald-100 flex items-center gap-1.5 shadow-sm">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3 10V7h18v3m-3 0v11M6 10v11m-3-11h18" />
+              </svg>
+              <span class="text-[10px] font-bold tracking-wider">{{ transaction.table.name }}</span>
+            </div>
+            <!-- Delete Button (Next to Table / Top Right) -->
+            <button 
+              @click.stop="deleteTransaction(transaction)"
+              class="w-8 h-8 flex items-center justify-center text-red-400 hover:text-red-500 hover:bg-red-50 transition-all rounded-bl-xl border-l border-b border-slate-100 bg-white shadow-sm"
+              title="Hapus Transaksi"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </button>
+          </div>
+
+          <!-- Delete Button (Top Right - When NO table) -->
+          <div v-if="!transaction.table" class="absolute top-0 right-0 z-10">
+            <button 
+              @click.stop="deleteTransaction(transaction)"
+              class="w-8 h-8 flex items-center justify-center text-red-400 hover:text-red-500 hover:bg-red-50 transition-all rounded-bl-xl border-l border-b border-slate-100 bg-white shadow-sm"
+              title="Hapus Transaksi"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </button>
+          </div>
+
+          <!-- Scheduled Tag (Top Right - Adjusted if Table or Delete exists) -->
+          <div v-if="transaction.order_type === 'scheduled'" class="absolute top-0 right-10" :class="{ 'mt-7': transaction.table }">
             <div class="bg-blue-50 text-blue-600 px-2 py-1 rounded-bl-xl border-l border-b border-blue-100/50 flex items-center gap-1 shadow-sm">
               <div class="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></div>
               <p class="text-[9px] font-medium uppercase tracking-wider">
@@ -564,7 +654,7 @@ function printReceipt() {
                 <div class="min-w-0 flex-1">
                    <div class="flex items-center gap-2 mb-1">
                       <h3 class="font-medium text-slate-800 text-sm group-hover:text-primary-600 transition-colors truncate">
-                         {{ transaction.customer?.name || 'Guest' }}
+                         {{ transaction.customer?.name || transaction.customer_name || 'Guest' }}
                       </h3>
                    </div>
                    <div class="flex flex-col gap-1 text-xs text-slate-500">
@@ -574,6 +664,16 @@ function printReceipt() {
                          </span>
                          <span class="text-slate-300">|</span>
                          <span class="font-medium text-slate-600">{{ transaction.order_type === 'instant' ? 'Dine In / TA' : 'Pre-Order' }}</span>
+                         <!-- Table Badge -->
+                         <template v-if="transaction.table">
+                           <span class="text-slate-300">|</span>
+                           <span class="inline-flex items-center gap-0.5 text-emerald-600 font-bold">
+                             <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                               <path stroke-linecap="round" stroke-linejoin="round" d="M3 10V7h18v3m-3 0v11M6 10v11m-3-11h18" />
+                             </svg>
+                             {{ transaction.table.name }}
+                           </span>
+                         </template>
                       </span>
                    </div>
                 </div>
@@ -696,7 +796,7 @@ function printReceipt() {
                     {{ (selectedTransaction.customer?.name || 'G').charAt(0).toUpperCase() }}
                   </div>
                   <div class="min-w-0 flex flex-col justify-center">
-                    <p class="font-medium text-slate-800 text-[12px] truncate leading-none mb-0.5">{{ selectedTransaction.customer?.name || 'Guest' }}</p>
+                    <p class="font-medium text-slate-800 text-[12px] truncate leading-none mb-0.5">{{ selectedTransaction.customer?.name || selectedTransaction.customer_name || 'Guest' }}</p>
                     <p class="text-[8px] text-slate-400 font-medium uppercase tracking-tight">{{ getCustomerLabel(selectedTransaction.customer) }}</p>
                   </div>
                 </div>
@@ -716,6 +816,22 @@ function printReceipt() {
                     <p class="font-medium text-slate-800 text-[12px] truncate leading-none">{{ selectedTransaction.user?.name || '-' }}</p>
                   </div>
                 </div>
+              </div>
+            </div>
+
+            <!-- Table Info (if QR Order) -->
+            <div v-if="selectedTransaction.table" class="bg-emerald-50 rounded-2xl p-3 border border-emerald-100 flex items-center gap-3">
+              <div class="w-8 h-8 bg-white rounded-xl shadow-sm flex items-center justify-center text-emerald-600">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M3 10V7h18v3m-3 0v11M6 10v11m-3-11h18" />
+                </svg>
+              </div>
+              <div>
+                <p class="text-[9px] font-extrabold text-emerald-600 uppercase tracking-widest leading-none mb-1">Dipesan di Meja</p>
+                <p class="font-bold text-slate-800 text-sm leading-tight">{{ selectedTransaction.table.name }}</p>
+              </div>
+              <div class="ml-auto">
+                 <div class="bg-emerald-500 text-white text-[8px] font-bold px-2 py-0.5 rounded-full shadow-sm">VIA SCAN QR</div>
               </div>
             </div>
 
@@ -813,16 +929,16 @@ function printReceipt() {
                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><line x1="12" x2="12" y1="18" y2="18"/></svg>
                    <span class="hidden sm:inline">WA</span>
                 </button>
- 
-                <button 
-                   v-if="selectedTransaction.status === 'pending'"
-                   @click="proceedToPay"
-                   class="flex-1 px-3 py-2.5 rounded-xl text-[10px] font-medium uppercase tracking-wider text-white bg-primary-500 hover:bg-primary-600 transition-all active:scale-[0.97] flex items-center justify-center gap-1.5 sm:gap-2 shadow-sm shadow-primary-500/20"
-                   title="Bayar Sekarang"
-                >
-                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><line x1="12" x2="12" y1="2" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-                   <span class="hidden sm:inline">Bayar Sekarang</span>
-                </button>
+
+                 <button 
+                    v-if="selectedTransaction.status === 'pending'"
+                    @click="proceedToPay"
+                    class="flex-1 px-3 py-2.5 rounded-xl text-[10px] font-medium uppercase tracking-wider text-white bg-primary-500 hover:bg-primary-600 transition-all active:scale-[0.97] flex items-center justify-center gap-1.5 sm:gap-2 shadow-sm shadow-primary-500/20"
+                    title="Bayar Sekarang"
+                 >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><line x1="12" x2="12" y1="2" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                    <span class="hidden sm:inline">Bayar Sekarang</span>
+                 </button>
              </div>
           </div>
         </div>

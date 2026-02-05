@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { authApi } from '../api'
 import router from '../router'
+import Swal from 'sweetalert2'
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref(null)
@@ -16,23 +17,51 @@ export const useAuthStore = defineStore('auth', () => {
   function checkAuth() {
     const savedToken = localStorage.getItem('token')
     const savedUser = localStorage.getItem('user')
-    
+
     if (savedToken && savedUser) {
       token.value = savedToken
       user.value = JSON.parse(savedUser)
     }
   }
 
+  async function promptAuthChoice() {
+    const result = await Swal.fire({
+      title: 'Sudah punya akun belum?',
+      text: 'Silakan login jika sudah punya akun, atau daftar jika belum.',
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: 'Sudah, Mau Login',
+      cancelButtonText: 'Belum, Mau Daftar',
+      confirmButtonColor: '#f97316', // primary orange
+      cancelButtonColor: '#64748b', // slate
+      reverseButtons: true,
+      width: '320px',
+      customClass: {
+        popup: 'rounded-2xl',
+        title: 'text-lg font-bold',
+        htmlContainer: 'text-sm',
+        confirmButton: 'px-4 py-2 rounded-xl text-sm font-bold',
+        cancelButton: 'px-4 py-2 rounded-xl text-sm font-bold'
+      }
+    })
+
+    if (result.isConfirmed) {
+      router.push('/customer/login')
+    } else if (result.dismiss === Swal.DismissReason.cancel) {
+      router.push('/customer/register')
+    }
+  }
+
   async function login(email, password) {
     loading.value = true
     try {
-      console.log('🔐 Login attempt:', { 
-        email, 
+      console.log('🔐 Login attempt:', {
+        email,
         password: '***',
         timestamp: new Date().toISOString(),
         userAgent: navigator.userAgent
       })
-      
+
       // Test basic connectivity first
       console.log('🔍 Testing basic connectivity...')
       const testResponse = await fetch('https://ds.keetech.my.id/api/settings')
@@ -40,16 +69,16 @@ export const useAuthStore = defineStore('auth', () => {
         status: testResponse.status,
         statusText: testResponse.statusText
       })
-      
+
       const response = await authApi.login({ email, password })
       console.log('✅ Login success:', response.data)
-      
+
       token.value = response.data.token
       user.value = response.data.user
-      
+
       localStorage.setItem('token', token.value)
       localStorage.setItem('user', JSON.stringify(user.value))
-      
+
       router.push('/')
       return { success: true }
     } catch (error) {
@@ -66,9 +95,9 @@ export const useAuthStore = defineStore('auth', () => {
           headers: error.config?.headers
         }
       })
-      
+
       let errorMessage = 'Login gagal. Periksa koneksi internet.'
-      
+
       if (error.response?.status === 422) {
         errorMessage = 'Email atau password salah.'
       } else if (error.response?.status === 401) {
@@ -78,9 +107,9 @@ export const useAuthStore = defineStore('auth', () => {
       } else if (error.code === 'NETWORK_ERROR' || !error.response) {
         errorMessage = 'Tidak dapat terhubung ke server. Periksa koneksi internet.'
       }
-      
-      return { 
-        success: false, 
+
+      return {
+        success: false,
         message: errorMessage
       }
     } finally {
@@ -126,5 +155,6 @@ export const useAuthStore = defineStore('auth', () => {
     login,
     logout,
     fetchUser,
+    promptAuthChoice,
   }
 })

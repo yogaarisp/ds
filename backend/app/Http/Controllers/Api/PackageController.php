@@ -221,4 +221,42 @@ class PackageController extends Controller
 
         return response()->json($package->load('discounts'));
     }
+
+    public function popular(Request $request)
+    {
+        $limit = $request->get('limit', 5);
+        
+        $combinations = PackageCombination::active()
+            ->whereHas('package', function($q) {
+                $q->active();
+            })
+            ->with(['package', 'items.product'])
+            ->select('package_combinations.*')
+            ->leftJoin('transaction_items', 'package_combinations.id', '=', 'transaction_items.package_combination_id')
+            ->selectRaw('package_combinations.*, SUM(COALESCE(transaction_items.quantity, 0)) as total_sold')
+            ->groupBy('package_combinations.id')
+            ->orderByDesc('total_sold')
+            ->orderByDesc('package_combinations.created_at')
+            ->limit($limit)
+            ->get()
+            ->map(function($comb) {
+                $pkg = $comb->package;
+                
+                // Formulate display details
+                $comb->display_name = $comb->name;
+                $comb->parent_name = $pkg->name;
+                
+                // Generate contents summary
+                $comb->contents = $comb->items->map(function($item) {
+                    return $item->quantity . 'x ' . ($item->product->name ?? 'Produk');
+                })->implode(', ');
+                
+                // Fallback image to package image if combination image is missing
+                $comb->display_image = $comb->image ?? $pkg->image;
+                
+                return $comb;
+            });
+
+        return response()->json($combinations);
+    }
 }

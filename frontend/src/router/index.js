@@ -84,6 +84,12 @@ const routes = [
         component: () => import('../views/Settings.vue'),
         meta: { roles: ['owner'] }
       },
+      {
+        path: 'tables',
+        name: 'Tables',
+        component: () => import('../views/Tables.vue'),
+        meta: { roles: ['owner'] }
+      },
     ]
   },
   {
@@ -111,19 +117,19 @@ const routes = [
         path: 'order',
         name: 'CustomerOrder',
         component: () => import('../views/customer/Order.vue'),
-        meta: { requiresAuth: true }
+        meta: { requiresAuth: false }
       },
       {
         path: 'order/:id',
         name: 'CustomerOrderDetail',
         component: () => import('../views/customer/OrderDetail.vue'),
-        meta: { requiresAuth: true }
+        meta: { requiresAuth: false }
       },
       {
         path: 'cart',
         name: 'CustomerCart',
         component: () => import('../views/customer/Cart.vue'),
-        meta: { requiresAuth: true }
+        meta: { requiresAuth: false }
       },
     ]
   },
@@ -138,13 +144,27 @@ router.beforeEach((to, from, next) => {
   console.log('Router Navigation:', { to: to.path, from: from.path, meta: to.meta })
   const token = localStorage.getItem('token')
   const user = JSON.parse(localStorage.getItem('user') || '{}')
+  const isStaff = ['owner', 'kasir', 'gudang'].includes(user.role)
+
+  if (to.path === '/') {
+    if (token && isStaff) {
+      next()
+    } else {
+      next('/customer/home')
+    }
+    return
+  }
+
+  // Khusus halaman Cart & Order: Sekarang ditangani di level komponen untuk memberikan pilihan Login/Register
+  // atau via Scan QR (ada tableCode) yang otomatis diizinkan.
+  if (to.path.startsWith('/customer/cart') || to.path.startsWith('/customer/order')) {
+    // Biarkan masuk, komponen akan memvalidasi status auth
+    next()
+    return
+  }
 
   if (to.meta.requiresAuth && !token) {
-    if (to.path.startsWith('/customer')) {
-      next('/customer/login')
-    } else {
-      next('/login')
-    }
+    next('/login')
   } else if (to.meta.guest && token) {
     if (user.role === 'customer' || user.is_customer) {
       next('/customer/home')

@@ -13,6 +13,8 @@ class Transaction extends Model
         'invoice_number',
         'user_id',
         'customer_id',
+        'customer_name',
+        'table_id',
         'order_type',
         'scheduled_date',
         'scheduled_time',
@@ -53,6 +55,11 @@ class Transaction extends Model
     public function paymentMethod()
     {
         return $this->belongsTo(PaymentMethod::class);
+    }
+
+    public function table()
+    {
+        return $this->belongsTo(Table::class);
     }
 
     public function items()

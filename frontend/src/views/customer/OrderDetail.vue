@@ -1,27 +1,60 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import api, { STORAGE_BASE_URL } from '@/api'
 import LazyImage from '@/components/LazyImage.vue'
+import { useCartStore } from '@/stores/cart'
 
 const route = useRoute()
 const router = useRouter()
 const order = ref(null)
 const loading = ref(true)
+const cartStore = useCartStore()
+const pollInterval = ref(null)
 
 onMounted(() => {
   fetchOrderDetail()
+  startPolling()
 })
 
-async function fetchOrderDetail() {
-  loading.value = true
+onUnmounted(() => {
+  stopPolling()
+})
+
+function startPolling() {
+  pollInterval.value = setInterval(() => {
+    if (order.value && order.value.status === 'pending') {
+      fetchOrderDetail(true) // true for background fetch
+    } else if (order.value && order.value.status !== 'pending') {
+      stopPolling()
+    }
+  }, 5000)
+}
+
+function stopPolling() {
+  if (pollInterval.value) {
+    clearInterval(pollInterval.value)
+    pollInterval.value = null
+  }
+}
+
+async function fetchOrderDetail(silent = false) {
+  if (!silent) loading.value = true
   try {
     const response = await api.get(`/transactions/${route.params.id}`)
+    const prevStatus = order.value?.status
     order.value = response.data
+    
+    // If status just changed to completed, clear table session
+    if (prevStatus === 'pending' && order.value.status === 'completed') {
+       if (cartStore.hasTable) {
+         cartStore.clearTable()
+       }
+    }
   } catch (error) {
     console.error('Failed to fetch order detail:', error)
   } finally {
-    loading.value = false
+    if (!silent) loading.value = false
   }
 }
 
@@ -101,13 +134,25 @@ function goBack() {
             <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Nomor Invoice</p>
             <p class="text-lg font-black text-slate-800">#{{ order.invoice_number }}</p>
           </div>
-          <span class="px-3 py-1.5 rounded-xl text-[10px] font-bold border uppercase tracking-widest" :class="getStatusColor(order.status)">
-            {{ getStatusLabel(order.status) }}
-          </span>
+          <div class="flex flex-col items-end gap-2">
+            <span class="px-3 py-1.5 rounded-xl text-[10px] font-bold border uppercase tracking-widest" :class="getStatusColor(order.status)">
+              {{ getStatusLabel(order.status) }}
+            </span>
+            <div v-if="order.table" class="bg-emerald-50 text-emerald-600 px-2 py-1 rounded-lg border border-emerald-100 flex items-center gap-1.5">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3 10V7h18v3m-3 0v11M6 10v11m-3-11h18" />
+              </svg>
+              <span class="text-[10px] font-black uppercase">{{ order.table.name }}</span>
+            </div>
+          </div>
         </div>
         
         <div class="grid grid-cols-2 gap-4 pt-4 border-t border-slate-50">
           <div>
+            <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Pemesan</p>
+            <p class="text-xs font-bold text-slate-700 capitalize mb-2">
+              {{ order.customer?.name || order.customer_name || 'Guest' }}
+            </p>
             <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Tanggal Pesanan</p>
             <p class="text-xs font-medium text-slate-700">{{ formatDate(order.created_at) }}</p>
           </div>

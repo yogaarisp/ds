@@ -1,14 +1,15 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import api, { STORAGE_BASE_URL } from '@/api'
 import LazyImage from '@/components/LazyImage.vue'
 import CombinationDetailModal from '@/components/CombinationDetailModal.vue'
 import CartPreviewModal from '@/components/CartPreviewModal.vue'
 import { useCartStore } from '@/stores/cart'
 import { useAuthStore } from '@/stores/auth'
-import { useRouter } from 'vue-router'
 
 const router = useRouter()
+const route = useRoute()
 const cartStore = useCartStore()
 const authStore = useAuthStore()
 
@@ -37,6 +38,7 @@ const isMounted = ref(false)
 
 onMounted(async () => {
   isMounted.value = true
+  
   // Get user from store or local storage
   if (authStore.user) {
     user.value = authStore.user
@@ -178,6 +180,11 @@ function handleAddToCartFromModal(item) {
    // We need to find the package ID. 
    // In the new logic, 'selectedCombination' has 'package_id'.
    
+   // Check auth or table session
+   if (!authStore.isAuthenticated && !cartStore.hasTable) {
+      authStore.promptAuthChoice()
+      return
+   }
    cartStore.addItem({
       type: 'package',
       id: selectedCombination.value.package_id, // Use stored package_id
@@ -193,6 +200,12 @@ function handleAddToCartFromModal(item) {
 }
 
 function addToCart(item, type = 'product') {
+  // Check auth or table session
+  if (!authStore.isAuthenticated && !cartStore.hasTable) {
+    authStore.promptAuthChoice()
+    return
+  }
+
   if (type === 'product') {
     const price = item.final_price ?? item.base_price
     cartStore.addItem({
@@ -218,6 +231,10 @@ function formatCurrency(value) {
 }
 
 function goToCheckout() {
+  if (!authStore.isAuthenticated && !cartStore.hasTable) {
+    authStore.promptAuthChoice()
+    return
+  }
   showCartPreview.value = false
   router.push('/customer/cart')
 }
@@ -260,7 +277,16 @@ function goToCheckout() {
            class="scroll-mt-4"
         >
             <!-- Header -->
-            <h2 class="text-lg font-semibold text-slate-800 mb-2 px-3 pt-3 sticky top-0 bg-white/95 backdrop-blur-sm z-20 py-3 shadow-sm">{{ section.name }}</h2>
+            <h2 class="text-lg font-semibold text-slate-800 mb-2 px-3 pt-3 sticky top-0 bg-white/95 backdrop-blur-sm z-20 py-3 shadow-sm">
+              {{ section.name }}
+              <!-- Table Badge -->
+              <span v-if="cartStore.hasTable && section.id === allCategoriesContent[0]?.id" class="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-100 text-emerald-700">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M3 10V7h18v3m-3 0v11M6 10v11m-3-11h18" />
+                </svg>
+                {{ cartStore.tableName }}
+              </span>
+            </h2>
 
             <!-- MIX / PACKAGE VIEW -->
             <div v-if="section.viewType === 'combinations'" class="space-y-6">

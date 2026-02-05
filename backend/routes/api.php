@@ -22,13 +22,23 @@ Route::post('/register', [AuthController::class, 'register']);
 // Public Settings
 Route::get('/settings', [SettingController::class, 'index']);
 
+// Public Menu Routes
+Route::get('/products', [ProductController::class, 'index']);
+Route::get('/products/{product}', [ProductController::class, 'show']);
+Route::get('/packages/popular', [PackageController::class, 'popular']);
+Route::get('/packages', [PackageController::class, 'index']);
+Route::get('/packages/{package}', [PackageController::class, 'show']);
+Route::get('/payment-methods', [PaymentMethodController::class, 'index']);
+Route::get('/transactions/{transaction}', [TransactionController::class, 'show']);
+Route::post('/transactions', [TransactionController::class, 'store']);
+
 Route::middleware('auth:sanctum')->group(function () {
     // Auth
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me', [AuthController::class, 'me']);
 
     // Products
-    Route::apiResource('products', ProductController::class);
+    Route::apiResource('products', ProductController::class)->except(['index', 'show']);
     Route::patch('/products/{product}/stock', [ProductController::class, 'updateStock']);
 
     // Customers
@@ -38,7 +48,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('customer-types', \App\Http\Controllers\Api\CustomerTypeController::class);
 
     // Packages & Combinations
-    Route::apiResource('packages', PackageController::class);
+    Route::apiResource('packages', PackageController::class)->except(['index', 'show']);
     Route::post('/packages/{package}/combinations', [PackageController::class, 'storeCombination']);
     Route::put('/combinations/{combination}', [PackageController::class, 'updateCombination']);
     Route::delete('/combinations/{combination}', [PackageController::class, 'destroyCombination']);
@@ -48,8 +58,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Transactions
     Route::get('/transactions/pending-by-customer', [TransactionController::class, 'getPendingByCustomer']);
-    Route::apiResource('transactions', TransactionController::class)->only(['index', 'store', 'show', 'update']);
-    Route::apiResource('payment-methods', PaymentMethodController::class);
+    Route::apiResource('transactions', TransactionController::class)->only(['index', 'update', 'destroy']);
+    Route::apiResource('payment-methods', PaymentMethodController::class)->except(['index']);
     Route::post('/transactions/{transaction}/complete', [TransactionController::class, 'complete']);
     Route::post('/transactions/{transaction}/cancel', [TransactionController::class, 'cancel']);
     Route::post('/transactions/{transaction}/pay-remaining', [TransactionController::class, 'payRemaining']);
@@ -93,4 +103,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/settings/logo', [SettingController::class, 'uploadLogo']);
     Route::post('/settings/favicon', [SettingController::class, 'uploadFavicon']);
     Route::delete('/settings/logo', [SettingController::class, 'deleteLogo']);
+
+    // Tables (Meja Resto)
+    Route::apiResource('tables', \App\Http\Controllers\Api\TableController::class);
+    Route::get('/tables/{table}/qr', [\App\Http\Controllers\Api\TableController::class, 'generateQr']);
 });
+
+// Public route untuk customer scan QR
+Route::get('/tables/code/{code}', [\App\Http\Controllers\Api\TableController::class, 'findByCode']);

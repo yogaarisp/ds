@@ -19,6 +19,13 @@ export const usePosStore = defineStore('pos', () => {
   const currentPendingTransactionId = ref(null)
   const pendingTransactionInfo = ref(null)
   const showPendingChoice = ref(false)
+  const selectedTable = ref(null)
+
+  // Load table from localStorage
+  const savedTable = localStorage.getItem('pos_selected_table')
+  if (savedTable) {
+    selectedTable.value = JSON.parse(savedTable)
+  }
 
   // Load from localStorage
   const savedPendingId = localStorage.getItem('pos_current_pending_id')
@@ -66,6 +73,14 @@ export const usePosStore = defineStore('pos', () => {
 
   watch(cart, (newVal) => {
     localStorage.setItem('pos_cart', JSON.stringify(newVal))
+  }, { deep: true })
+
+  watch(selectedTable, (newVal) => {
+    if (newVal) {
+      localStorage.setItem('pos_selected_table', JSON.stringify(newVal))
+    } else {
+      localStorage.removeItem('pos_selected_table')
+    }
   }, { deep: true })
 
   // Computed
@@ -210,6 +225,9 @@ export const usePosStore = defineStore('pos', () => {
         ? pendingTransactionInfo.value.scheduled_time.substring(0, 5)
         : null
 
+      // Load table info
+      selectedTable.value = pendingTransactionInfo.value.table || null
+
       console.log('🛒 Loaded', cart.value.length, 'items into cart')
     }
     showPendingChoice.value = false
@@ -249,6 +267,9 @@ export const usePosStore = defineStore('pos', () => {
 
     // Set pending transaction ID
     currentPendingTransactionId.value = transaction.id
+
+    // Set table info
+    selectedTable.value = transaction.table || null
 
     // Clear and populate cart
     clearCart()
@@ -300,6 +321,7 @@ export const usePosStore = defineStore('pos', () => {
       orderType.value = 'instant'
       scheduledDate.value = null
       scheduledTime.value = null
+      selectedTable.value = null
 
       // Refresh products and packages from server
       await refreshProducts()
@@ -499,6 +521,7 @@ export const usePosStore = defineStore('pos', () => {
       items,
       subtotal: cartSubtotal.value, // Send frontend calculated subtotal
       total: cartTotal.value, // Send frontend calculated total
+      table_id: selectedTable.value?.id || null
     }
 
     // Add scheduled fields only if order type is scheduled
@@ -566,6 +589,7 @@ export const usePosStore = defineStore('pos', () => {
       items,
       subtotal: cartSubtotal.value,
       total: cartTotal.value,
+      table_id: selectedTable.value?.id || null,
     }
 
     // Add scheduled fields only if order type is scheduled
@@ -626,6 +650,7 @@ export const usePosStore = defineStore('pos', () => {
       customer_id: selectedCustomer.value?.id,
       order_type: orderType.value,
       items,
+      table_id: selectedTable.value?.id || null,
     }
 
     // Add scheduled fields only if order type is scheduled
@@ -690,6 +715,7 @@ export const usePosStore = defineStore('pos', () => {
     currentPendingTransactionId,
     pendingTransactionInfo,
     showPendingChoice,
+    selectedTable,
     // Computed
     cartSubtotal,
     cartTotal,

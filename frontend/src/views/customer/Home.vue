@@ -2,11 +2,19 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useSettingsStore } from '@/stores/settings'
 import { useAuthStore } from '@/stores/auth' // Use auth store for user data
+import { useCartStore } from '@/stores/cart'
+import api from '@/api'
+import { useRouter, useRoute } from 'vue-router'
 import Swal from 'sweetalert2'
+import LazyImage from '@/components/LazyImage.vue'
 
+const router = useRouter()
+const route = useRoute()
 const settingsStore = useSettingsStore()
 const authStore = useAuthStore() // Access auth store
+const cartStore = useCartStore()
 const user = ref({})
+const popularPackages = ref([])
 
 // Carousel State
 const currentSlide = ref(0)
@@ -35,7 +43,7 @@ function showComingSoon(e) {
   })
 }
 
-onMounted(() => {
+onMounted(async () => {
   settingsStore.loadSettings()
   
   // Load user from auth store or local storage
@@ -57,6 +65,11 @@ onMounted(() => {
     })
   }
 
+  // Fetch popular packages
+  api.get('/packages/popular').then(res => {
+    popularPackages.value = res.data
+  })
+
   // Start Carousel
   startCarousel()
 })
@@ -77,6 +90,46 @@ function stopCarousel() {
 
 function formatNumber(num) {
   return new Intl.NumberFormat('id-ID').format(num)
+}
+
+function addToCart(product) {
+  // Check auth or table session
+  if (!authStore.isAuthenticated && !cartStore.hasTable) {
+    authStore.promptAuthChoice()
+    return
+  }
+
+  cartStore.addItem({
+    type: 'product',
+    id: product.id,
+    name: product.name,
+    price: product.final_price || product.base_price,
+    image: product.image,
+    quantity: 1
+  })
+
+  Swal.fire({
+    icon: 'success',
+    title: 'Ditambahkan!',
+    text: `${product.name} masuk ke keranjang`,
+    showConfirmButton: false,
+    timer: 1500,
+    width: '280px',
+    customClass: {
+      popup: 'rounded-xl',
+      title: 'text-sm font-bold',
+      htmlContainer: 'text-xs'
+    }
+  })
+}
+
+function formatCurrency(value) {
+  return new Intl.NumberFormat('id-ID', {
+    style: 'currency',
+    currency: 'IDR',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  }).format(value)
 }
 </script>
 
@@ -142,12 +195,27 @@ function formatNumber(num) {
     <div class="px-4 -mt-6 relative z-20">
       <div class="bg-white rounded-xl shadow-lg shadow-slate-200/50 p-3 flex justify-between items-center border border-slate-100">
         <div class="flex items-center gap-2.5">
-          <div class="w-9 h-9 bg-orange-100 rounded-full flex items-center justify-center text-orange-600 font-semibold text-base">
-             {{ user.name ? user.name.charAt(0).toUpperCase() : 'P' }}
+          <div class="w-9 h-9 bg-white rounded-lg shadow-sm flex items-center justify-center text-orange-500 shrink-0">
+            <template v-if="cartStore.hasTable">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M3 10V7h18v3m-3 0v11M6 10v11m-3-11h18" />
+                </svg>
+             </template>
+             <template v-else>
+                {{ user.name ? user.name.charAt(0).toUpperCase() : '👋' }}
+             </template>
           </div>
-          <span class="font-semibold text-slate-800 text-base">Hi, {{ user.name || 'Kee' }}</span>
+          <div class="flex flex-col">
+            <template v-if="cartStore.hasTable">
+              <span class="text-[10px] text-orange-500 font-bold uppercase tracking-wider leading-none mb-0.5">Meja Anda</span>
+              <span class="font-bold text-slate-800 text-base leading-none">{{ cartStore.tableName }}</span>
+            </template>
+            <template v-else>
+              <span class="font-semibold text-slate-800 text-base">{{ user.name ? 'Hi, ' + user.name : 'Selamat Datang' }}</span>
+            </template>
+          </div>
         </div>
-        <div class="flex items-center gap-3">
+        <div v-if="authStore.isAuthenticated" class="flex items-center gap-3">
            <!-- Coupons -->
            <div class="flex items-center gap-1 text-slate-600">
              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4 text-orange-400">
@@ -164,15 +232,56 @@ function formatNumber(num) {
       </div>
     </div>
 
-    <!-- 3. Main Actions Grid -->
-    <div class="px-4 mt-6">
+    <!-- 3. Popular Menu Section -->
+    <div class="px-4 mt-3 text-left">
+      <div class="bg-white rounded-[24px] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100/60 p-5 relative overflow-hidden">
+        <div class="flex justify-between items-center mb-5">
+          <h2 class="text-base font-extrabold text-slate-800 flex items-center gap-2">
+            Menu Terlaris 🔥
+          </h2>
+          <router-link to="/customer/menu" class="text-[11px] font-bold text-orange-500 bg-orange-50 px-2.5 py-1 rounded-full active:scale-95 transition-all">Lihat Semua</router-link>
+        </div>
+        
+        <!-- Horizontal Scroll Cards -->
+        <div class="flex gap-4 overflow-x-auto hide-scrollbar -mx-1 pb-1">
+          <div 
+            v-for="comb in popularPackages" 
+            :key="comb.id"
+            @click="router.push('/customer/menu')"
+            class="min-w-[150px] max-w-[150px] bg-slate-50 rounded-2xl border border-slate-100/50 overflow-hidden group active:scale-95 transition-all duration-300 cursor-pointer"
+          >
+            <div class="relative h-24 overflow-hidden">
+               <LazyImage 
+                 :src="comb.display_image" 
+                 class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" 
+                 alt="Package" 
+               />
+               <div class="absolute top-2 right-2 bg-orange-500/90 backdrop-blur-sm px-1.5 py-0.5 rounded-full shadow-sm">
+                  <span class="text-[8px] font-bold text-white uppercase tracking-wider">Hemat</span>
+               </div>
+            </div>
+            <div class="p-2.5">
+               <div class="text-[7px] font-bold text-orange-400 uppercase tracking-tighter mb-0.5 truncate">{{ comb.parent_name }}</div>
+               <h3 class="font-bold text-slate-800 text-[11px] truncate mb-0.5">{{ comb.display_name }}</h3>
+               <div class="flex items-center justify-between mt-1">
+                  <span class="text-orange-600 font-extrabold text-[11px]">{{ formatCurrency(comb.base_price) }}</span>
+                  <span v-if="comb.total_sold > 0" class="text-[8px] text-slate-400 font-bold bg-slate-100 px-1 rounded">{{ comb.total_sold }}+ terjual</span>
+               </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. Main Actions Grid -->
+    <div class="px-4 mt-3">
       <div class="bg-white rounded-[24px] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100/60 p-5 relative overflow-hidden">
         <!-- Decorative Background Blob -->
         <div class="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-orange-50/50 to-transparent rounded-bl-full -z-0 opacity-50"></div>
 
         <!-- Big Buttons -->
         <div class="grid grid-cols-2 gap-4 mb-6 relative z-10">
-          <router-link to="/customer/order" class="group relative overflow-hidden bg-gradient-to-br from-[#FFF8F1] to-white p-4 rounded-2xl border border-orange-100/60 shadow-sm hover:shadow-md transition-all duration-300">
+          <router-link to="/customer/menu" class="group relative overflow-hidden bg-gradient-to-br from-[#FFF8F1] to-white p-4 rounded-2xl border border-orange-100/60 shadow-sm hover:shadow-md transition-all duration-300">
             <div class="flex items-center gap-3">
               <div class="w-12 h-12 bg-white rounded-2xl shadow-[0_2px_10px_rgba(249,115,22,0.15)] flex items-center justify-center text-orange-500 group-hover:scale-110 group-active:scale-95 transition-all duration-300">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6">
