@@ -47,9 +47,7 @@ async function fetchOrderDetail(silent = false) {
     
     // If status just changed to completed, clear table session
     if (prevStatus === 'pending' && order.value.status === 'completed') {
-       if (cartStore.hasTable) {
-         cartStore.clearTable()
-       }
+       // Table session clearing is now handled by timeout in CustomerLayout
     }
   } catch (error) {
     console.error('Failed to fetch order detail:', error)

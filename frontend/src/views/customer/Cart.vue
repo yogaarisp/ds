@@ -126,24 +126,13 @@ async function handleCheckout() {
 
     const response = await api.post('/transactions', payload)
     
+    // Set Table Expiry (5 Minutes from now)
+    const fiveMinutes = 5 * 60 * 1000
+    cartStore.setTableExpiry(Date.now() + fiveMinutes)
+    
     // Clear Cart (Keep Table for redirect authorization)
     cartStore.clearCart()
-    
-    await Swal.fire({
-      icon: 'success',
-      title: 'Pesanan Berhasil!',
-      text: 'Pesanan Anda sedang diproses.',
-      timer: 2000,
-      showConfirmButton: false,
-      width: '280px',
-      customClass: {
-        popup: 'rounded-3xl p-4',
-        title: 'text-lg font-bold',
-        htmlContainer: 'text-xs text-slate-500'
-      }
-    })
 
-    // Redirect to Order Detail
     router.push(`/customer/order/${response.data.id}`)
 
   } catch (error) {

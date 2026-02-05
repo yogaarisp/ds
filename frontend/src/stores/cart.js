@@ -7,6 +7,7 @@ export const useCartStore = defineStore('customerCart', () => {
   // Table info (from QR scan)
   const tableCode = ref(localStorage.getItem('customer_table_code') || null)
   const tableName = ref(localStorage.getItem('customer_table_name') || null)
+  const tableExpiry = ref(localStorage.getItem('customer_table_expiry') || null)
 
   // Persist cart to localStorage
   watch(cart, (newVal) => {
@@ -14,13 +15,19 @@ export const useCartStore = defineStore('customerCart', () => {
   }, { deep: true })
 
   // Persist table to localStorage
-  watch([tableCode, tableName], ([code, name]) => {
+  watch([tableCode, tableName, tableExpiry], ([code, name, expiry]) => {
     if (code) {
       localStorage.setItem('customer_table_code', code)
       localStorage.setItem('customer_table_name', name || '')
     } else {
       localStorage.removeItem('customer_table_code')
       localStorage.removeItem('customer_table_name')
+    }
+
+    if (expiry) {
+      localStorage.setItem('customer_table_expiry', expiry)
+    } else {
+      localStorage.removeItem('customer_table_expiry')
     }
   })
 
@@ -39,11 +46,36 @@ export const useCartStore = defineStore('customerCart', () => {
   function setTable(code, name) {
     tableCode.value = code
     tableName.value = name
+    // Clear old expiry when setting new table manually/via QR
+    setTableExpiry(null)
+  }
+
+  function setTableExpiry(timestamp) {
+    tableExpiry.value = timestamp
+  }
+
+  function checkTableExpiry() {
+    if (tableExpiry.value) {
+      const expiry = parseInt(tableExpiry.value)
+
+      if (isNaN(expiry)) {
+        // Invalid expiry data, clear it to be safe
+        setTableExpiry(null)
+        return
+      }
+
+      const now = Date.now()
+      if (now > expiry) {
+        console.log('⏳ Table session expired. Clearing table.')
+        clearTable()
+      }
+    }
   }
 
   function clearTable() {
     tableCode.value = null
     tableName.value = null
+    tableExpiry.value = null
   }
 
   function addItem(item) {
@@ -107,6 +139,8 @@ export const useCartStore = defineStore('customerCart', () => {
     tableName,
     hasTable,
     setTable,
+    setTableExpiry,
+    checkTableExpiry,
     clearTable,
     addItem,
     updateQuantity,

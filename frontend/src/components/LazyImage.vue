@@ -4,8 +4,9 @@ import { getStorageUrl } from '../utils/storage'
 
 const props = defineProps({
   src: {
-    type: String,
-    required: true
+    type: [String, null],
+    required: false,
+    default: null
   },
   alt: {
     type: String,

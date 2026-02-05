@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, computed, watch } from 'vue'
+import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useSettingsStore } from '@/stores/settings'
 import { useAuthStore } from '@/stores/auth'
@@ -30,19 +30,29 @@ async function detectTable(tableCode) {
   }
 }
 
+// Watch for table code changes in URL (e.g. scanning a different QR while app is open)
+watch(() => route.query.table, (newTableCode) => {
+  if (newTableCode) {
+    detectTable(newTableCode)
+  }
+})
+
+let expiryInterval
 onMounted(async () => {
   settingsStore.loadSettings()
   authStore.checkAuth()
   
   // Initial Table detection from URL
   await detectTable(route.query.table)
+
+  // Check expiry every 10 seconds
+  expiryInterval = setInterval(() => {
+    cartStore.checkTableExpiry()
+  }, 10000)
 })
 
-// Watch for table code changes in URL (e.g. scanning a different QR while app is open)
-watch(() => route.query.table, (newTableCode) => {
-  if (newTableCode) {
-    detectTable(newTableCode)
-  }
+onUnmounted(() => {
+  if (expiryInterval) clearInterval(expiryInterval)
 })
 
 const navItems = computed(() => [
