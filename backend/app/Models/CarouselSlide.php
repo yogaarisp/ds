@@ -46,7 +46,8 @@ class CarouselSlide extends Model
             return $this->image;
         }
 
-        return url('storage/' . $this->image);
+        // Return relative URL for better compatibility
+        return '/storage/' . $this->image;
     }
 
     /**

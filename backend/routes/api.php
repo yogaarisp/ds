@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\PaymentMethodController;
 use App\Http\Controllers\Api\SettingController;
 use App\Http\Controllers\Api\CarouselSlideController;
+use App\Http\Controllers\Api\DatabaseController;
 use Illuminate\Support\Facades\Route;
 
 // Auth routes
@@ -116,6 +117,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('carousel-slides', CarouselSlideController::class);
     Route::post('/carousel-slides/reorder', [CarouselSlideController::class, 'reorder']);
     Route::post('/carousel-slides/{carouselSlide}/toggle-active', [CarouselSlideController::class, 'toggleActive']);
+
+    // Database Management (Owner only)
+    Route::get('/database/info', [DatabaseController::class, 'info']);
+    Route::get('/database/export', [DatabaseController::class, 'export']);
+    Route::post('/database/import', [DatabaseController::class, 'import']);
 });
 
 // Public route untuk customer scan QR

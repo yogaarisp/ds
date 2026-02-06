@@ -328,3 +328,22 @@ export const carouselApi = {
   reorder: (slides) => api.post('/carousel-slides/reorder', { slides }),
   toggleActive: (id) => api.post(`/carousel-slides/${id}/toggle-active`),
 }
+
+// Database Management
+export const databaseApi = {
+  info: () => api.get('/database/info'),
+  export: () => {
+    return api.get('/database/export', {
+      responseType: 'blob',
+      timeout: 300000 // 5 minutes timeout for large databases
+    })
+  },
+  import: (file) => {
+    const formData = new FormData()
+    formData.append('sql_file', file)
+    return api.post('/database/import', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 300000 // 5 minutes timeout for large imports
+    })
+  }
+}

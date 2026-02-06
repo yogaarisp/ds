@@ -1,6 +1,6 @@
 <script setup>
 import { ref, onMounted } from 'vue'
-import { settingApi, userApi, paymentMethodApi, carouselApi, STORAGE_BASE_URL } from '../api'
+import { settingApi, userApi, paymentMethodApi, carouselApi, databaseApi, STORAGE_BASE_URL } from '../api'
 import { useSettingsStore } from '../stores/settings'
 import SettingsCustomerTypes from './SettingsCustomerTypes.vue'
 import Swal from 'sweetalert2'
@@ -69,11 +69,20 @@ const carouselForm = ref({
 const carouselImageFile = ref(null)
 const carouselImagePreview = ref(null)
 
+// Database Management
+const databaseInfo = ref(null)
+const loadingDatabase = ref(false)
+const exportingDatabase = ref(false)
+const importingDatabase = ref(false)
+const importFile = ref(null)
+const importFileInput = ref(null)
+
 onMounted(() => {
   loadSettings()
   loadUsers()
   loadPaymentMethods()
   loadCarouselSlides()
+  loadDatabaseInfo()
 })
 
 async function loadSettings() {
@@ -610,6 +619,211 @@ function getPaymentTypeIcon(type) {
   }
   return icons[type] || '💳'
 }
+
+// Database Management Functions
+async function loadDatabaseInfo() {
+  loadingDatabase.value = true
+  try {
+    const response = await databaseApi.info()
+    databaseInfo.value = response.data.data
+  } catch (error) {
+    console.error('Error loading database info:', error)
+  } finally {
+    loadingDatabase.value = false
+  }
+}
+
+async function exportDatabase() {
+  exportingDatabase.value = true
+  try {
+    const response = await databaseApi.export()
+    
+    // Create download link
+    const url = window.URL.createObjectURL(new Blob([response.data]))
+    const link = document.createElement('a')
+    link.href = url
+    
+    // Get filename from response headers or create default
+    const contentDisposition = response.headers['content-disposition']
+    let filename = 'database_backup.sql'
+    if (contentDisposition) {
+      const filenameMatch = contentDisposition.match(/filename="(.+)"/)
+      if (filenameMatch) {
+        filename = filenameMatch[1]
+      }
+    }
+    
+    link.setAttribute('download', filename)
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    window.URL.revokeObjectURL(url)
+
+    await Swal.fire({
+      icon: 'success',
+      title: 'Berhasil!',
+      text: 'Database berhasil diexport',
+      timer: 2000,
+      showConfirmButton: false,
+      width: '300px',
+      customClass: {
+        popup: 'rounded-xl text-sm',
+        title: 'text-lg font-bold',
+        htmlContainer: 'text-xs'
+      }
+    })
+
+    // Refresh database info
+    await loadDatabaseInfo()
+
+  } catch (error) {
+    console.error('Error exporting database:', error)
+    Swal.fire({
+      icon: 'error',
+      title: 'Gagal Export',
+      text: error.response?.data?.message || 'Gagal mengexport database',
+      width: '300px',
+      customClass: {
+        popup: 'rounded-xl text-sm',
+        title: 'text-lg font-bold',
+        htmlContainer: 'text-xs'
+      }
+    })
+  } finally {
+    exportingDatabase.value = false
+  }
+}
+
+async function importDatabase() {
+  if (!importFile.value) {
+    Swal.fire({
+      icon: 'warning',
+      title: 'File Diperlukan',
+      text: 'Pilih file SQL untuk diimport',
+      width: '300px',
+      customClass: {
+        popup: 'rounded-xl text-sm',
+        title: 'text-lg font-bold',
+        htmlContainer: 'text-xs'
+      }
+    })
+    return
+  }
+
+  const result = await Swal.fire({
+    title: 'Import Database?',
+    html: `
+      <div class="text-left space-y-2">
+        <p class="text-sm text-gray-600">File: <strong>${importFile.value.name}</strong></p>
+        <p class="text-sm text-gray-600">Size: <strong>${(importFile.value.size / 1024 / 1024).toFixed(2)} MB</strong></p>
+        <div class="bg-red-50 border border-red-200 rounded-lg p-3 mt-3">
+          <p class="text-xs text-red-600 font-semibold">⚠️ PERINGATAN:</p>
+          <p class="text-xs text-red-600">Import akan menimpa semua data yang ada. Pastikan Anda sudah backup database saat ini.</p>
+        </div>
+      </div>
+    `,
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#ef4444',
+    confirmButtonText: 'Ya, Import',
+    cancelButtonText: 'Batal',
+    width: '400px',
+    customClass: {
+      popup: 'rounded-xl text-sm',
+      title: 'text-lg font-bold',
+      htmlContainer: 'text-xs'
+    }
+  })
+
+  if (!result.isConfirmed) return
+
+  importingDatabase.value = true
+  try {
+    await databaseApi.import(importFile.value)
+
+    await Swal.fire({
+      icon: 'success',
+      title: 'Berhasil!',
+      text: 'Database berhasil diimport',
+      timer: 2000,
+      showConfirmButton: false,
+      width: '300px',
+      customClass: {
+        popup: 'rounded-xl text-sm',
+        title: 'text-lg font-bold',
+        htmlContainer: 'text-xs'
+      }
+    })
+
+    // Clear file input and refresh info
+    importFile.value = null
+    if (importFileInput.value) {
+      importFileInput.value.value = ''
+    }
+    await loadDatabaseInfo()
+
+  } catch (error) {
+    console.error('Error importing database:', error)
+    Swal.fire({
+      icon: 'error',
+      title: 'Gagal Import',
+      text: error.response?.data?.message || 'Gagal mengimport database',
+      width: '300px',
+      customClass: {
+        popup: 'rounded-xl text-sm',
+        title: 'text-lg font-bold',
+        htmlContainer: 'text-xs'
+      }
+    })
+  } finally {
+    importingDatabase.value = false
+  }
+}
+
+function handleImportFileChange(event) {
+  const file = event.target.files[0]
+  if (file) {
+    // Validate file type
+    const validTypes = ['application/sql', 'text/plain', 'application/octet-stream']
+    const validExtensions = ['.sql', '.txt']
+    const hasValidExtension = validExtensions.some(ext => file.name.toLowerCase().endsWith(ext))
+    
+    if (!validTypes.includes(file.type) && !hasValidExtension) {
+      Swal.fire({
+        icon: 'error',
+        title: 'File Tidak Valid',
+        text: 'Hanya file SQL (.sql) yang diperbolehkan',
+        width: '300px',
+        customClass: {
+          popup: 'rounded-xl text-sm',
+          title: 'text-lg font-bold',
+          htmlContainer: 'text-xs'
+        }
+      })
+      event.target.value = ''
+      return
+    }
+
+    // Validate file size (max 50MB)
+    if (file.size > 50 * 1024 * 1024) {
+      Swal.fire({
+        icon: 'error',
+        title: 'File Terlalu Besar',
+        text: 'Ukuran file maksimal 50MB',
+        width: '300px',
+        customClass: {
+          popup: 'rounded-xl text-sm',
+          title: 'text-lg font-bold',
+          htmlContainer: 'text-xs'
+        }
+      })
+      event.target.value = ''
+      return
+    }
+
+    importFile.value = file
+  }
+}
 </script>
 
 <template>
@@ -630,7 +844,8 @@ function getPaymentTypeIcon(type) {
             { id: 'carousel', label: 'Banner', icon: 'M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z' },
             { id: 'users', label: 'User', icon: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z' },
             { id: 'customer_types', label: 'Tipe', icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z' },
-            { id: 'payments', label: 'Bayar', icon: 'M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z' }
+            { id: 'payments', label: 'Bayar', icon: 'M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z' },
+            { id: 'database', label: 'Database', icon: 'M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4' }
           ]"
           :key="tab.id"
           @click="activeTab = tab.id"
@@ -1171,6 +1386,192 @@ function getPaymentTypeIcon(type) {
             <button @click="savePayment" class="flex-[2] bg-primary-500 py-3.5 rounded-xl text-white font-bold text-xs uppercase tracking-widest shadow-lg shadow-primary-500/20 hover:bg-primary-600 transition-all">
               Simpan Metode
             </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Database Management -->
+    <div v-if="activeTab === 'database'" class="animate-fade-in-up space-y-6">
+      <div class="bg-white rounded-xl p-6 shadow-xl shadow-slate-200/50 border border-slate-100">
+        <h2 class="text-lg font-bold text-slate-800 mb-6 flex items-center gap-3">
+          <div class="w-9 h-9 rounded-xl bg-blue-100 flex items-center justify-center text-blue-600 shadow-sm shadow-blue-500/10">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
+            </svg>
+          </div>
+          Manajemen Database
+        </h2>
+
+        <!-- Database Info -->
+        <div v-if="databaseInfo" class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <div class="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4 border border-blue-200">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-xl bg-blue-500 flex items-center justify-center text-white">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7" />
+                </svg>
+              </div>
+              <div>
+                <p class="text-[10px] font-bold text-blue-600 uppercase tracking-widest">Database</p>
+                <p class="font-bold text-blue-800 text-sm">{{ databaseInfo.database_name }}</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-xl p-4 border border-emerald-200">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-xl bg-emerald-500 flex items-center justify-center text-white">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+              </div>
+              <div>
+                <p class="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">Ukuran</p>
+                <p class="font-bold text-emerald-800 text-sm">{{ databaseInfo.size_mb }} MB</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-4 border border-purple-200">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-xl bg-purple-500 flex items-center justify-center text-white">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 9a2 2 0 00-2 2v2a2 2 0 002 2m0 0h14m-14 0a2 2 0 002 2v2a2 2 0 01-2 2" />
+                </svg>
+              </div>
+              <div>
+                <p class="text-[10px] font-bold text-purple-600 uppercase tracking-widest">Tabel</p>
+                <p class="font-bold text-purple-800 text-sm">{{ databaseInfo.table_count }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Table Counts -->
+        <div v-if="databaseInfo?.table_counts" class="mb-6">
+          <h3 class="text-sm font-bold text-slate-600 mb-3 flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            </svg>
+            Jumlah Data
+          </h3>
+          <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+            <div v-for="table in databaseInfo.table_counts" :key="table.table" class="bg-slate-50 rounded-lg p-3 border border-slate-100">
+              <p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{{ table.label }}</p>
+              <p class="font-bold text-slate-700 text-lg">{{ table.count.toLocaleString() }}</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Last Backup Info -->
+        <div v-if="databaseInfo?.last_backup" class="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6">
+          <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-lg bg-amber-500 flex items-center justify-center text-white">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <div>
+              <p class="text-[10px] font-bold text-amber-600 uppercase tracking-widest">Backup Terakhir</p>
+              <p class="font-bold text-amber-800 text-sm">{{ databaseInfo.last_backup.date }}</p>
+              <p class="text-[10px] text-amber-600">{{ databaseInfo.last_backup.filename }} ({{ databaseInfo.last_backup.size_mb }} MB)</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Export Section -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <!-- Export Database -->
+          <div class="bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-xl p-6 border border-emerald-200">
+            <div class="flex items-center gap-3 mb-4">
+              <div class="w-10 h-10 rounded-xl bg-emerald-500 flex items-center justify-center text-white">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              </div>
+              <div>
+                <h3 class="font-bold text-emerald-800 text-lg">Export Database</h3>
+                <p class="text-[10px] text-emerald-600 font-medium">Download backup database</p>
+              </div>
+            </div>
+            
+            <p class="text-xs text-emerald-700 mb-4">
+              Export seluruh database ke file SQL yang dapat digunakan untuk backup atau migrasi.
+            </p>
+            
+            <button 
+              @click="exportDatabase" 
+              :disabled="exportingDatabase"
+              class="w-full bg-emerald-500 py-3 rounded-xl text-white font-bold text-xs uppercase tracking-widest shadow-lg shadow-emerald-500/20 hover:bg-emerald-600 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <span v-if="exportingDatabase" class="flex items-center justify-center gap-2">
+                <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Mengexport...
+              </span>
+              <span v-else>📥 Export Database</span>
+            </button>
+          </div>
+
+          <!-- Import Database -->
+          <div class="bg-gradient-to-br from-red-50 to-red-100 rounded-xl p-6 border border-red-200">
+            <div class="flex items-center gap-3 mb-4">
+              <div class="w-10 h-10 rounded-xl bg-red-500 flex items-center justify-center text-white">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
+                </svg>
+              </div>
+              <div>
+                <h3 class="font-bold text-red-800 text-lg">Import Database</h3>
+                <p class="text-[10px] text-red-600 font-medium">Restore dari file SQL</p>
+              </div>
+            </div>
+            
+            <div class="bg-red-100 border border-red-300 rounded-lg p-3 mb-4">
+              <p class="text-[10px] text-red-700 font-semibold">⚠️ PERINGATAN:</p>
+              <p class="text-[10px] text-red-700">Import akan menimpa semua data yang ada!</p>
+            </div>
+            
+            <!-- File Input -->
+            <div class="mb-4">
+              <input 
+                ref="importFileInput"
+                type="file" 
+                accept=".sql,.txt" 
+                @change="handleImportFileChange"
+                class="w-full text-xs text-slate-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-red-50 file:text-red-700 hover:file:bg-red-100 file:cursor-pointer cursor-pointer"
+              >
+              <p class="text-[9px] text-red-600 mt-1">File SQL maksimal 50MB</p>
+            </div>
+            
+            <button 
+              @click="importDatabase" 
+              :disabled="importingDatabase || !importFile"
+              class="w-full bg-red-500 py-3 rounded-xl text-white font-bold text-xs uppercase tracking-widest shadow-lg shadow-red-500/20 hover:bg-red-600 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <span v-if="importingDatabase" class="flex items-center justify-center gap-2">
+                <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Mengimport...
+              </span>
+              <span v-else>📤 Import Database</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Loading State -->
+        <div v-if="loadingDatabase" class="flex items-center justify-center py-12">
+          <div class="flex items-center gap-3 text-slate-400">
+            <svg class="animate-spin h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <span class="font-medium">Memuat informasi database...</span>
           </div>
         </div>
       </div>

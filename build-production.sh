@@ -12,7 +12,7 @@ echo "🚀 Building production package: $ARCHIVE_NAME"
 # Step 1: Build frontend
 echo "📦 Building frontend..."
 cd frontend
-npm run build:production
+npm run build
 if [ $? -ne 0 ]; then
     echo "❌ Frontend build failed!"
     exit 1
