@@ -325,17 +325,6 @@ function closeTableModal() {
                 <div class="bg-emerald-500 text-white text-[8px] font-bold px-2 py-0.5 rounded-full shadow-sm">AKTIF</div>
               </div>
             </div>
-
-            <!-- Customer Name Input for Guest -->
-            <div class="relative z-10">
-              <p class="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1 px-1">Nama Pemesan</p>
-              <input 
-                v-model="guestName"
-                type="text" 
-                placeholder="Masukkan nama Anda..."
-                class="w-full bg-white border border-orange-200 rounded-lg px-3 py-2 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all placeholder:text-slate-300"
-              />
-            </div>
           </div>
         </div>
 
