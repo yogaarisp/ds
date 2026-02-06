@@ -347,3 +347,14 @@ export const databaseApi = {
     })
   }
 }
+
+// Tables
+export const tableApi = {
+  getAll: () => api.get('/tables'),
+  get: (id) => api.get(`/tables/${id}`),
+  create: (data) => api.post('/tables', data),
+  update: (id, data) => api.put(`/tables/${id}`, data),
+  delete: (id) => api.delete(`/tables/${id}`),
+  findByCode: (code) => api.get(`/tables/code/${code}`),
+  generateQr: (id) => api.get(`/tables/${id}/qr`),
+}

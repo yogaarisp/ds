@@ -3,7 +3,7 @@ import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useCartStore } from '@/stores/cart'
 import { useAuthStore } from '@/stores/auth'
-import api, { STORAGE_BASE_URL } from '@/api'
+import api, { tableApi, STORAGE_BASE_URL } from '@/api'
 import Swal from 'sweetalert2'
 import LazyImage from '@/components/LazyImage.vue'
 
@@ -19,6 +19,12 @@ const processing = ref(false)
 const isMounted = ref(false)
 const guestName = ref('')
 
+// Table selection
+const showTableModal = ref(false)
+const tables = ref([])
+const selectedTable = ref(null)
+const loadingTables = ref(false)
+
 onMounted(async () => {
   isMounted.value = true
   
@@ -28,6 +34,7 @@ onMounted(async () => {
   }
   
   await fetchPaymentMethods()
+  await fetchTables()
 })
 
 onUnmounted(() => {
@@ -50,6 +57,28 @@ async function fetchPaymentMethods() {
   } finally {
     if (isMounted.value) {
       loading.value = false
+    }
+  }
+}
+
+async function fetchTables() {
+  if (!isMounted.value) return
+  loadingTables.value = true
+  try {
+    const response = await tableApi.getAll()
+    if (isMounted.value) {
+      tables.value = response.data.filter(table => table.status !== 'occupied')
+      
+      // Set selected table if already has table from QR scan
+      if (cartStore.hasTable) {
+        selectedTable.value = tables.value.find(t => t.code === cartStore.tableCode)
+      }
+    }
+  } catch (error) {
+    console.error('Failed to fetch tables:', error)
+  } finally {
+    if (isMounted.value) {
+      loadingTables.value = false
     }
   }
 }
@@ -173,7 +202,31 @@ function handleDeliveryTypeSelection(type) {
     })
     return
   }
+  
+  if (type === 'dine_in') {
+    // Show table selection modal if not already have table
+    if (!cartStore.hasTable) {
+      showTableModal.value = true
+      return
+    }
+  }
+  
   deliveryType.value = type
+}
+
+function selectTable(table) {
+  selectedTable.value = table
+  cartStore.setTable(table.code, table.name)
+  deliveryType.value = 'dine_in'
+  showTableModal.value = false
+}
+
+function closeTableModal() {
+  showTableModal.value = false
+  // Reset to takeaway if no table selected
+  if (!cartStore.hasTable) {
+    deliveryType.value = 'takeaway'
+  }
 }
 </script>
 
@@ -447,6 +500,112 @@ function handleDeliveryTypeSelection(type) {
         <span class="text-sm border-r border-white/20 pr-3 mr-3 hidden sm:inline" v-if="!processing">Checkout</span>
         <span class="text-sm">{{ processing ? 'Memproses...' : 'Bayar Sekarang' }}</span>
       </button>
+    </div>
+
+    <!-- Table Selection Modal -->
+    <div v-if="showTableModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[200] p-4">
+      <div class="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden flex flex-col max-h-[80vh]">
+        <!-- Modal Header -->
+        <div class="px-6 pt-6 pb-3 flex justify-between items-center border-b border-slate-100">
+          <div>
+            <h2 class="text-xl font-bold text-slate-800">Pilih Meja</h2>
+            <p class="text-xs text-slate-500 mt-1">Pilih meja untuk dine in</p>
+          </div>
+          <button @click="closeTableModal" class="w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 text-slate-400 hover:bg-red-50 hover:text-red-500 transition-all">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <!-- Modal Content -->
+        <div class="p-6 overflow-y-auto flex-1">
+          <!-- Loading State -->
+          <div v-if="loadingTables" class="flex items-center justify-center py-12">
+            <div class="flex items-center gap-3 text-slate-400">
+              <svg class="animate-spin h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              <span class="font-medium text-sm">Memuat daftar meja...</span>
+            </div>
+          </div>
+
+          <!-- Tables Grid -->
+          <div v-else-if="tables.length > 0" class="grid grid-cols-2 gap-3">
+            <button
+              v-for="table in tables"
+              :key="table.id"
+              @click="selectTable(table)"
+              class="p-4 border-2 rounded-xl flex flex-col items-center gap-3 transition-all hover:border-primary-300 hover:bg-primary-50/50 active:scale-95"
+              :class="selectedTable?.id === table.id 
+                ? 'border-primary-500 bg-primary-50' 
+                : table.status === 'available' 
+                  ? 'border-slate-200 bg-white' 
+                  : 'border-orange-200 bg-orange-50'"
+            >
+              <!-- Table Icon -->
+              <div class="w-12 h-12 rounded-xl flex items-center justify-center"
+                   :class="selectedTable?.id === table.id 
+                     ? 'bg-primary-500 text-white' 
+                     : table.status === 'available' 
+                       ? 'bg-slate-100 text-slate-600' 
+                       : 'bg-orange-100 text-orange-600'">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10V7h18v3m-3 0v11M6 10v11m-3-11h18" />
+                </svg>
+              </div>
+
+              <!-- Table Info -->
+              <div class="text-center">
+                <h3 class="font-bold text-slate-800 text-sm">{{ table.name }}</h3>
+                <div class="flex items-center justify-center gap-1 mt-1">
+                  <span class="text-xs text-slate-500">{{ table.capacity || 4 }} kursi</span>
+                  <span class="w-1 h-1 bg-slate-300 rounded-full"></span>
+                  <span class="text-xs capitalize"
+                        :class="table.status === 'available' ? 'text-emerald-600' : 'text-orange-600'">
+                    {{ table.status === 'available' ? 'Tersedia' : 'Terisi' }}
+                  </span>
+                </div>
+              </div>
+
+              <!-- Selected Indicator -->
+              <div v-if="selectedTable?.id === table.id" class="absolute top-2 right-2 text-primary-500">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                </svg>
+              </div>
+            </button>
+          </div>
+
+          <!-- Empty State -->
+          <div v-else class="text-center py-12">
+            <div class="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 10V7h18v3m-3 0v11M6 10v11m-3-11h18" />
+              </svg>
+            </div>
+            <h3 class="font-bold text-slate-600 mb-1">Tidak Ada Meja Tersedia</h3>
+            <p class="text-xs text-slate-400">Semua meja sedang terisi</p>
+          </div>
+        </div>
+
+        <!-- Modal Footer -->
+        <div class="px-6 pb-6 pt-3 border-t border-slate-100">
+          <div class="flex gap-3">
+            <button @click="closeTableModal" class="flex-1 py-3 rounded-xl text-slate-400 font-bold text-sm hover:bg-slate-50 transition-all">
+              Batal
+            </button>
+            <button 
+              v-if="selectedTable" 
+              @click="selectTable(selectedTable)" 
+              class="flex-[2] bg-primary-500 py-3 rounded-xl text-white font-bold text-sm shadow-lg shadow-primary-500/20 hover:bg-primary-600 transition-all active:scale-[0.98]"
+            >
+              Pilih {{ selectedTable.name }}
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
