@@ -52,6 +52,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/customers/{customer}/stats', [CustomerController::class, 'stats']);
     Route::apiResource('customer-types', \App\Http\Controllers\Api\CustomerTypeController::class);
 
+    // Customer Addresses
+    Route::apiResource('customer-addresses', \App\Http\Controllers\Api\CustomerAddressController::class);
+    Route::post('/customer-addresses/{address}/set-default', [\App\Http\Controllers\Api\CustomerAddressController::class, 'setDefault']);
+
     // Packages & Combinations
     Route::apiResource('packages', PackageController::class)->except(['index', 'show']);
     Route::post('/packages/{package}/combinations', [PackageController::class, 'storeCombination']);

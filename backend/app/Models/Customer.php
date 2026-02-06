@@ -60,6 +60,16 @@ class Customer extends Authenticatable
         return $this->belongsTo(CustomerType::class);
     }
 
+    public function addresses()
+    {
+        return $this->hasMany(CustomerAddress::class);
+    }
+
+    public function defaultAddress()
+    {
+        return $this->hasOne(CustomerAddress::class)->where('is_default', true);
+    }
+
     public function isVip(): bool
     {
         return $this->type === 'vip';

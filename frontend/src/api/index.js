@@ -348,6 +348,16 @@ export const databaseApi = {
   }
 }
 
+// Customer Addresses
+export const customerAddressApi = {
+  getAll: () => api.get('/customer-addresses'),
+  get: (id) => api.get(`/customer-addresses/${id}`),
+  create: (data) => api.post('/customer-addresses', data),
+  update: (id, data) => api.put(`/customer-addresses/${id}`, data),
+  delete: (id) => api.delete(`/customer-addresses/${id}`),
+  setDefault: (id) => api.post(`/customer-addresses/${id}/set-default`),
+}
+
 // Tables
 export const tableApi = {
   getAll: () => api.get('/tables'),

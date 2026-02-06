@@ -224,10 +224,20 @@ function formatCurrency(value) {
              </template>
           </div>
           <div class="flex flex-col">
-            <template v-if="cartStore.hasTable">
+            <!-- Show both customer name and table when both are available -->
+            <template v-if="authStore.isAuthenticated && cartStore.hasTable">
+              <span class="font-semibold text-slate-800 text-sm leading-tight">Hi, {{ user.name }}</span>
+              <div class="flex items-center gap-1">
+                <span class="text-[9px] text-orange-500 font-bold uppercase tracking-wider">Meja:</span>
+                <span class="font-bold text-orange-600 text-xs">{{ cartStore.tableName }}</span>
+              </div>
+            </template>
+            <!-- Show only table when not authenticated but has table -->
+            <template v-else-if="cartStore.hasTable">
               <span class="text-[10px] text-orange-500 font-bold uppercase tracking-wider leading-none mb-0.5">Meja Anda</span>
               <span class="font-bold text-slate-800 text-base leading-none">{{ cartStore.tableName }}</span>
             </template>
+            <!-- Show only customer name when authenticated but no table -->
             <template v-else>
               <span class="font-semibold text-slate-800 text-base">{{ user.name ? 'Hi, ' + user.name : 'Selamat Datang' }}</span>
             </template>

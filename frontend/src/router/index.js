@@ -114,6 +114,12 @@ const routes = [
         component: () => import('../views/customer/Profile.vue'),
       },
       {
+        path: 'addresses',
+        name: 'CustomerAddresses',
+        component: () => import('../views/customer/Addresses.vue'),
+        meta: { requiresAuth: true }
+      },
+      {
         path: 'order',
         name: 'CustomerOrder',
         component: () => import('../views/customer/Order.vue'),
