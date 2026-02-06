@@ -75,6 +75,8 @@ class TransactionController extends Controller
             'items.*.product_id' => 'required_if:items.*.type,product|exists:products,id',
             'items.*.package_combination_id' => 'required_if:items.*.type,package|exists:package_combinations,id',
             'items.*.quantity' => 'required|integer|min:1',
+            'items.*.is_frozen' => 'sometimes|boolean',
+            'items.*.unit_price' => 'sometimes|integer|min:0',
             'table_code' => 'nullable|string|exists:tables,code',
         ]);
 
@@ -112,6 +114,8 @@ class TransactionController extends Controller
             'items.*.product_id' => 'required_if:items.*.type,product|exists:products,id',
             'items.*.package_combination_id' => 'required_if:items.*.type,package|exists:package_combinations,id',
             'items.*.quantity' => 'required|integer|min:1',
+            'items.*.is_frozen' => 'sometimes|boolean',
+            'items.*.unit_price' => 'sometimes|integer|min:0',
         ]);
 
         $transaction = $this->transactionService->updateTransaction($transaction, $validated);

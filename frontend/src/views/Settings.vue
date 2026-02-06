@@ -1,6 +1,6 @@
 <script setup>
 import { ref, onMounted } from 'vue'
-import { settingApi, userApi, paymentMethodApi, STORAGE_BASE_URL } from '../api'
+import { settingApi, userApi, paymentMethodApi, carouselApi, STORAGE_BASE_URL } from '../api'
 import { useSettingsStore } from '../stores/settings'
 import SettingsCustomerTypes from './SettingsCustomerTypes.vue'
 import Swal from 'sweetalert2'
@@ -48,10 +48,32 @@ const paymentForm = ref({
   is_active: true,
 })
 
+// Carousel Slides
+const carouselSlides = ref([])
+const showCarouselModal = ref(false)
+const editingCarousel = ref(null)
+const carouselForm = ref({
+  title: '',
+  subtitle: '',
+  period_text: '',
+  image_url: '',
+  badge_label: '',
+  badge_value: '',
+  badge_label_2: '',
+  badge_value_2: '',
+  link_url: '',
+  start_date: '',
+  end_date: '',
+  is_active: true,
+})
+const carouselImageFile = ref(null)
+const carouselImagePreview = ref(null)
+
 onMounted(() => {
   loadSettings()
   loadUsers()
   loadPaymentMethods()
+  loadCarouselSlides()
 })
 
 async function loadSettings() {
@@ -411,6 +433,174 @@ function getPaymentTypeLabel(type) {
   return labels[type] || type
 }
 
+// Carousel Slide Management
+async function loadCarouselSlides() {
+  try {
+    const response = await carouselApi.getAll()
+    carouselSlides.value = response.data
+  } catch (error) {
+    console.error('Error loading carousel slides:', error)
+  }
+}
+
+function openAddCarousel() {
+  editingCarousel.value = null
+  carouselForm.value = {
+    title: '',
+    subtitle: '',
+    period_text: '',
+    image_url: '',
+    badge_label: '',
+    badge_value: '',
+    badge_label_2: '',
+    badge_value_2: '',
+    link_url: '',
+    start_date: '',
+    end_date: '',
+    is_active: true,
+  }
+  carouselImageFile.value = null
+  carouselImagePreview.value = null
+  showCarouselModal.value = true
+}
+
+function openEditCarousel(slide) {
+  editingCarousel.value = slide
+  carouselForm.value = {
+    title: slide.title,
+    subtitle: slide.subtitle || '',
+    period_text: slide.period_text || '',
+    image_url: slide.image || '',
+    badge_label: slide.badge_label || '',
+    badge_value: slide.badge_value || '',
+    badge_label_2: slide.badge_label_2 || '',
+    badge_value_2: slide.badge_value_2 || '',
+    link_url: slide.link_url || '',
+    start_date: slide.start_date ? slide.start_date.split('T')[0] : '',
+    end_date: slide.end_date ? slide.end_date.split('T')[0] : '',
+    is_active: slide.is_active,
+  }
+  carouselImageFile.value = null
+  carouselImagePreview.value = slide.image_url
+  showCarouselModal.value = true
+}
+
+function handleCarouselImageChange(event) {
+  const file = event.target.files[0]
+  if (file) {
+    carouselImageFile.value = file
+    carouselImagePreview.value = URL.createObjectURL(file)
+  }
+}
+
+async function saveCarousel() {
+  try {
+    const formData = new FormData()
+    formData.append('title', carouselForm.value.title)
+    formData.append('subtitle', carouselForm.value.subtitle || '')
+    formData.append('period_text', carouselForm.value.period_text || '')
+    formData.append('badge_label', carouselForm.value.badge_label || '')
+    formData.append('badge_value', carouselForm.value.badge_value || '')
+    formData.append('badge_label_2', carouselForm.value.badge_label_2 || '')
+    formData.append('badge_value_2', carouselForm.value.badge_value_2 || '')
+    formData.append('link_url', carouselForm.value.link_url || '')
+    formData.append('start_date', carouselForm.value.start_date || '')
+    formData.append('end_date', carouselForm.value.end_date || '')
+    formData.append('is_active', carouselForm.value.is_active ? 1 : 0)
+
+    if (carouselImageFile.value) {
+      formData.append('image', carouselImageFile.value)
+    } else if (carouselForm.value.image_url && carouselForm.value.image_url.startsWith('http')) {
+      formData.append('image_url', carouselForm.value.image_url)
+    }
+
+    if (editingCarousel.value) {
+      await carouselApi.update(editingCarousel.value.id, formData)
+    } else {
+      await carouselApi.create(formData)
+    }
+
+    showCarouselModal.value = false
+    await loadCarouselSlides()
+
+    Swal.fire({
+      icon: 'success',
+      title: 'Berhasil!',
+      text: editingCarousel.value ? 'Slide berhasil diupdate' : 'Slide berhasil ditambahkan',
+      timer: 1500,
+      showConfirmButton: false,
+      width: '300px',
+      customClass: {
+        popup: 'rounded-xl text-sm',
+        title: 'text-lg font-bold',
+        htmlContainer: 'text-xs'
+      }
+    })
+  } catch (error) {
+    console.error('Error saving carousel:', error)
+    Swal.fire({
+      icon: 'error',
+      title: 'Gagal',
+      text: error.response?.data?.message || 'Gagal menyimpan slide',
+      width: '300px',
+      customClass: {
+        popup: 'rounded-xl text-sm',
+        title: 'text-lg font-bold',
+        htmlContainer: 'text-xs'
+      }
+    })
+  }
+}
+
+async function deleteCarousel(slide) {
+  const result = await Swal.fire({
+    title: 'Hapus Slide?',
+    text: `Slide "${slide.title}" akan dihapus`,
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#ef4444',
+    confirmButtonText: 'Ya, Hapus',
+    cancelButtonText: 'Batal',
+    width: '300px',
+    customClass: {
+      popup: 'rounded-xl text-sm',
+      title: 'text-lg font-bold',
+      htmlContainer: 'text-xs'
+    }
+  })
+
+  if (result.isConfirmed) {
+    try {
+      await carouselApi.delete(slide.id)
+      await loadCarouselSlides()
+      Swal.fire({
+        icon: 'success',
+        title: 'Berhasil!',
+        text: 'Slide berhasil dihapus',
+        timer: 1500,
+        showConfirmButton: false,
+        width: '300px',
+        customClass: {
+          popup: 'rounded-xl text-sm',
+          title: 'text-lg font-bold',
+          htmlContainer: 'text-xs'
+        }
+      })
+    } catch (error) {
+      console.error('Error deleting carousel:', error)
+    }
+  }
+}
+
+async function toggleCarouselActive(slide) {
+  try {
+    await carouselApi.toggleActive(slide.id)
+    await loadCarouselSlides()
+  } catch (error) {
+    console.error('Error toggling slide:', error)
+  }
+}
+
 function getPaymentTypeIcon(type) {
   const icons = {
     cash: '💵',
@@ -437,6 +627,7 @@ function getPaymentTypeIcon(type) {
         <button
           v-for="tab in [
             { id: 'store', label: 'Toko', icon: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4' },
+            { id: 'carousel', label: 'Banner', icon: 'M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z' },
             { id: 'users', label: 'User', icon: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z' },
             { id: 'customer_types', label: 'Tipe', icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z' },
             { id: 'payments', label: 'Bayar', icon: 'M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z' }
@@ -546,6 +737,199 @@ function getPaymentTypeIcon(type) {
                 {{ saving ? 'Menyimpan...' : 'Simpan Perubahan' }}
               </button>
             </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Carousel/Banner Management -->
+    <div v-if="activeTab === 'carousel'" class="animate-fade-in-up space-y-4">
+      <div class="flex justify-between items-center bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+        <div>
+          <h2 class="text-lg font-bold text-slate-800 ml-2">Kelola Banner</h2>
+          <p class="text-[10px] text-slate-400 font-medium ml-2 mt-0.5">Banner carousel di halaman customer</p>
+        </div>
+        <button @click="openAddCarousel" class="px-4 py-2 rounded-xl bg-primary-500 text-white font-bold text-xs hover:bg-primary-600 transition-all shadow-md shadow-primary-500/20 flex items-center justify-center gap-2">
+           <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+           </svg>
+           <span class="hidden md:inline">Tambah Slide</span>
+        </button>
+      </div>
+
+      <!-- Empty State -->
+      <div v-if="carouselSlides.length === 0" class="bg-white rounded-2xl p-12 shadow-sm border border-slate-100 text-center">
+        <div class="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+        </div>
+        <h3 class="font-bold text-slate-600 mb-1">Belum Ada Banner</h3>
+        <p class="text-xs text-slate-400">Tambahkan slide pertama untuk carousel customer</p>
+      </div>
+
+      <!-- Carousel Slides Grid -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pb-20">
+        <div v-for="slide in carouselSlides" :key="slide.id" class="group bg-white rounded-2xl overflow-hidden shadow-lg shadow-slate-200/40 border border-slate-100 hover:border-primary-200 transition-all">
+          <!-- Image Preview -->
+          <div class="relative h-36 bg-gradient-to-br from-orange-400 to-orange-600 overflow-hidden">
+            <img v-if="slide.image_url" :src="slide.image_url" class="w-full h-full object-cover opacity-70 mix-blend-overlay" alt="Slide">
+            <div class="absolute inset-0 p-4 flex flex-col justify-end">
+              <div class="text-white">
+                <h3 class="font-bold text-lg drop-shadow-md leading-tight">{{ slide.title }}</h3>
+                <p v-if="slide.period_text" class="text-[10px] bg-white/20 backdrop-blur-sm px-2 py-0.5 rounded-md w-fit mt-1 border border-white/30">{{ slide.period_text }}</p>
+              </div>
+            </div>
+            <!-- Status Badge -->
+            <div class="absolute top-3 right-3">
+              <button @click="toggleCarouselActive(slide)" :class="['px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider transition-all', slide.is_active ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30' : 'bg-slate-200 text-slate-500']">
+                {{ slide.is_active ? 'Aktif' : 'Nonaktif' }}
+              </button>
+            </div>
+          </div>
+
+          <!-- Content -->
+          <div class="p-4">
+            <!-- Badges Preview -->
+            <div v-if="slide.badge_label || slide.badge_label_2" class="flex flex-wrap gap-2 mb-3">
+              <div v-if="slide.badge_label" class="bg-orange-50 text-orange-600 px-2 py-1 rounded-lg">
+                <span class="text-[8px] font-semibold uppercase block opacity-70">{{ slide.badge_label }}</span>
+                <span class="text-[10px] font-bold">{{ slide.badge_value }}</span>
+              </div>
+              <div v-if="slide.badge_label_2" class="bg-orange-50 text-orange-600 px-2 py-1 rounded-lg">
+                <span class="text-[8px] font-semibold uppercase block opacity-70">{{ slide.badge_label_2 }}</span>
+                <span class="text-[10px] font-bold">{{ slide.badge_value_2 }}</span>
+              </div>
+            </div>
+
+            <!-- Date Range -->
+            <div v-if="slide.start_date || slide.end_date" class="flex items-center gap-1.5 text-[10px] text-slate-400 mb-3">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              <span>{{ slide.start_date || 'Sekarang' }} - {{ slide.end_date || 'Selamanya' }}</span>
+            </div>
+
+            <!-- Actions -->
+            <div class="flex gap-2">
+              <button @click="openEditCarousel(slide)" class="flex-1 py-2 bg-slate-50 rounded-xl text-slate-500 hover:text-primary-600 hover:bg-primary-50 font-bold text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-1.5">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+                Edit
+              </button>
+              <button @click="deleteCarousel(slide)" class="py-2 px-3 bg-red-50/50 rounded-xl text-red-400 hover:text-red-500 hover:bg-red-50 transition-all flex items-center justify-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Carousel Modal -->
+    <div v-if="showCarouselModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-3">
+      <div class="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+        <div class="px-6 pt-6 pb-3 flex justify-between items-center text-slate-800 border-b border-slate-100">
+          <h2 class="text-xl font-bold tracking-tight">{{ editingCarousel ? 'Edit Slide' : 'Slide Baru' }}</h2>
+          <button @click="showCarouselModal = false" class="w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 text-slate-400 hover:bg-red-50 hover:text-red-500 transition-all">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <div class="p-6 space-y-4 overflow-y-auto">
+          <!-- Image Upload/Preview -->
+          <div>
+            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1 mb-2 block">Gambar Banner</label>
+            <div class="group relative border-2 border-dashed border-slate-200 rounded-xl overflow-hidden hover:border-primary-500 hover:bg-primary-50/50 transition-all cursor-pointer h-32" @click="$refs.carouselImageInput.click()">
+              <div v-if="carouselImagePreview" class="absolute inset-0">
+                <img :src="carouselImagePreview" class="w-full h-full object-cover" alt="Preview">
+                <div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  <span class="text-white font-medium text-sm">Ganti Gambar</span>
+                </div>
+              </div>
+              <div v-else class="h-full flex flex-col items-center justify-center text-gray-400">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mb-2 text-gray-300 group-hover:text-primary-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                <span class="text-xs font-medium text-gray-600">Klik untuk upload</span>
+              </div>
+              <input ref="carouselImageInput" type="file" accept="image/*" class="hidden" @change="handleCarouselImageChange">
+            </div>
+            <p class="text-[10px] text-slate-400 mt-1.5 ml-1">Atau masukkan URL gambar:</p>
+            <input v-model="carouselForm.image_url" type="url" class="w-full bg-slate-50 border-none rounded-xl px-4 py-2.5 text-xs text-slate-600 focus:ring-2 focus:ring-primary-500/10 mt-1" placeholder="https://example.com/image.jpg">
+          </div>
+
+          <!-- Title & Subtitle -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div class="space-y-1">
+              <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Judul (Text Overlay) *</label>
+              <input v-model="carouselForm.title" type="text" class="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-primary-500/10" placeholder="Diskon Januari" required>
+            </div>
+            <div class="space-y-1">
+              <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Periode Text</label>
+              <input v-model="carouselForm.period_text" type="text" class="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm text-slate-600 focus:ring-2 focus:ring-primary-500/10" placeholder="Periode: 1-31 Januari 2026">
+            </div>
+          </div>
+
+          <!-- Voucher Badges -->
+          <div class="bg-orange-50/50 rounded-xl p-4 border border-orange-100">
+            <h4 class="text-[10px] font-bold text-orange-600 uppercase tracking-widest mb-3 flex items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
+              </svg>
+              Voucher Badge (Opsional)
+            </h4>
+            <div class="grid grid-cols-2 gap-3">
+              <div class="space-y-1">
+                <label class="text-[9px] font-bold text-slate-400 uppercase ml-1">Badge 1 Label</label>
+                <input v-model="carouselForm.badge_label" type="text" class="w-full bg-white border-none rounded-lg px-3 py-2 text-xs text-slate-600 focus:ring-2 focus:ring-primary-500/10" placeholder="Pengguna Baru">
+              </div>
+              <div class="space-y-1">
+                <label class="text-[9px] font-bold text-slate-400 uppercase ml-1">Badge 1 Value</label>
+                <input v-model="carouselForm.badge_value" type="text" class="w-full bg-white border-none rounded-lg px-3 py-2 text-xs text-slate-600 focus:ring-2 focus:ring-primary-500/10" placeholder="DISKON 15.000">
+              </div>
+              <div class="space-y-1">
+                <label class="text-[9px] font-bold text-slate-400 uppercase ml-1">Badge 2 Label</label>
+                <input v-model="carouselForm.badge_label_2" type="text" class="w-full bg-white border-none rounded-lg px-3 py-2 text-xs text-slate-600 focus:ring-2 focus:ring-primary-500/10" placeholder="Semua Pengguna">
+              </div>
+              <div class="space-y-1">
+                <label class="text-[9px] font-bold text-slate-400 uppercase ml-1">Badge 2 Value</label>
+                <input v-model="carouselForm.badge_value_2" type="text" class="w-full bg-white border-none rounded-lg px-3 py-2 text-xs text-slate-600 focus:ring-2 focus:ring-primary-500/10" placeholder="DISKON 5.000">
+              </div>
+            </div>
+          </div>
+
+          <!-- Date Range -->
+          <div class="grid grid-cols-2 gap-3">
+            <div class="space-y-1">
+              <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Tanggal Mulai</label>
+              <input v-model="carouselForm.start_date" type="date" class="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm text-slate-600 focus:ring-2 focus:ring-primary-500/10">
+            </div>
+            <div class="space-y-1">
+              <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Tanggal Berakhir</label>
+              <input v-model="carouselForm.end_date" type="date" class="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm text-slate-600 focus:ring-2 focus:ring-primary-500/10">
+            </div>
+          </div>
+
+          <!-- Active Toggle -->
+          <div class="flex items-center gap-3 p-3 bg-slate-100/50 rounded-xl border border-slate-100">
+            <input v-model="carouselForm.is_active" type="checkbox" id="carousel_is_active" class="w-5 h-5 text-primary-600 rounded-lg border-slate-300 focus:ring-primary-500">
+            <label for="carousel_is_active" class="text-xs font-bold text-slate-500 uppercase tracking-widest cursor-pointer select-none">Aktifkan Slide</label>
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="flex gap-3 pt-2">
+            <button type="button" @click="showCarouselModal = false" class="flex-1 py-3.5 rounded-xl text-slate-400 font-bold text-xs hover:bg-slate-50 transition-all">
+              Batal
+            </button>
+            <button @click="saveCarousel" class="flex-[2] bg-primary-500 py-3.5 rounded-xl text-white font-bold text-xs uppercase tracking-widest shadow-lg shadow-primary-500/20 hover:bg-primary-600 transition-all active:scale-[0.97]">
+              Simpan Slide
+            </button>
           </div>
         </div>
       </div>

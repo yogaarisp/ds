@@ -58,7 +58,7 @@ class StockService
     public function decreaseInventoryStock(
         InventoryItem $item,
         float $quantity,
-        int $userId,
+        ?int $userId,
         ?int $transactionId = null,
         ?string $notes = null
     ): InventoryTransaction {
@@ -67,7 +67,7 @@ class StockService
 
         return InventoryTransaction::create([
             'inventory_item_id' => $item->id,
-            'user_id' => $userId,
+            'user_id' => $userId, // Can be null now
             'transaction_id' => $transactionId,
             'type' => 'out',
             'quantity' => $quantity,
@@ -83,7 +83,7 @@ class StockService
     public function increaseInventoryStock(
         InventoryItem $item,
         float $quantity,
-        int $userId,
+        ?int $userId,
         ?string $notes = null
     ): InventoryTransaction {
         $stockBefore = $item->stock;
@@ -91,7 +91,7 @@ class StockService
 
         return InventoryTransaction::create([
             'inventory_item_id' => $item->id,
-            'user_id' => $userId,
+            'user_id' => $userId, // Can be null now
             'type' => 'in',
             'quantity' => $quantity,
             'stock_before' => $stockBefore,

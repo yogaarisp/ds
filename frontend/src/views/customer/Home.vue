@@ -1,9 +1,9 @@
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useSettingsStore } from '@/stores/settings'
 import { useAuthStore } from '@/stores/auth' // Use auth store for user data
 import { useCartStore } from '@/stores/cart'
-import api from '@/api'
+import api, { carouselApi } from '@/api'
 import { useRouter, useRoute } from 'vue-router'
 import Swal from 'sweetalert2'
 import LazyImage from '@/components/LazyImage.vue'
@@ -18,11 +18,18 @@ const popularPackages = ref([])
 
 // Carousel State
 const currentSlide = ref(0)
-const slides = [
-  { id: 1, image: 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80', title: 'Diskon Januari' },
-  { id: 2, image: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80', title: 'Menu Baru' },
-  { id: 3, image: 'https://images.unsplash.com/photo-1496116218417-7a17478ee177?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80', title: 'Spesial Imlek' },
+const carouselSlides = ref([])
+const defaultSlides = [
+  { id: 1, image_url: 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80', title: 'Selamat Datang', period_text: 'Nikmati menu terbaik kami' },
+  { id: 2, image_url: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80', title: 'Menu Spesial', period_text: 'Tersedia berbagai pilihan paket' },
+  { id: 3, image_url: 'https://images.unsplash.com/photo-1496116218417-7a17478ee177?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80', title: 'Promo Menarik', period_text: 'Cek promo bulanan kami' },
 ]
+
+// Use API slides if available, otherwise fallback to default
+const slides = computed(() => {
+  return carouselSlides.value.length > 0 ? carouselSlides.value : defaultSlides
+})
+
 let slideInterval
 
 function showComingSoon(e) {
@@ -65,6 +72,14 @@ onMounted(async () => {
     })
   }
 
+  // Fetch carousel slides from API
+  try {
+    const res = await carouselApi.getActive()
+    carouselSlides.value = res.data
+  } catch (err) {
+    console.log('Using default carousel slides')
+  }
+
   // Fetch popular packages
   api.get('/packages/popular').then(res => {
     popularPackages.value = res.data
@@ -80,7 +95,7 @@ onUnmounted(() => {
 
 function startCarousel() {
   slideInterval = setInterval(() => {
-    currentSlide.value = (currentSlide.value + 1) % slides.length
+    currentSlide.value = (currentSlide.value + 1) % slides.value.length
   }, 5000)
 }
 
@@ -91,6 +106,7 @@ function stopCarousel() {
 function formatNumber(num) {
   return new Intl.NumberFormat('id-ID').format(num)
 }
+
 
 function addToCart(product) {
   // Check auth or table session
@@ -137,7 +153,7 @@ function formatCurrency(value) {
   <div class="bg-slate-50 min-h-screen pb-24">
     
     <!-- 1. Top Section with Carousel -->
-    <div class="relative bg-orange-500 rounded-b-xl overflow-hidden shadow-lg">
+    <div class="relative rounded-b-xl overflow-hidden shadow-lg">
       <!-- QR Button (Top Right) -->
       <div class="absolute top-4 right-4 z-30">
         <button @click="showComingSoon" class="bg-white/90 backdrop-blur-sm px-3 py-1.5 rounded-full flex items-center gap-2 shadow-sm active:scale-95 transition-transform">
@@ -156,23 +172,25 @@ function formatCurrency(value) {
           class="absolute inset-0 transition-opacity duration-1000 ease-in-out"
           :class="index === currentSlide ? 'opacity-100' : 'opacity-0'"
         >
-          <img :src="slide.image" class="w-full h-full object-cover opacity-60 mix-blend-overlay" alt="Promo">
+          <!-- Image with gradient overlay for better text readability -->
+          <img :src="slide.image_url || slide.image" class="w-full h-full object-cover" alt="Promo">
+          <div class="absolute inset-0 bg-gradient-to-r from-black/60 via-black/30 to-transparent"></div>
           <!-- Text Overlay -->
           <div class="absolute inset-0 flex flex-col justify-center px-6 pt-8 text-white">
             <h2 class="text-2xl font-bold mb-2 drop-shadow-md">{{ slide.title }}</h2>
-            <div class="bg-white/20 backdrop-blur-md px-2.5 py-0.5 rounded-lg w-fit text-[10px] font-medium border border-white/30">
-              Periode Promo: 1-31 Januari 2026
+            <div v-if="slide.period_text" class="bg-white/20 backdrop-blur-md px-2.5 py-0.5 rounded-lg w-fit text-[10px] font-medium border border-white/30">
+              {{ slide.period_text }}
             </div>
             
-            <!-- Vouchers (Visual only based on design) -->
-            <div class="mt-4 flex gap-3 overflow-x-auto hide-scrollbar pb-2">
-               <div class="bg-white text-orange-600 px-3 py-2 rounded-xl shadow-lg min-w-[120px]">
-                 <div class="text-[9px] font-semibold uppercase opacity-70">Pengguna Baru</div>
-                 <div class="font-bold text-base leading-tight">DISKON 15.000</div>
+            <!-- Vouchers (Dynamic from API) -->
+            <div v-if="slide.badge_label || slide.badge_label_2" class="mt-4 flex gap-3 overflow-x-auto hide-scrollbar pb-2">
+               <div v-if="slide.badge_label && slide.badge_value" class="bg-white text-orange-600 px-3 py-2 rounded-xl shadow-lg min-w-[120px]">
+                 <div class="text-[9px] font-semibold uppercase opacity-70">{{ slide.badge_label }}</div>
+                 <div class="font-bold text-base leading-tight">{{ slide.badge_value }}</div>
                </div>
-               <div class="bg-white text-orange-600 px-3 py-2 rounded-xl shadow-lg min-w-[120px]">
-                 <div class="text-[9px] font-semibold uppercase opacity-70">Semua Pengguna</div>
-                 <div class="font-bold text-base leading-tight">DISKON 5.000</div>
+               <div v-if="slide.badge_label_2 && slide.badge_value_2" class="bg-white text-orange-600 px-3 py-2 rounded-xl shadow-lg min-w-[120px]">
+                 <div class="text-[9px] font-semibold uppercase opacity-70">{{ slide.badge_label_2 }}</div>
+                 <div class="font-bold text-base leading-tight">{{ slide.badge_value_2 }}</div>
                </div>
             </div>
           </div>

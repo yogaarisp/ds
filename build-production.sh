@@ -23,40 +23,41 @@ echo "📁 Copying build files..."
 cp -r dist/* ../backend/public/
 cd ..
 
-# Step 3: Clean up
-echo "🧹 Cleaning up..."
-# Backup .env if exists
-if [ -f "backend/.env" ]; then
-    cp backend/.env backend/.env.backup
-fi
+# Step 3: Clean up (Moved to Step 4 within temp dir to preserve dev environment)
+# We no longer delete node_modules or vendor from the source directory.
 
-# Remove development files
-rm -rf frontend/node_modules/ 2>/dev/null
-rm -rf backend/vendor/ 2>/dev/null
-rm -rf backend/storage/logs/*.log 2>/dev/null
-rm -rf backend/storage/framework/sessions/* 2>/dev/null
-rm -rf backend/storage/framework/views/*.php 2>/dev/null
-rm -f backend/.env 2>/dev/null
 
-# Step 4: Create archive
-echo "📦 Creating archive..."
-zip -r "$ARCHIVE_NAME" \
-  backend/ \
-  frontend/ \
-  README.md \
-  DEPLOYMENT_GUIDE.md \
-  SETUP_TOKO_BARU.md \
-  -x \
-  "backend/node_modules/*" \
-  "frontend/node_modules/*" \
-  "backend/vendor/*" \
-  "backend/storage/logs/*" \
-  "backend/storage/framework/sessions/*" \
-  "backend/storage/framework/views/*" \
-  "backend/.env" \
-  "frontend/.env*" \
-  "*.DS_Store" \
-  "*/.*"
+# Step 4: Create single-folder archive structure
+echo "📦 Preparing archive structure..."
+TEMP_DIR="build_temp"
+rm -rf "$TEMP_DIR"
+mkdir -p "$TEMP_DIR/$PROJECT_NAME"
+
+# Copy backend content (base application) to the single folder
+# Note: Frontend assets are already in backend/public from Step 2
+cp -r backend/* "$TEMP_DIR/$PROJECT_NAME/"
+cp backend/.env.example "$TEMP_DIR/$PROJECT_NAME/" 2>/dev/null
+
+# Copy documentation to the same single folder
+cp README.md "$TEMP_DIR/$PROJECT_NAME/" 2>/dev/null
+cp DEPLOYMENT_GUIDE.md "$TEMP_DIR/$PROJECT_NAME/" 2>/dev/null
+cp SETUP_TOKO_BARU.md "$TEMP_DIR/$PROJECT_NAME/" 2>/dev/null
+
+echo "📦 Zipping..."
+cd "$TEMP_DIR"
+zip -r "../$ARCHIVE_NAME" "$PROJECT_NAME" \
+  -x "*/node_modules/*" \
+  "*/vendor/*" \
+  "*/storage/logs/*" \
+  "*/storage/framework/sessions/*" \
+  "*/storage/framework/views/*" \
+  "*/.env" \
+  "*/.DS_Store" \
+  "*/.git/*" \
+  "*/.gitignore"
+
+cd ..
+rm -rf "$TEMP_DIR"
 
 # Step 5: Restore .env if backed up
 if [ -f "backend/.env.backup" ]; then

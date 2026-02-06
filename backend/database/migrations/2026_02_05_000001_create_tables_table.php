@@ -11,14 +11,16 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('tables', function (Blueprint $table) {
-            $table->id();
-            $table->string('name');           // "Meja 1", "Meja 2", dll
-            $table->string('code')->unique(); // "table-1", "table-2" (untuk URL)
-            $table->enum('status', ['available', 'occupied', 'reserved'])->default('available');
-            $table->integer('capacity')->default(4);
-            $table->timestamps();
-        });
+        if (!Schema::hasTable('tables')) {
+            Schema::create('tables', function (Blueprint $table) {
+                $table->id();
+                $table->string('name');           // "Meja 1", "Meja 2", dll
+                $table->string('code')->unique(); // "table-1", "table-2" (untuk URL)
+                $table->enum('status', ['available', 'occupied', 'reserved'])->default('available');
+                $table->integer('capacity')->default(4);
+                $table->timestamps();
+            });
+        }
     }
 
     /**

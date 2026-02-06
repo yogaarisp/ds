@@ -234,7 +234,7 @@ function handleCheckoutClose() {
                 ref="customerSearchInput"
                 v-model="customerSearch"
                 type="text"
-                class="w-full bg-slate-50 border-transparent rounded-lg px-2.5 py-1 text-[10px] focus:bg-white focus:border-primary-500/20 focus:ring-4 focus:ring-primary-500/5 transition-all text-slate-700 font-medium placeholder:text-[9px] placeholder:text-slate-300 pr-8"
+                class="w-full bg-slate-50 border-transparent rounded-lg px-2.5 py-1.5 text-[11px] focus:bg-white focus:border-primary-500/20 focus:ring-4 focus:ring-primary-500/5 transition-all text-slate-700 font-medium placeholder:text-[11px] placeholder:text-slate-400 pr-8"
                 placeholder="Cari nama / nomor HP..."
                 @input="searchCustomers"
                 @focus="handleCustomerInputFocus"

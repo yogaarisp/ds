@@ -298,3 +298,33 @@ export const userApi = {
   update: (id, data) => api.put(`/users/${id}`, data),
   delete: (id) => api.delete(`/users/${id}`),
 }
+
+// Carousel Slides
+export const carouselApi = {
+  // Public - for customer
+  getActive: () => api.get('/carousel-slides/active'),
+
+  // Admin CRUD
+  getAll: () => api.get('/carousel-slides'),
+  get: (id) => api.get(`/carousel-slides/${id}`),
+  create: (data) => {
+    if (data instanceof FormData) {
+      return api.post('/carousel-slides', data, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      })
+    }
+    return api.post('/carousel-slides', data)
+  },
+  update: (id, data) => {
+    if (data instanceof FormData) {
+      return api.post(`/carousel-slides/${id}`, data, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        params: { _method: 'PUT' }
+      })
+    }
+    return api.put(`/carousel-slides/${id}`, data)
+  },
+  delete: (id) => api.delete(`/carousel-slides/${id}`),
+  reorder: (slides) => api.post('/carousel-slides/reorder', { slides }),
+  toggleActive: (id) => api.post(`/carousel-slides/${id}/toggle-active`),
+}

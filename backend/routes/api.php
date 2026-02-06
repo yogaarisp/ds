@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\PaymentMethodController;
 use App\Http\Controllers\Api\SettingController;
+use App\Http\Controllers\Api\CarouselSlideController;
 use Illuminate\Support\Facades\Route;
 
 // Auth routes
@@ -21,6 +22,9 @@ Route::post('/register', [AuthController::class, 'register']);
 
 // Public Settings
 Route::get('/settings', [SettingController::class, 'index']);
+
+// Public Carousel Slides (untuk customer)
+Route::get('/carousel-slides/active', [CarouselSlideController::class, 'active']);
 
 // Public Menu Routes
 Route::get('/products', [ProductController::class, 'index']);
@@ -107,6 +111,11 @@ Route::middleware('auth:sanctum')->group(function () {
     // Tables (Meja Resto)
     Route::apiResource('tables', \App\Http\Controllers\Api\TableController::class);
     Route::get('/tables/{table}/qr', [\App\Http\Controllers\Api\TableController::class, 'generateQr']);
+
+    // Carousel Slides (Admin)
+    Route::apiResource('carousel-slides', CarouselSlideController::class);
+    Route::post('/carousel-slides/reorder', [CarouselSlideController::class, 'reorder']);
+    Route::post('/carousel-slides/{carouselSlide}/toggle-active', [CarouselSlideController::class, 'toggleActive']);
 });
 
 // Public route untuk customer scan QR
