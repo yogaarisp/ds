@@ -120,6 +120,18 @@ const routes = [
         meta: { requiresAuth: true }
       },
       {
+        path: 'language-settings',
+        name: 'CustomerLanguageSettings',
+        component: () => import('../views/customer/LanguageSettings.vue'),
+        meta: { requiresAuth: false }
+      },
+      {
+        path: 'settings',
+        name: 'CustomerSettings',
+        component: () => import('../views/customer/Settings.vue'),
+        meta: { requiresAuth: false }
+      },
+      {
         path: 'order',
         name: 'CustomerOrder',
         component: () => import('../views/customer/Order.vue'),
