@@ -3,6 +3,7 @@ import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useCartStore } from '@/stores/cart'
 import { useAuthStore } from '@/stores/auth'
+import { usePrinter } from '@/composables/usePrinter'
 import api, { tableApi, STORAGE_BASE_URL } from '@/api'
 import Swal from 'sweetalert2'
 import LazyImage from '@/components/LazyImage.vue'
@@ -10,6 +11,7 @@ import LazyImage from '@/components/LazyImage.vue'
 const router = useRouter()
 const cartStore = useCartStore()
 const authStore = useAuthStore()
+const { autoPrint, printerConnected, thermalPrinter } = usePrinter()
 
 const paymentMethods = ref([])
 const selectedPaymentMethod = ref(null)
@@ -179,6 +181,16 @@ async function handleCheckout() {
       localStorage.setItem('guest_phone', guestPhone.value)
     }
     
+    // Auto print receipt if enabled and printer connected
+    if (autoPrint.value && printerConnected.value) {
+      try {
+        await printReceipt(response.data)
+      } catch (printError) {
+        console.error('Print failed:', printError)
+        // Don't block the flow if print fails
+      }
+    }
+    
     // Clear Cart & Table
     cartStore.clearCart()
     cartStore.clearTable()
@@ -252,6 +264,38 @@ function closeTableModal() {
   // Reset to takeaway if no table selected
   if (!cartStore.hasTable) {
     deliveryType.value = 'takeaway'
+  }
+}
+
+async function printReceipt(transactionData) {
+  try {
+    // Prepare receipt data (store info will be auto-loaded from settings)
+    const receiptData = {
+      transactionNumber: transactionData.transaction_number || transactionData.id,
+      date: new Date(transactionData.created_at || Date.now()).toLocaleString('id-ID'),
+      cashier: authStore.user?.name || 'Guest',
+      tableName: cartStore.tableName || transactionData.table_name,
+      customerName: transactionData.customer_name || guestName.value,
+      items: transactionData.items.map(item => ({
+        name: item.product_name || item.package_name || item.name,
+        quantity: item.quantity,
+        price: item.unit_price,
+        subtotal: item.subtotal
+      })),
+      subtotal: transactionData.total_amount,
+      discount: transactionData.discount_amount || 0,
+      tax: transactionData.tax_amount || 0,
+      total: transactionData.total_amount,
+      paid: transactionData.paid_amount || transactionData.total_amount,
+      change: (transactionData.paid_amount || transactionData.total_amount) - transactionData.total_amount,
+      paymentMethod: paymentMethods.value.find(pm => pm.id === selectedPaymentMethod.value)?.name || 'Cash'
+    }
+
+    await thermalPrinter.printReceipt(receiptData)
+    console.log('Receipt printed successfully')
+  } catch (error) {
+    console.error('Failed to print receipt:', error)
+    throw error
   }
 }
 </script>

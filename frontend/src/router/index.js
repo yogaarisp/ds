@@ -132,6 +132,12 @@ const routes = [
         meta: { requiresAuth: false }
       },
       {
+        path: 'printer-settings',
+        name: 'CustomerPrinterSettings',
+        component: () => import('../views/customer/PrinterSettings.vue'),
+        meta: { requiresAuth: false }
+      },
+      {
         path: 'order',
         name: 'CustomerOrder',
         component: () => import('../views/customer/Order.vue'),
