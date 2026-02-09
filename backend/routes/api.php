@@ -131,3 +131,6 @@ Route::middleware('auth:sanctum')->group(function () {
 
 // Public route untuk customer scan QR
 Route::get('/tables/code/{code}', [\App\Http\Controllers\Api\TableController::class, 'findByCode']);
+
+// Guest orders by phone
+Route::get('/transactions/guest/by-phone', [TransactionController::class, 'getGuestOrders']);

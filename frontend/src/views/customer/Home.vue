@@ -162,6 +162,87 @@ function formatCurrency(value) {
     maximumFractionDigits: 0
   }).format(value)
 }
+
+function changeTable() {
+  // Check if there are items in cart
+  if (cartStore.cart.length > 0) {
+    Swal.fire({
+      title: 'Ganti Meja?',
+      html: `
+        <p class="text-sm text-slate-600 dark:text-slate-400 mb-2">Anda memiliki <strong>${cartStore.cart.length} item</strong> di keranjang.</p>
+        <p class="text-sm text-slate-600 dark:text-slate-400">Keranjang akan tetap tersimpan.</p>
+      `,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: 'Ya, Ganti Meja',
+      cancelButtonText: 'Batal',
+      confirmButtonColor: '#F97316',
+      cancelButtonColor: '#6b7280',
+      width: '320px',
+      customClass: {
+        popup: 'rounded-2xl',
+        title: 'text-base font-bold',
+        htmlContainer: 'text-sm',
+        confirmButton: 'px-4 py-2 text-sm rounded-lg',
+        cancelButton: 'px-4 py-2 text-sm rounded-lg'
+      }
+    }).then((result) => {
+      if (result.isConfirmed) {
+        cartStore.clearTable()
+        Swal.fire({
+          icon: 'success',
+          title: 'Meja Direset',
+          text: 'Silakan scan QR atau pilih meja baru saat checkout',
+          timer: 2000,
+          showConfirmButton: false,
+          width: '300px',
+          customClass: {
+            popup: 'rounded-2xl',
+            title: 'text-base font-bold',
+            htmlContainer: 'text-sm'
+          }
+        })
+      }
+    })
+  } else {
+    // No items in cart, just clear
+    Swal.fire({
+      title: 'Ganti Meja?',
+      text: 'Anda akan melepas meja saat ini',
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: 'Ya, Ganti',
+      cancelButtonText: 'Batal',
+      confirmButtonColor: '#F97316',
+      cancelButtonColor: '#6b7280',
+      width: '300px',
+      customClass: {
+        popup: 'rounded-2xl',
+        title: 'text-base font-bold',
+        htmlContainer: 'text-sm',
+        confirmButton: 'px-4 py-2 text-sm rounded-lg',
+        cancelButton: 'px-4 py-2 text-sm rounded-lg'
+      }
+    }).then((result) => {
+      if (result.isConfirmed) {
+        cartStore.clearTable()
+        Swal.fire({
+          icon: 'success',
+          title: 'Meja Direset',
+          text: 'Silakan scan QR atau pilih meja baru',
+          timer: 2000,
+          showConfirmButton: false,
+          width: '300px',
+          customClass: {
+            popup: 'rounded-2xl',
+            title: 'text-base font-bold',
+            htmlContainer: 'text-sm'
+          }
+        })
+      }
+    })
+  }
+}
 </script>
 
 <template>
@@ -245,12 +326,22 @@ function formatCurrency(value) {
               <div class="flex items-center gap-1">
                 <span class="text-[9px] text-orange-500 font-bold uppercase tracking-wider">Meja:</span>
                 <span class="font-bold text-orange-600 text-xs">{{ cartStore.tableName }}</span>
+                <button @click="changeTable" class="ml-1 text-[9px] text-orange-500 underline hover:text-orange-600 transition-colors">
+                  Ganti
+                </button>
               </div>
             </template>
             <!-- Show only table when not authenticated but has table -->
             <template v-else-if="cartStore.hasTable">
-              <span class="text-[10px] text-orange-500 font-bold uppercase tracking-wider leading-none mb-0.5">Meja Anda</span>
-              <span class="font-bold text-slate-800 text-base leading-none dark:text-gray-100">{{ cartStore.tableName }}</span>
+              <div class="flex items-center gap-2">
+                <div>
+                  <span class="text-[10px] text-orange-500 font-bold uppercase tracking-wider leading-none mb-0.5">Meja Anda</span>
+                  <span class="font-bold text-slate-800 text-base leading-none dark:text-gray-100 block">{{ cartStore.tableName }}</span>
+                </div>
+                <button @click="changeTable" class="text-[10px] text-orange-500 underline hover:text-orange-600 transition-colors whitespace-nowrap">
+                  Ganti
+                </button>
+              </div>
             </template>
             <!-- Show only customer name when authenticated but no table -->
             <template v-else>

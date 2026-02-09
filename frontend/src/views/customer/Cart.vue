@@ -18,6 +18,7 @@ const loading = ref(false)
 const processing = ref(false)
 const isMounted = ref(false)
 const guestName = ref('')
+const guestPhone = ref(localStorage.getItem('guest_phone') || '')
 
 // Table selection
 const showTableModal = ref(false)
@@ -125,6 +126,23 @@ async function handleCheckout() {
     return
   }
 
+  // Validate phone for guest
+  if (!authStore.isAuthenticated && !guestPhone.value) {
+    Swal.fire({
+      icon: 'warning',
+      title: 'No. HP Diperlukan',
+      text: 'Masukkan nomor HP untuk melacak pesanan Anda',
+      confirmButtonColor: '#F97316',
+      width: '300px',
+      customClass: {
+        popup: 'rounded-2xl',
+        title: 'text-base font-bold',
+        htmlContainer: 'text-sm'
+      }
+    })
+    return
+  }
+
   if (isMounted.value) {
     processing.value = true
   }
@@ -144,23 +162,26 @@ async function handleCheckout() {
     const payload = {
       customer_id: authStore.user?.id,
       payment_method_id: selectedPaymentMethod.value,
-      order_type: 'instant', // Default for now
+      order_type: 'instant',
       items: items,
       total_amount: cartStore.subtotal,
-      paid_amount: 0, // Customer order usually starts unpaid or payment gateway
+      paid_amount: 0,
       payment_status: 'pending',
-      table_code: cartStore.tableCode || null, // Include table if scanning QR
-      customer_name: guestName.value || null
+      table_code: cartStore.tableCode || null,
+      customer_name: guestName.value || null,
+      customer_phone: guestPhone.value || null
     }
 
     const response = await api.post('/transactions', payload)
     
-    // Set Table Expiry (5 Minutes from now)
-    const fiveMinutes = 5 * 60 * 1000
-    cartStore.setTableExpiry(Date.now() + fiveMinutes)
+    // Save guest phone to localStorage for future use
+    if (guestPhone.value) {
+      localStorage.setItem('guest_phone', guestPhone.value)
+    }
     
-    // Clear Cart (Keep Table for redirect authorization)
+    // Clear Cart & Table
     cartStore.clearCart()
+    cartStore.clearTable()
 
     router.push(`/customer/order/${response.data.id}`)
 
@@ -217,6 +238,11 @@ function handleDeliveryTypeSelection(type) {
 function selectTable(table) {
   selectedTable.value = table
   cartStore.setTable(table.code, table.name)
+  
+  // Set expiry 45 minutes from now
+  const expiryTime = Date.now() + (45 * 60 * 1000)
+  cartStore.setTableExpiry(expiryTime)
+  
   deliveryType.value = 'dine_in'
   showTableModal.value = false
 }
@@ -455,14 +481,38 @@ function closeTableModal() {
         </div>
 
         <!-- Summary -->
-        <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 space-y-3">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 p-4 space-y-3">
+          <!-- Guest Info (if not authenticated) -->
+          <div v-if="!authStore.isAuthenticated" class="pb-3 border-b border-slate-100 dark:border-slate-700 space-y-2">
+            <h3 class="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-2">Info Pemesan</h3>
+            <input
+              v-model="guestName"
+              type="text"
+              placeholder="Nama (opsional)"
+              class="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:bg-slate-700 dark:text-slate-100 transition-all"
+            />
+            <input
+              v-model="guestPhone"
+              type="tel"
+              placeholder="No. HP (wajib) *"
+              class="w-full px-3 py-2 text-sm border-2 border-orange-200 dark:border-orange-700 rounded-lg focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 dark:bg-slate-700 dark:text-slate-100 transition-all"
+              required
+            />
+            <p class="text-[10px] text-slate-400 dark:text-slate-500 flex items-center gap-1">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              No. HP untuk melacak pesanan Anda
+            </p>
+          </div>
+          
           <div class="flex justify-between items-center text-xs">
-            <span class="text-slate-500">Subtotal Pesanan</span>
-            <span class="font-semibold text-slate-700">{{ formatCurrency(cartStore.subtotal) }}</span>
+            <span class="text-slate-500 dark:text-slate-400">Subtotal Pesanan</span>
+            <span class="font-semibold text-slate-700 dark:text-slate-300">{{ formatCurrency(cartStore.subtotal) }}</span>
           </div>
           <div class="flex justify-between items-center text-xs">
-            <span class="text-slate-500">Biaya Layanan</span>
-            <span class="font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded text-[10px]">Gratis</span>
+            <span class="text-slate-500 dark:text-slate-400">Biaya Layanan</span>
+            <span class="font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 px-2 py-0.5 rounded text-[10px]">Gratis</span>
           </div>
         </div>
       </template>

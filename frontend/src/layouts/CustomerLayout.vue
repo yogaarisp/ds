@@ -23,7 +23,12 @@ async function detectTable(tableCode) {
     const res = await api.get(`/tables/code/${tableCode}`)
     if (res.data && res.data.id) {
       cartStore.setTable(res.data.code, res.data.name)
-      console.log('✅ Table session updated:', res.data.name)
+      
+      // Set expiry 45 minutes from now
+      const expiryTime = Date.now() + (45 * 60 * 1000)
+      cartStore.setTableExpiry(expiryTime)
+      
+      console.log('✅ Table session updated:', res.data.name, '(expires in 45 min)')
     }
   } catch (error) {
     console.warn('⚠️ Table not found:', tableCode)

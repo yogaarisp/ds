@@ -65,6 +65,7 @@ class TransactionController extends Controller
         $validated = $request->validate([
             'customer_id' => 'nullable|exists:customers,id',
             'customer_name' => 'nullable|string|max:100',
+            'customer_phone' => 'nullable|string|max:20',
             'order_type' => 'required|in:instant,scheduled',
             'scheduled_date' => 'required_if:order_type,scheduled|date|after_or_equal:today',
             'scheduled_time' => 'nullable|regex:/^\d{2}:\d{2}(:\d{2})?$/',
@@ -293,6 +294,35 @@ class TransactionController extends Controller
             ]);
         } catch (\Exception $e) {
             \Log::error('Error in getPendingByCustomer: ' . $e->getMessage());
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Get guest orders by phone number
+     */
+    public function getGuestOrders(Request $request)
+    {
+        $request->validate([
+            'phone' => 'required|string|max:20'
+        ]);
+
+        $phone = $request->get('phone');
+
+        try {
+            $orders = Transaction::where('customer_phone', $phone)
+                ->whereNull('customer_id') // Guest orders only
+                ->with(['items.product', 'items.package', 'items.packageCombination', 'table', 'paymentMethod'])
+                ->orderBy('created_at', 'desc')
+                ->limit(20)
+                ->get();
+
+            return response()->json([
+                'data' => $orders,
+                'count' => $orders->count()
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Error in getGuestOrders: ' . $e->getMessage());
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }

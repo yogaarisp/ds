@@ -628,7 +628,7 @@ const quickAmounts = computed(() => {
                 <span>Bayar DP Rp {{ formatPrice(dpAmountNumber) }}</span>
               </template>
               <template v-else>
-                <span>Konfirmasi & Bayar Lunas</span>
+                <span>Payment</span>
               </template>
             </template>
             <span v-else>Memproses...</span>

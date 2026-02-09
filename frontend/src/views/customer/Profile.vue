@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useI18n } from '@/i18n'
@@ -10,9 +10,29 @@ const authStore = useAuthStore()
 const { t } = useI18n()
 
 // Get user data from store
-const user = computed(() => authStore.user || {})
+const user = ref({})
 const name = computed(() => user.value.name || 'Pelanggan')
 const initial = computed(() => name.value.charAt(0).toUpperCase())
+
+onMounted(async () => {
+  // Load user from auth store or local storage
+  if (authStore.user) {
+    user.value = authStore.user
+  } else {
+    const userData = localStorage.getItem('user')
+    if (userData) {
+      user.value = JSON.parse(userData)
+    }
+  }
+  
+  // Fetch latest user data (points & coupons)
+  if (authStore.token) {
+    const updatedUser = await authStore.fetchUser()
+    if (updatedUser) {
+      user.value = updatedUser
+    }
+  }
+})
 
 async function handleLogout() {
   await authStore.logout()
@@ -91,7 +111,7 @@ function showComingSoon(e) {
           <!-- User Info -->
           <div>
             <h1 class="text-xl font-bold text-slate-800 dark:text-gray-100">{{ name }}</h1>
-            <p class="text-slate-500 text-sm">Pelanggan Setia</p>
+            <p class="text-slate-500 dark:text-slate-400 text-sm">Pelanggan Setia</p>
           </div>
         </div>
         
@@ -111,29 +131,29 @@ function showComingSoon(e) {
     <div class="px-6 -mt-16 relative z-20">
       <div class="bg-white rounded-3xl p-6 shadow-xl shadow-slate-200/60 border border-slate-100 flex justify-between items-center dark:bg-gray-800 dark:border-gray-700 dark:shadow-gray-900/50">
         <!-- Voucher -->
-        <div class="text-center flex-1 border-r border-slate-100">
-          <div class="text-xs text-slate-500 font-medium mb-1">Voucher</div>
-          <div class="flex items-center justify-center gap-1 text-orange-500 font-bold text-lg">
+        <div class="text-center flex-1 border-r border-slate-100 dark:border-gray-700">
+          <div class="text-xs text-slate-500 dark:text-slate-400 font-medium mb-1">Voucher</div>
+          <div class="flex items-center justify-center gap-1 text-orange-500 dark:text-orange-400 font-bold text-lg">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5">
               <path fill-rule="evenodd" d="M1.5 6.375c0-1.036.84-1.875 1.875-1.875h17.25c1.035 0 1.875.84 1.875 1.875v3.026a.75.75 0 01-.375.65 2.249 2.249 0 000 3.898.75.75 0 01.375.65v3.026c0 1.035-.84 1.875-1.875 1.875H3.375A1.875 1.875 0 011.5 17.625v-3.026a.75.75 0 01.374-.65 2.249 2.249 0 000-3.898.75.75 0 01-.374-.65V6.375zm15-1.125a.75.75 0 01.75.75v.75a.75.75 0 01-1.5 0V6a.75.75 0 01.75-.75zm.75 4.5a.75.75 0 00-1.5 0v.75a.75.75 0 001.5 0v-.75zm-.75 3a.75.75 0 01.75.75v.75a.75.75 0 01-1.5 0v-.75a.75.75 0 01.75-.75z" clip-rule="evenodd" />
             </svg>
-            0
+            {{ user.coupons_count || 0 }}
           </div>
         </div>
         
         <!-- Points -->
-        <div class="text-center flex-1 border-r border-slate-100">
-          <div class="text-xs text-slate-500 font-medium mb-1">Points</div>
-          <div class="flex items-center justify-center gap-1 text-orange-500 font-bold text-lg">
-            <div class="w-5 h-5 rounded-full border-2 border-orange-500 flex items-center justify-center text-[10px]">P</div>
-            0 <span class="text-xs font-normal text-slate-400 ml-0.5">pts</span>
+        <div class="text-center flex-1 border-r border-slate-100 dark:border-gray-700">
+          <div class="text-xs text-slate-500 dark:text-slate-400 font-medium mb-1">Points</div>
+          <div class="flex items-center justify-center gap-1 text-orange-500 dark:text-orange-400 font-bold text-lg">
+            <div class="w-5 h-5 rounded-full border-2 border-orange-500 dark:border-orange-400 flex items-center justify-center text-[10px]">P</div>
+            {{ user.points || 0 }} <span class="text-xs font-normal text-slate-400 ml-0.5">pts</span>
           </div>
         </div>
 
         <!-- QR Code -->
-        <div class="text-center flex-1">
-          <div class="text-xs text-slate-500 font-medium mb-1">Kode QR</div>
-          <div class="flex items-center justify-center text-orange-500">
+        <div class="text-center flex-1 cursor-pointer" @click="showComingSoon">
+          <div class="text-xs text-slate-500 dark:text-slate-400 font-medium mb-1">Kode QR</div>
+          <div class="flex items-center justify-center text-orange-500 dark:text-orange-400 hover:text-orange-600 dark:hover:text-orange-500 transition-colors">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
               <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 013.75 9.375v-4.5zM3.75 14.625c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5a1.125 1.125 0 01-1.125-1.125v-4.5zM13.5 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0113.5 9.375v-4.5z" />
               <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 6.75h.75v.75h-.75v-.75zM6.75 16.5h.75v.75h-.75v-.75zM16.5 6.75h.75v.75h-.75v-.75zM13.5 13.5h.75v.75h-.75v-.75zM13.5 19.5h.75v.75h-.75v-.75zM19.5 13.5h.75v.75h-.75v-.75zM16.5 16.5h.75v.75h-.75v-.75z" />
@@ -147,7 +167,7 @@ function showComingSoon(e) {
     <div class="px-6 mt-6">
       <div class="bg-gradient-to-r from-orange-500 to-red-500 rounded-2xl p-4 text-white flex justify-between items-center shadow-lg shadow-orange-500/20">
         <div>
-           <div class="font-bold text-lg">SEMUA SERBA 15K</div>
+           <div class="font-bold text-lg">SEMUA SERBA 28K</div>
            <div class="text-xs text-orange-100">Untuk setiap rekomendasimu!</div>
         </div>
         <div class="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
@@ -178,7 +198,7 @@ function showComingSoon(e) {
       <!-- Logout Button -->
       <button 
         @click="handleLogout"
-        class="w-full bg-white p-4 rounded-2xl flex items-center justify-between group active:scale-[0.98] transition-all duration-200 mt-4 text-red-500 hover:bg-red-50"
+        class="w-full bg-white dark:bg-gray-800 dark:border-gray-700 p-4 rounded-2xl flex items-center justify-between group active:scale-[0.98] transition-all duration-200 mt-4 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
       >
         <div class="flex items-center gap-4">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">

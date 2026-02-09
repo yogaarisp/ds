@@ -42,6 +42,10 @@ function loadTheme() {
   const savedTheme = localStorage.getItem('app_theme')
   if (savedTheme && ['light', 'dark', 'auto'].includes(savedTheme)) {
     theme.value = savedTheme
+  } else {
+    // Default to light theme if no saved preference
+    theme.value = 'light'
+    localStorage.setItem('app_theme', 'light')
   }
 }
 

@@ -26,7 +26,7 @@ const settings = ref({
     analytics: true
   },
   preferences: {
-    theme: 'light',
+    theme: 'light', // Default to light theme
     dateFormat: 'DD/MM/YYYY',
     timeFormat: '24h'
   }
