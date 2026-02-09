@@ -872,31 +872,31 @@ async function deleteTransaction(transaction) {
             <div class="bg-slate-50/50 rounded-2xl p-2.5 border border-slate-100/50 space-y-1.5">
               <div class="space-y-1">
                 <div class="flex justify-between items-center">
-                  <span class="text-slate-400 uppercase tracking-widest font-medium text-[8px]">Subtotal</span>
-                  <span class="text-slate-600 font-medium text-[11px]">Rp {{ formatPrice(selectedTransaction.subtotal) }}</span>
+                  <span class="text-slate-400 uppercase tracking-widest font-medium text-[9px]">Subtotal</span>
+                  <span class="text-slate-600 font-medium text-sm">Rp {{ formatPrice(selectedTransaction.subtotal) }}</span>
                 </div>
                 <div v-if="selectedTransaction.discount > 0" class="flex justify-between items-center">
-                  <span class="text-slate-400 uppercase tracking-widest font-medium text-[8px]">Diskon</span>
-                  <span class="text-red-500 font-medium text-[11px]">-Rp {{ formatPrice(selectedTransaction.discount) }}</span>
+                  <span class="text-slate-400 uppercase tracking-widest font-medium text-[9px]">Diskon</span>
+                  <span class="text-red-500 font-medium text-sm">-Rp {{ formatPrice(selectedTransaction.discount) }}</span>
                 </div>
                 
                 <div class="border-t border-slate-200/40 my-1"></div>
 
                 <div class="flex justify-between items-center">
-                  <span class="font-medium text-slate-800 text-[8px] uppercase tracking-widest">Total Tagihan</span>
-                  <span class="text-base font-medium text-primary-600 tracking-tight">Rp {{ formatPrice(selectedTransaction.total) }}</span>
+                  <span class="font-medium text-slate-800 text-[9px] uppercase tracking-widest">Total Tagihan</span>
+                  <span class="text-lg font-bold text-primary-600 tracking-tight">Rp {{ formatPrice(selectedTransaction.total) }}</span>
                 </div>
               </div>
 
               <!-- Payment Details (Split View) -->
               <div class="grid grid-cols-2 gap-4 mt-1 pt-2 border-t border-slate-200/40 border-dashed">
                  <div>
-                    <p class="text-[8px] text-slate-400 uppercase tracking-widest font-medium leading-none mb-1">Dibayar</p>
-                    <p class="font-medium text-slate-800 text-[11px] leading-none">Rp {{ formatPrice(selectedTransaction.paid_amount) }}</p>
+                    <p class="text-[9px] text-slate-400 uppercase tracking-widest font-medium leading-none mb-1">Dibayar</p>
+                    <p class="font-bold text-slate-800 text-sm leading-none">Rp {{ formatPrice(selectedTransaction.paid_amount) }}</p>
                  </div>
                  <div v-if="selectedTransaction.change_amount > 0" class="text-right">
-                    <p class="text-[8px] text-slate-400 uppercase tracking-widest font-medium leading-none mb-1">Kembalian</p>
-                    <p class="font-medium text-emerald-600 text-[11px] leading-none">Rp {{ formatPrice(selectedTransaction.change_amount) }}</p>
+                    <p class="text-[9px] text-slate-400 uppercase tracking-widest font-medium leading-none mb-1">Kembalian</p>
+                    <p class="font-bold text-emerald-600 text-sm leading-none">Rp {{ formatPrice(selectedTransaction.change_amount) }}</p>
                  </div>
               </div>
             </div>

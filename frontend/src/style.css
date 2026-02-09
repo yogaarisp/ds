@@ -8,6 +8,71 @@
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
   }
 
+  /* Dark theme styles */
+  .dark body {
+    @apply bg-gray-900 text-gray-100;
+  }
+
+  .dark .bg-white {
+    @apply bg-gray-800;
+  }
+
+  .dark .bg-slate-50 {
+    @apply bg-gray-900;
+  }
+
+  .dark .bg-slate-100 {
+    @apply bg-gray-800;
+  }
+
+  .dark .bg-slate-200 {
+    @apply bg-gray-700;
+  }
+
+  .dark .text-slate-800 {
+    @apply text-gray-100;
+  }
+
+  .dark .text-slate-700 {
+    @apply text-gray-200;
+  }
+
+  .dark .text-slate-600 {
+    @apply text-gray-300;
+  }
+
+  .dark .text-slate-500 {
+    @apply text-gray-400;
+  }
+
+  .dark .text-slate-400 {
+    @apply text-gray-500;
+  }
+
+  .dark .border-slate-100 {
+    @apply border-gray-700;
+  }
+
+  .dark .border-slate-200 {
+    @apply border-gray-600;
+  }
+
+  .dark .border-slate-300 {
+    @apply border-gray-500;
+  }
+
+  .dark .shadow-sm {
+    @apply shadow-gray-900/20;
+  }
+
+  .dark .shadow-lg {
+    @apply shadow-gray-900/40;
+  }
+
+  .dark .shadow-xl {
+    @apply shadow-gray-900/50;
+  }
+
   /* Fix mobile scroll issues */
   html,
   body {

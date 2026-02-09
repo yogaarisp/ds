@@ -3,7 +3,7 @@
 # Script untuk build production package
 # Usage: ./build-production.sh [nama-project]
 
-PROJECT_NAME=${1:-"pos-system"}
+PROJECT_NAME=${1:-"DS"}
 DATE=$(date +%Y%m%d_%H%M%S)
 ARCHIVE_NAME="${PROJECT_NAME}-production-${DATE}.zip"
 
@@ -12,7 +12,7 @@ echo "🚀 Building production package: $ARCHIVE_NAME"
 # Step 1: Build frontend
 echo "📦 Building frontend..."
 cd frontend
-npm run build
+npm run build:production
 if [ $? -ne 0 ]; then
     echo "❌ Frontend build failed!"
     exit 1

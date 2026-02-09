@@ -199,6 +199,7 @@ export const customerApi = {
   delete: (id) => api.delete(`/customers/${id}`),
   search: (query) => api.get('/customers-search', { params: { q: query } }),
   stats: (id) => api.get(`/customers/${id}/stats`),
+  changePassword: (data) => api.post('/customers/change-password', data),
 }
 
 // Customer Types

@@ -9,7 +9,7 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
-  base: './', // Important for mobile apps
+  base: '/', // Changed from './' to '/' to fix deep link blank page issue on web
   build: {
     outDir: 'dist',
     assetsDir: 'assets',

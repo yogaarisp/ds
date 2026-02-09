@@ -1,10 +1,12 @@
 <script setup>
 import { useAuthStore } from './stores/auth'
 import { useSettingsStore } from './stores/settings'
+import { useTheme } from './composables/useTheme'
 import { onMounted, watch } from 'vue'
 
 const authStore = useAuthStore()
 const settingsStore = useSettingsStore()
+const { theme } = useTheme()
 
 onMounted(() => {
   authStore.checkAuth()

@@ -2,10 +2,12 @@
 import { ref, onMounted } from 'vue'
 import { settingApi, userApi, paymentMethodApi, carouselApi, databaseApi, STORAGE_BASE_URL } from '../api'
 import { useSettingsStore } from '../stores/settings'
+import { useAuthStore } from '../stores/auth'
 import SettingsCustomerTypes from './SettingsCustomerTypes.vue'
 import Swal from 'sweetalert2'
 
 const settingsStore = useSettingsStore()
+const authStore = useAuthStore()
 const activeTab = ref('store') // store | users | payments
 const loading = ref(false)
 const saving = ref(false)
@@ -82,7 +84,11 @@ onMounted(() => {
   loadUsers()
   loadPaymentMethods()
   loadCarouselSlides()
-  loadDatabaseInfo()
+  
+  // Only load database info if user is owner
+  if (authStore.user?.role === 'owner') {
+    loadDatabaseInfo()
+  }
 })
 
 async function loadSettings() {
@@ -432,6 +438,29 @@ async function deletePayment(payment) {
   }
 }
 
+async function togglePaymentActive(payment) {
+  try {
+    await paymentMethodApi.update(payment.id, {
+      ...payment,
+      is_active: !payment.is_active
+    })
+    await loadPaymentMethods()
+  } catch (error) {
+    console.error('Error toggling payment method:', error)
+    Swal.fire({
+      icon: 'error',
+      title: 'Gagal',
+      text: 'Gagal mengubah status metode pembayaran',
+      width: '300px',
+      customClass: {
+        popup: 'rounded-xl text-sm',
+        title: 'text-lg font-bold',
+        htmlContainer: 'text-xs'
+      }
+    })
+  }
+}
+
 function getRoleLabel(role) {
   const labels = { owner: 'Owner', kasir: 'Kasir', gudang: 'Gudang' }
   return labels[role] || role
@@ -628,6 +657,11 @@ async function loadDatabaseInfo() {
     databaseInfo.value = response.data.data
   } catch (error) {
     console.error('Error loading database info:', error)
+    // If access is denied (403) or other errors, don't show database section
+    if (error.response?.status === 403) {
+      console.log('Database management access denied - user is not owner')
+    }
+    databaseInfo.value = null
   } finally {
     loadingDatabase.value = false
   }
@@ -638,19 +672,26 @@ async function exportDatabase() {
   try {
     const response = await databaseApi.export()
     
-    // Create download link
-    const url = window.URL.createObjectURL(new Blob([response.data]))
+    // Create download link with proper SQL content type
+    const blob = new Blob([response.data], { type: 'application/sql' })
+    const url = window.URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
     
-    // Get filename from response headers or create default
+    // Get filename from response headers or create default with timestamp
     const contentDisposition = response.headers['content-disposition']
-    let filename = 'database_backup.sql'
+    let filename = `database_backup_${new Date().toISOString().replace(/[:.]/g, '-').split('T')[0]}_${new Date().toTimeString().split(' ')[0].replace(/:/g, '')}.sql`
+    
     if (contentDisposition) {
-      const filenameMatch = contentDisposition.match(/filename="(.+)"/)
+      const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
       if (filenameMatch) {
-        filename = filenameMatch[1]
+        filename = filenameMatch[1].replace(/['"]/g, '').trim();
       }
+    }
+
+    // Ensure .sql extension
+    if (!filename.toLowerCase().endsWith('.sql')) {
+      filename = filename.replace(/\.[^/.]+$/, '') + '.sql';
     }
     
     link.setAttribute('download', filename)
@@ -661,11 +702,22 @@ async function exportDatabase() {
 
     await Swal.fire({
       icon: 'success',
-      title: 'Berhasil!',
-      text: 'Database berhasil diexport',
-      timer: 2000,
-      showConfirmButton: false,
-      width: '300px',
+      title: 'Export Berhasil! 🎉',
+      html: `
+        <div class="text-left space-y-2">
+          <p class="text-sm text-gray-700">File berhasil didownload:</p>
+          <p class="text-xs font-mono bg-gray-100 p-2 rounded border">${filename}</p>
+          <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-3">
+            <p class="text-xs text-blue-700 font-semibold">📁 Lokasi File:</p>
+            <p class="text-xs text-blue-600">Cek folder <strong>Downloads</strong> browser Anda</p>
+            <p class="text-[10px] text-blue-500 mt-1">💡 Tekan Ctrl+J (Chrome) atau Cmd+Shift+J (Mac) untuk membuka Downloads</p>
+          </div>
+        </div>
+      `,
+      timer: 4000,
+      showConfirmButton: true,
+      confirmButtonText: 'OK',
+      width: '450px',
       customClass: {
         popup: 'rounded-xl text-sm',
         title: 'text-lg font-bold',
@@ -673,16 +725,29 @@ async function exportDatabase() {
       }
     })
 
-    // Refresh database info
+    // Refresh database info to show latest backup
     await loadDatabaseInfo()
 
   } catch (error) {
     console.error('Error exporting database:', error)
+    
+    let errorMessage = 'Gagal mengexport database'
+    if (error.response?.data) {
+      // Try to parse error from blob response
+      try {
+        const text = await error.response.data.text()
+        const errorData = JSON.parse(text)
+        errorMessage = errorData.message || errorMessage
+      } catch (parseError) {
+        errorMessage = error.response.data.message || error.message || errorMessage
+      }
+    }
+    
     Swal.fire({
       icon: 'error',
       title: 'Gagal Export',
-      text: error.response?.data?.message || 'Gagal mengexport database',
-      width: '300px',
+      text: errorMessage,
+      width: '350px',
       customClass: {
         popup: 'rounded-xl text-sm',
         title: 'text-lg font-bold',
@@ -845,7 +910,7 @@ function handleImportFileChange(event) {
             { id: 'users', label: 'User', icon: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z' },
             { id: 'customer_types', label: 'Tipe', icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z' },
             { id: 'payments', label: 'Bayar', icon: 'M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z' },
-            { id: 'database', label: 'Database', icon: 'M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4' }
+            ...(authStore.user?.role === 'owner' ? [{ id: 'database', label: 'Database', icon: 'M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4' }] : [])
           ]"
           :key="tab.id"
           @click="activeTab = tab.id"
@@ -1245,7 +1310,10 @@ function handleImportFileChange(event) {
                           <span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1 block">{{ getPaymentTypeLabel(payment.type) }}</span>
                       </div>
                   </div>
-                   <div :class="['w-2 h-2 rounded-full mt-2', payment.is_active ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]' : 'bg-slate-300']"></div>
+                  <!-- Toggle Status Button -->
+                  <button @click="togglePaymentActive(payment)" :class="['px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider transition-all', payment.is_active ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30' : 'bg-slate-200 text-slate-500']">
+                    {{ payment.is_active ? 'Aktif' : 'Nonaktif' }}
+                  </button>
               </div>
 
               <div class="space-y-3 bg-slate-50 p-4 rounded-3xl min-h-[80px] flex flex-col justify-center border border-slate-100/50">
@@ -1392,7 +1460,7 @@ function handleImportFileChange(event) {
     </div>
 
     <!-- Database Management -->
-    <div v-if="activeTab === 'database'" class="animate-fade-in-up space-y-6">
+    <div v-if="activeTab === 'database' && authStore.user?.role === 'owner'" class="animate-fade-in-up space-y-6">
       <div class="bg-white rounded-xl p-6 shadow-xl shadow-slate-200/50 border border-slate-100">
         <h2 class="text-lg font-bold text-slate-800 mb-6 flex items-center gap-3">
           <div class="w-9 h-9 rounded-xl bg-blue-100 flex items-center justify-center text-blue-600 shadow-sm shadow-blue-500/10">
@@ -1492,13 +1560,15 @@ function handleImportFileChange(event) {
               </div>
               <div>
                 <h3 class="font-bold text-emerald-800 text-lg">Export Database</h3>
-                <p class="text-[10px] text-emerald-600 font-medium">Download backup database</p>
+                <p class="text-[10px] text-emerald-600 font-medium">Download backup dalam format SQL</p>
               </div>
             </div>
             
-            <p class="text-xs text-emerald-700 mb-4">
-              Export seluruh database ke file SQL yang dapat digunakan untuk backup atau migrasi.
-            </p>
+            <div class="bg-emerald-100 border border-emerald-300 rounded-lg p-3 mb-4">
+              <p class="text-[10px] text-emerald-700 font-semibold">📁 Lokasi Download:</p>
+              <p class="text-[10px] text-emerald-700">File <strong>.sql</strong> akan tersimpan di folder <strong>Downloads</strong> browser Anda</p>
+              <p class="text-[9px] text-emerald-600 mt-1">💡 Cek folder Downloads atau tekan Ctrl+J (Chrome) untuk melihat file</p>
+            </div>
             
             <button 
               @click="exportDatabase" 
@@ -1510,9 +1580,14 @@ function handleImportFileChange(event) {
                   <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                   <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
-                Mengexport...
+                Membuat file SQL...
               </span>
-              <span v-else>📥 Export Database</span>
+              <span v-else class="flex items-center justify-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 12H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Download SQL Backup
+              </span>
             </button>
           </div>
 

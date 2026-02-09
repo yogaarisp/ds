@@ -135,4 +135,33 @@ class CustomerController extends Controller
                 ->sum('total'),
         ]);
     }
+
+    public function changePassword(Request $request)
+    {
+        $validated = $request->validate([
+            'current_password' => 'required|string',
+            'new_password' => 'required|string|min:6|confirmed',
+        ]);
+
+        $customer = auth()->user();
+        
+        // Verify current password
+        if (!Hash::check($validated['current_password'], $customer->password)) {
+            return response()->json([
+                'message' => 'Password saat ini tidak benar',
+                'errors' => [
+                    'current_password' => ['Password saat ini tidak benar']
+                ]
+            ], 422);
+        }
+
+        // Update password
+        $customer->update([
+            'password' => Hash::make($validated['new_password'])
+        ]);
+
+        return response()->json([
+            'message' => 'Password berhasil diubah'
+        ]);
+    }
 }

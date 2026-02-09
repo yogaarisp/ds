@@ -50,6 +50,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('customers', CustomerController::class);
     Route::get('/customers-search', [CustomerController::class, 'search']);
     Route::get('/customers/{customer}/stats', [CustomerController::class, 'stats']);
+    Route::post('/customers/change-password', [CustomerController::class, 'changePassword']);
     Route::apiResource('customer-types', \App\Http\Controllers\Api\CustomerTypeController::class);
 
     // Customer Addresses

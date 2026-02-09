@@ -32,9 +32,12 @@ const computedSrc = computed(() => {
     return props.src
   }
   
-  // If src starts with /storage/, use storage utility
+  // If src starts with /storage/ or storage/, use storage utility
   if (props.src.startsWith('/storage/')) {
     return getStorageUrl(props.src.substring(1)) // Remove leading slash
+  }
+  if (props.src.startsWith('storage/')) {
+    return getStorageUrl(props.src)
   }
   
   // Otherwise use as is

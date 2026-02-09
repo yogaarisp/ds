@@ -2,9 +2,12 @@
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useI18n } from '@/i18n'
+import Swal from 'sweetalert2'
 
 const router = useRouter()
 const authStore = useAuthStore()
+const { t } = useI18n()
 
 // Get user data from store
 const user = computed(() => authStore.user || {})
@@ -19,41 +22,62 @@ async function handleLogout() {
 const menuItems = [
   {
     icon: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg>',
-    label: 'Alamat Saya',
+    label: computed(() => t('myAddresses')),
     action: () => router.push('/customer/addresses')
   },
   {
     icon: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" d="M21 11.25v8.25a1.5 1.5 0 01-1.5 1.5H5.25a1.5 1.5 0 01-1.5-1.5v-8.25M12 4.875A2.625 2.625 0 109.375 7.5H12m0-2.625V7.5m0-2.625A2.625 2.625 0 1114.625 7.5H12m0 0V21m-8.625-9.75h18c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125h-18c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" /></svg>',
-    label: 'Redeem Center',
-    action: () => console.log('Redeem clicked')
+    label: computed(() => t('redeemCenter')),
+    action: () => showComingSoon()
   },
   {
     icon: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z" /></svg>',
-    label: 'Pusat Bantuan',
-    action: () => console.log('Help clicked')
+    label: computed(() => t('helpCenter')),
+    action: () => showComingSoon()
   },
   {
     icon: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0112 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 013 12c0-1.605.42-3.113 1.157-4.418" /></svg>',
-    label: 'Pengaturan Bahasa',
+    label: computed(() => t('languageSettings')),
     action: () => router.push('/customer/language-settings')
   },
   {
     icon: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>',
-    label: 'Ketentuan Layanan',
+    label: computed(() => t('termsOfService')),
     action: () => showComingSoon()
   },
   {
     icon: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" d="M10.34 15.84c-.688-.06-1.386-.09-2.09-.09H7.5a4.5 4.5 0 110-9h.75c.704 0 1.402-.03 2.09-.09m0 9.18c.253.962.584 1.892.985 2.783.247.55.06 1.21-.463 1.511l-.657.38c-.551.318-1.26.117-1.527-.461a20.845 20.845 0 01-1.44-4.282m3.102.069a18.03 18.03 0 01-.59-4.59c0-1.586.205-3.124.59-4.59m0 9.18a23.848 23.848 0 018.835 2.535M10.34 6.66a23.847 23.847 0 018.835-2.535m0 0A23.74 23.74 0 0018.795 3m.38 1.125a23.91 23.91 0 011.014 5.395m-1.014 8.855c-.118.38-.245.754-.38 1.125m.38-1.125a23.91 23.91 0 001.014-5.395m0-3.46c.495.43.816 1.035.795 1.735a20.897 20.897 0 01-.153 9.198c-.135.57-.796.925-1.379.67l-1.93-.85a1.075 1.075 0 01-.59-1.272c.312-1.022.42-2.115.308-3.213a.908.908 0 00-.913-.837H15" /></svg>',
-    label: 'Pengaturan',
+    label: computed(() => t('settings')),
     action: () => router.push('/customer/settings')
   }
 ]
+
+function showComingSoon(e) {
+  if (e) e.preventDefault()
+  const message = t('locale') === 'en' ? 'Coming Soon!' : 'Segera Hadir!'
+  const text = t('locale') === 'en' ? 'This feature will be available soon.' : 'Fitur ini akan segera hadir.'
+  
+  Swal.fire({
+    title: message,
+    text: text,
+    icon: 'info',
+    confirmButtonColor: '#f97316',
+    confirmButtonText: t('locale') === 'en' ? 'OK' : 'Oke',
+    width: '280px',
+    customClass: {
+      popup: 'rounded-xl',
+      title: 'text-lg font-bold',
+      htmlContainer: 'text-sm',
+      confirmButton: 'px-4 py-1.5 text-sm rounded-lg'
+    }
+  })
+}
 </script>
 
 <template>
-  <div class="min-h-screen bg-slate-50">
+  <div class="min-h-screen bg-slate-50 dark:bg-gray-900">
     <!-- Header Section -->
-    <div class="bg-orange-50 pt-12 pb-24 px-6 relative overflow-hidden">
+    <div class="bg-orange-50 pt-12 pb-24 px-6 relative overflow-hidden dark:bg-orange-900/20">
       <!-- Decorative Background Elements -->
       <div class="absolute top-[-50px] right-[-50px] w-48 h-48 bg-orange-200/40 rounded-full blur-3xl"></div>
       <div class="absolute bottom-0 left-[-20px] w-32 h-32 bg-orange-300/20 rounded-full blur-2xl"></div>
@@ -66,7 +90,7 @@ const menuItems = [
           </div>
           <!-- User Info -->
           <div>
-            <h1 class="text-xl font-bold text-slate-800">{{ name }}</h1>
+            <h1 class="text-xl font-bold text-slate-800 dark:text-gray-100">{{ name }}</h1>
             <p class="text-slate-500 text-sm">Pelanggan Setia</p>
           </div>
         </div>
@@ -85,7 +109,7 @@ const menuItems = [
 
     <!-- Stats Card (Floating) -->
     <div class="px-6 -mt-16 relative z-20">
-      <div class="bg-white rounded-3xl p-6 shadow-xl shadow-slate-200/60 border border-slate-100 flex justify-between items-center">
+      <div class="bg-white rounded-3xl p-6 shadow-xl shadow-slate-200/60 border border-slate-100 flex justify-between items-center dark:bg-gray-800 dark:border-gray-700 dark:shadow-gray-900/50">
         <!-- Voucher -->
         <div class="text-center flex-1 border-r border-slate-100">
           <div class="text-xs text-slate-500 font-medium mb-1">Voucher</div>
@@ -140,11 +164,11 @@ const menuItems = [
         v-for="(item, index) in menuItems" 
         :key="index"
         @click="item.action"
-        class="w-full bg-white p-4 rounded-2xl flex items-center justify-between group active:scale-[0.98] transition-all duration-200 border border-transparent hover:border-orange-100 hover:shadow-sm"
+        class="w-full bg-white p-4 rounded-2xl flex items-center justify-between group active:scale-[0.98] transition-all duration-200 border border-transparent hover:border-orange-100 hover:shadow-sm dark:bg-gray-800 dark:hover:border-orange-800 dark:border-gray-700"
       >
         <div class="flex items-center gap-4">
           <div class="text-slate-400 group-hover:text-orange-500 transition-colors" v-html="item.icon"></div>
-          <span class="text-slate-700 font-medium text-sm">{{ item.label }}</span>
+          <span class="text-slate-700 font-medium text-sm">{{ item.label.value || item.label }}</span>
         </div>
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 text-slate-300 group-hover:text-orange-400">
           <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
@@ -160,7 +184,7 @@ const menuItems = [
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
             <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
           </svg>
-          <span class="font-medium text-sm">Keluar</span>
+          <span class="font-medium text-sm">{{ t('logout') }}</span>
         </div>
       </button>
     </div>

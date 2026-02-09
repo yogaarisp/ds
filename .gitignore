@@ -29,3 +29,17 @@ backend/storage/framework/cache/data/*
 # App specific
 *.zip
 *.tar.gz
+
+# Android build files
+android-webview/.gradle/
+android-webview/build/
+android-webview/app/build/
+*.apk
+*.aab
+
+# Keystore files (security)
+*.keystore
+*.jks
+
+# Laravel logs
+backend/storage/logs/*.log

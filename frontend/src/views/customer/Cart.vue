@@ -231,15 +231,15 @@ function closeTableModal() {
 </script>
 
 <template>
-  <div class="min-h-screen bg-slate-50">
+  <div class="min-h-screen bg-slate-50 dark:bg-slate-900">
     <!-- Header (Fixed Top) -->
-    <div class="fixed top-0 left-0 right-0 bg-white z-50 px-4 py-3 shadow-sm border-b border-slate-100 flex items-center gap-3 h-14">
-      <button @click="router.back()" class="p-2 -ml-2 text-slate-600 hover:bg-slate-50 rounded-full active:scale-90 transition-transform">
+    <div class="fixed top-0 left-0 right-0 bg-white dark:bg-slate-800 z-50 px-4 py-3 shadow-sm border-b border-slate-100 dark:border-slate-700 flex items-center gap-3 h-14">
+      <button @click="router.back()" class="p-2 -ml-2 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-full active:scale-90 transition-transform">
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
           <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
         </svg>
       </button>
-      <h1 class="text-lg font-bold text-slate-800">Checkout</h1>
+      <h1 class="text-lg font-bold text-slate-800 dark:text-slate-100">Checkout</h1>
     </div>
 
     <!-- Main Content (Scrollable Body) -->
@@ -249,8 +249,8 @@ function closeTableModal() {
       <!-- Empty Cart State -->
       <div v-if="cartStore.cart.length === 0" class="min-h-[60vh] flex flex-col items-center justify-center text-center">
         <div class="text-6xl mb-4 grayscale opacity-50">🛒</div>
-        <p class="text-slate-500 font-medium text-sm mb-6">Keranjang belanja Anda kosong</p>
-        <button @click="router.push('/customer/menu')" class="px-6 py-3 bg-white border border-slate-200 text-primary-600 font-bold text-sm rounded-xl shadow-sm hover:bg-slate-50 transition-all active:scale-95">
+        <p class="text-slate-500 dark:text-slate-400 font-medium text-sm mb-6">Keranjang belanja Anda kosong</p>
+        <button @click="router.push('/customer/menu')" class="px-6 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-primary-600 dark:text-primary-400 font-bold text-sm rounded-xl shadow-sm hover:bg-slate-50 dark:hover:bg-slate-700 transition-all active:scale-95">
           Jelajahi Menu
         </button>
       </div>
@@ -261,10 +261,10 @@ function closeTableModal() {
         <!-- Group Container for Delivery & Table Info -->
         <div class="space-y-2">
           <!-- Delivery Method Switcher -->
-          <div class="bg-slate-200/50 p-1 rounded-xl flex relative h-10">
+          <div class="bg-slate-200/50 dark:bg-slate-700/50 p-1 rounded-xl flex relative h-10">
             <!-- Indicator -->
             <div 
-               class="absolute top-1 bottom-1 w-[calc(33.33%-4px)] bg-white rounded-lg shadow-sm transition-all duration-300 ease-out z-0"
+               class="absolute top-1 bottom-1 w-[calc(33.33%-4px)] bg-white dark:bg-slate-600 rounded-lg shadow-sm transition-all duration-300 ease-out z-0"
                :style="{ 
                  left: deliveryType === 'dine_in' ? '4px' : 
                        deliveryType === 'takeaway' ? 'calc(33.33% + 2px)' : 
@@ -275,7 +275,7 @@ function closeTableModal() {
             <button 
               @click="handleDeliveryTypeSelection('dine_in')"
               class="flex-1 px-2 text-[10px] font-bold rounded-lg relative z-10 transition-colors flex items-center justify-center gap-1"
-              :class="deliveryType === 'dine_in' ? 'text-primary-600' : 'text-slate-500 hover:text-slate-700'"
+              :class="deliveryType === 'dine_in' ? 'text-primary-600' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'"
             >
               <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M3 10V7h18v3m-3 0v11M6 10v11m-3-11h18" />
@@ -286,7 +286,7 @@ function closeTableModal() {
             <button 
               @click="handleDeliveryTypeSelection('takeaway')"
               class="flex-1 px-2 text-[10px] font-bold rounded-lg relative z-10 transition-colors flex items-center justify-center gap-1"
-              :class="deliveryType === 'takeaway' ? 'text-primary-600' : 'text-slate-500 hover:text-slate-700'"
+              :class="deliveryType === 'takeaway' ? 'text-primary-600' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'"
             >
               <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
                 <path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z" />
@@ -297,7 +297,7 @@ function closeTableModal() {
             <button 
               @click="handleDeliveryTypeSelection('delivery')"
               class="flex-1 px-2 text-[10px] font-bold rounded-lg relative z-10 transition-colors flex items-center justify-center gap-1"
-              :class="deliveryType === 'delivery' ? 'text-primary-600' : 'text-slate-400'"
+              :class="deliveryType === 'delivery' ? 'text-primary-600' : 'text-slate-400 dark:text-slate-500'"
             >
               <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
                 <path d="M8 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM15 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z" />
@@ -308,18 +308,18 @@ function closeTableModal() {
           </div>
 
           <!-- Table Information (Conditional) -->
-          <div v-if="cartStore.hasTable" class="bg-orange-50 border border-orange-100 rounded-xl p-2.5 space-y-3 relative overflow-hidden">
-            <div class="absolute -right-3 -top-3 w-12 h-12 bg-orange-100/50 rounded-full blur-xl"></div>
+          <div v-if="cartStore.hasTable" class="bg-orange-50 dark:bg-orange-900/30 border border-orange-100 dark:border-orange-800 rounded-xl p-2.5 space-y-3 relative overflow-hidden">
+            <div class="absolute -right-3 -top-3 w-12 h-12 bg-orange-100/50 dark:bg-orange-800/30 rounded-full blur-xl"></div>
             
             <div class="flex items-center gap-3">
-              <div class="w-9 h-9 bg-white rounded-lg shadow-sm flex items-center justify-center text-orange-500 shrink-0">
+              <div class="w-9 h-9 bg-white dark:bg-slate-800 rounded-lg shadow-sm flex items-center justify-center text-orange-500 dark:text-orange-400 shrink-0">
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M3 10V7h18v3m-3 0v11M6 10v11m-3-11h18" />
                 </svg>
               </div>
               <div>
-                <p class="text-[8px] font-extrabold text-orange-500 uppercase tracking-widest leading-tight">Meja Anda</p>
-                <h3 class="font-bold text-slate-800 text-sm leading-tight">{{ cartStore.tableName }}</h3>
+                <p class="text-[8px] font-extrabold text-orange-500 dark:text-orange-400 uppercase tracking-widest leading-tight">Meja Anda</p>
+                <h3 class="font-bold text-slate-800 dark:text-slate-100 text-sm leading-tight">{{ cartStore.tableName }}</h3>
               </div>
               <div class="ml-auto">
                 <div class="bg-emerald-500 text-white text-[8px] font-bold px-2 py-0.5 rounded-full shadow-sm">AKTIF</div>
@@ -331,19 +331,19 @@ function closeTableModal() {
         <!-- Order Items Section -->
         <div class="space-y-2">
           <div class="flex items-center justify-between px-1">
-            <h2 class="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Daftar Pesanan</h2>
-            <span class="text-[10px] text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">{{ cartStore.itemCount }} item</span>
+            <h2 class="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Daftar Pesanan</h2>
+            <span class="text-[10px] text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded-full">{{ cartStore.itemCount }} item</span>
           </div>
           
           <!-- Items List -->
-          <div class="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden divide-y divide-slate-50">
+          <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 overflow-hidden divide-y divide-slate-50 dark:divide-slate-700">
             <div 
               v-for="(item, index) in cartStore.cart" 
               :key="item.cart_id" 
               class="py-2.5 px-3 flex gap-3"
             >
               <!-- Image -->
-              <div class="w-12 h-12 bg-slate-50 rounded-lg shrink-0 overflow-hidden border border-slate-100 self-center">
+              <div class="w-12 h-12 bg-slate-50 dark:bg-slate-700 rounded-lg shrink-0 overflow-hidden border border-slate-100 dark:border-slate-600 self-center">
                 <LazyImage v-if="item.image" :src="`${STORAGE_BASE_URL}/${item.image}`" class="w-full h-full object-cover" />
                 <div v-else class="w-full h-full flex items-center justify-center text-lg">📦</div>
               </div>
@@ -352,27 +352,27 @@ function closeTableModal() {
               <div class="flex-1 min-w-0 flex flex-col justify-center gap-1">
                 <div class="flex justify-between items-center gap-2">
                   <div class="min-w-0 flex-1">
-                    <h3 class="font-bold text-slate-800 text-xs leading-tight line-clamp-1 mb-0.5">{{ item.name }}</h3>
-                    <p class="text-[11px] text-slate-400 leading-tight">
+                    <h3 class="font-bold text-slate-800 dark:text-slate-100 text-xs leading-tight line-clamp-1 mb-0.5">{{ item.name }}</h3>
+                    <p class="text-[11px] text-slate-400 dark:text-slate-500 leading-tight">
                       {{ formatCurrency(item.price) }}
                     </p>
                   </div>
                   
                   <!-- Quantity Control (Swapped to Top) -->
                   <div class="shrink-0">
-                    <div class="flex items-center gap-1.5 bg-slate-50 rounded-md p-0.5 border border-slate-100 h-5">
+                    <div class="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-700 rounded-md p-0.5 border border-slate-100 dark:border-slate-600 h-5">
                       <button 
                         @click="cartStore.updateQuantity(item.cart_id, item.quantity - 1)" 
-                        class="w-4 h-full rounded bg-white shadow-sm flex items-center justify-center text-slate-500 active:scale-90 transition-transform hover:text-red-500"
+                        class="w-4 h-full rounded bg-white dark:bg-slate-600 shadow-sm flex items-center justify-center text-slate-500 dark:text-slate-400 active:scale-90 transition-transform hover:text-red-500 dark:hover:text-red-400"
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-2.5 w-2.5" viewBox="0 0 20 20" fill="currentColor">
                           <path fill-rule="evenodd" d="M3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd" />
                         </svg>
                       </button>
-                      <span class="text-[10px] font-bold text-slate-800 min-w-[14px] text-center">{{ item.quantity }}</span>
+                      <span class="text-[10px] font-bold text-slate-800 dark:text-slate-100 min-w-[14px] text-center">{{ item.quantity }}</span>
                       <button 
                         @click="cartStore.updateQuantity(item.cart_id, item.quantity + 1)" 
-                        class="w-4 h-full rounded bg-white shadow-sm flex items-center justify-center text-slate-500 active:scale-90 transition-transform hover:text-green-600"
+                        class="w-4 h-full rounded bg-white dark:bg-slate-600 shadow-sm flex items-center justify-center text-slate-500 dark:text-slate-400 active:scale-90 transition-transform hover:text-green-600 dark:hover:text-green-400"
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-2.5 w-2.5" viewBox="0 0 20 20" fill="currentColor">
                           <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
@@ -384,7 +384,7 @@ function closeTableModal() {
 
                 <!-- Subtotal (Swapped to Bottom) -->
                  <div class="flex justify-end">
-                    <p class="text-primary-600 font-bold text-xs leading-tight">{{ formatCurrency(item.price * item.quantity) }}</p>
+                    <p class="text-primary-600 dark:text-primary-400 font-bold text-xs leading-tight">{{ formatCurrency(item.price * item.quantity) }}</p>
                  </div>
               </div>
             </div>
@@ -394,8 +394,8 @@ function closeTableModal() {
         <!-- Payment Methods Section -->
         <div class="space-y-2">
           <div class="flex items-center justify-between px-1 cursor-pointer" @click="showPaymentMethods = !showPaymentMethods">
-            <h2 class="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Metode Pembayaran</h2>
-            <button class="text-slate-400 p-1 hover:bg-slate-100 rounded-full transition-colors">
+            <h2 class="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Metode Pembayaran</h2>
+            <button class="text-slate-400 dark:text-slate-500 p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors">
               <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 transition-transform duration-200" :class="showPaymentMethods ? 'rotate-180' : ''" viewBox="0 0 20 20" fill="currentColor">
                 <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
               </svg>
@@ -403,9 +403,9 @@ function closeTableModal() {
           </div>
           
           <div v-show="showPaymentMethods" class="transition-all duration-300 ease-in-out">
-            <div v-if="loading" class="py-6 text-center bg-white rounded-2xl border border-slate-100">
+            <div v-if="loading" class="py-6 text-center bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700">
               <div class="animate-spin w-6 h-6 border-2 border-primary-500 border-t-transparent rounded-full mx-auto mb-2"></div>
-              <p class="text-xs text-slate-400">Memuat metode pembayaran...</p>
+              <p class="text-xs text-slate-400 dark:text-slate-500">Memuat metode pembayaran...</p>
             </div>
             
             <div v-else class="grid grid-cols-2 gap-2">
@@ -415,20 +415,20 @@ function closeTableModal() {
                 @click="handlePaymentSelection(method)"
                 class="p-3 border rounded-xl flex items-center gap-3 transition-all relative overflow-hidden group text-left"
                 :class="selectedPaymentMethod === method.id 
-                  ? 'border-primary-500 bg-primary-50/50 ring-1 ring-primary-500/20' 
-                  : 'border-slate-200 bg-white hover:border-slate-300'"
+                  ? 'border-primary-500 bg-primary-50/50 dark:bg-primary-900/30 ring-1 ring-primary-500/20' 
+                  : 'border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-500'"
               >
                 <div 
-                  class="w-8 h-8 rounded-lg bg-white border border-slate-100 flex items-center justify-center shrink-0 [&>svg]:w-4 [&>svg]:h-4 transition-colors"
-                  :class="selectedPaymentMethod === method.id ? 'text-primary-500' : 'text-slate-400'"
+                  class="w-8 h-8 rounded-lg bg-white dark:bg-slate-700 border border-slate-100 dark:border-slate-600 flex items-center justify-center shrink-0 [&>svg]:w-4 [&>svg]:h-4 transition-colors"
+                  :class="selectedPaymentMethod === method.id ? 'text-primary-500 dark:text-primary-400' : 'text-slate-400 dark:text-slate-500'"
                   v-html="getPaymentIcon(method)"
                 ></div>
                 <div class="flex-1 min-w-0">
-                  <span class="block text-[11px] font-bold text-slate-700 leading-tight mb-0.5">{{ method.name }}</span>
-                  <span class="block text-[9px] text-slate-400 leading-tight" v-if="method.type === 'cash'">Bayar di kasir</span>
-                  <span class="block text-[9px] text-slate-400 leading-tight" v-else>Transfer otomatis</span>
+                  <span class="block text-[11px] font-bold text-slate-700 dark:text-slate-200 leading-tight mb-0.5">{{ method.name }}</span>
+                  <span class="block text-[9px] text-slate-400 dark:text-slate-500 leading-tight" v-if="method.type === 'cash'">Bayar di kasir</span>
+                  <span class="block text-[9px] text-slate-400 dark:text-slate-500 leading-tight" v-else>Transfer otomatis</span>
                 </div>
-                <div v-if="selectedPaymentMethod === method.id" class="absolute top-2 right-2 text-primary-500">
+                <div v-if="selectedPaymentMethod === method.id" class="absolute top-2 right-2 text-primary-500 dark:text-primary-400">
                   <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
                     <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
                   </svg>
@@ -438,19 +438,19 @@ function closeTableModal() {
           </div>
           
           <!-- Selected Method Summary (When Hidden) -->
-          <div v-show="!showPaymentMethods" @click="showPaymentMethods = true" class="bg-white border border-slate-200 rounded-xl p-3 flex items-center gap-3 cursor-pointer hover:border-primary-200 hover:bg-primary-50/30 transition-colors">
-             <div class="w-8 h-8 rounded-lg bg-primary-50 text-primary-500 flex items-center justify-center border border-primary-100">
+          <div v-show="!showPaymentMethods" @click="showPaymentMethods = true" class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-3 flex items-center gap-3 cursor-pointer hover:border-primary-200 dark:hover:border-primary-700 hover:bg-primary-50/30 dark:hover:bg-primary-900/20 transition-colors">
+             <div class="w-8 h-8 rounded-lg bg-primary-50 dark:bg-primary-900/30 text-primary-500 dark:text-primary-400 flex items-center justify-center border border-primary-100 dark:border-primary-800">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                   <path fill-rule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
                 </svg>
              </div>
              <div class="flex-1">
-                <p class="text-xs font-bold text-slate-700">
+                <p class="text-xs font-bold text-slate-700 dark:text-slate-200">
                   {{ paymentMethods.find(p => p.id === selectedPaymentMethod)?.name || 'Pilih Metode Pembayaran' }}
                 </p>
-                <p class="text-[10px] text-slate-400">Bayar di Kasir</p>
+                <p class="text-[10px] text-slate-400 dark:text-slate-500">Bayar di Kasir</p>
              </div>
-             <div class="text-primary-500 text-xs font-bold">Ubah</div>
+             <div class="text-primary-500 dark:text-primary-400 text-xs font-bold">Ubah</div>
           </div>
         </div>
 

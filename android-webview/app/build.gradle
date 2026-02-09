@@ -1,24 +1,50 @@
-apply plugin: 'com.android.application'
+plugins {
+    id 'com.android.application'
+}
 
 android {
-    compileSdkVersion 33
+    namespace 'com.keetech.dimsumpos'
+    compileSdk 33
 
     defaultConfig {
         applicationId "com.keetech.dimsumpos"
-        minSdkVersion 21
-        targetSdkVersion 33
-        versionCode 2
-        versionName "1.0.6"
+        minSdk 21
+        targetSdk 33
+        versionCode 5
+        versionName "1.0.9"
+        
+        multiDexEnabled true
+    }
+
+    signingConfigs {
+        release {
+            storeFile file('../keystore/release-v2.keystore')
+            storePassword 'dimsum123'
+            keyAlias 'dimsumpos'
+            keyPassword 'dimsum123'
+        }
     }
 
     buildTypes {
         release {
             minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.release
         }
+        debug {
+            minifyEnabled false
+            debuggable true
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
     }
 }
 
 dependencies {
-    implementation 'androidx.appcompat:appcompat:1.4.2'
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'androidx.core:core:1.12.0'
+    implementation 'androidx.multidex:multidex:2.0.1'
 }

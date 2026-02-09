@@ -53,6 +53,21 @@ function showComingSoon(e) {
 onMounted(async () => {
   settingsStore.loadSettings()
   
+  // Handle table parameter from QR code
+  const tableParam = route.query.table
+  if (tableParam) {
+    try {
+      // Fetch table info from API
+      const response = await api.get(`/tables/code/${tableParam}`)
+      if (response.data) {
+        cartStore.setTable(response.data.code, response.data.name)
+        console.log('Table set from QR:', response.data.name)
+      }
+    } catch (error) {
+      console.error('Failed to load table from QR:', error)
+    }
+  }
+  
   // Load user from auth store or local storage
   if (authStore.user) {
     user.value = authStore.user
@@ -150,7 +165,7 @@ function formatCurrency(value) {
 </script>
 
 <template>
-  <div class="bg-slate-50 min-h-screen pb-24">
+  <div class="bg-slate-50 min-h-screen pb-24 dark:bg-gray-900">
     
     <!-- 1. Top Section with Carousel -->
     <div class="relative rounded-b-xl overflow-hidden shadow-lg">
@@ -211,7 +226,7 @@ function formatCurrency(value) {
 
     <!-- 2. User Info Bar (Floating) -->
     <div class="px-4 -mt-6 relative z-20">
-      <div class="bg-white rounded-xl shadow-lg shadow-slate-200/50 p-3 flex justify-between items-center border border-slate-100">
+      <div class="bg-white rounded-xl shadow-lg shadow-slate-200/50 p-3 flex justify-between items-center border border-slate-100 dark:bg-gray-800 dark:border-gray-700 dark:shadow-gray-900/50">
         <div class="flex items-center gap-2.5">
           <div class="w-9 h-9 bg-white rounded-lg shadow-sm flex items-center justify-center text-orange-500 shrink-0">
             <template v-if="cartStore.hasTable">
@@ -226,7 +241,7 @@ function formatCurrency(value) {
           <div class="flex flex-col">
             <!-- Show both customer name and table when both are available -->
             <template v-if="authStore.isAuthenticated && cartStore.hasTable">
-              <span class="font-semibold text-slate-800 text-sm leading-tight">Hi, {{ user.name }}</span>
+              <span class="font-semibold text-slate-800 text-sm leading-tight dark:text-gray-100">Hi, {{ user.name }}</span>
               <div class="flex items-center gap-1">
                 <span class="text-[9px] text-orange-500 font-bold uppercase tracking-wider">Meja:</span>
                 <span class="font-bold text-orange-600 text-xs">{{ cartStore.tableName }}</span>
@@ -235,11 +250,11 @@ function formatCurrency(value) {
             <!-- Show only table when not authenticated but has table -->
             <template v-else-if="cartStore.hasTable">
               <span class="text-[10px] text-orange-500 font-bold uppercase tracking-wider leading-none mb-0.5">Meja Anda</span>
-              <span class="font-bold text-slate-800 text-base leading-none">{{ cartStore.tableName }}</span>
+              <span class="font-bold text-slate-800 text-base leading-none dark:text-gray-100">{{ cartStore.tableName }}</span>
             </template>
             <!-- Show only customer name when authenticated but no table -->
             <template v-else>
-              <span class="font-semibold text-slate-800 text-base">{{ user.name ? 'Hi, ' + user.name : 'Selamat Datang' }}</span>
+              <span class="font-semibold text-slate-800 text-base dark:text-gray-100">{{ user.name ? 'Hi, ' + user.name : 'Selamat Datang' }}</span>
             </template>
           </div>
         </div>
@@ -264,7 +279,7 @@ function formatCurrency(value) {
     <div class="px-4 mt-3 text-left">
       <div class="bg-white rounded-[24px] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100/60 p-5 relative overflow-hidden">
         <div class="flex justify-between items-center mb-5">
-          <h2 class="text-base font-extrabold text-slate-800 flex items-center gap-2">
+          <h2 class="text-base font-extrabold text-slate-800 flex items-center gap-2 dark:text-gray-100">
             Menu Terlaris 🔥
           </h2>
           <router-link to="/customer/menu" class="text-[11px] font-bold text-orange-500 bg-orange-50 px-2.5 py-1 rounded-full active:scale-95 transition-all">Lihat Semua</router-link>
@@ -279,11 +294,15 @@ function formatCurrency(value) {
             class="min-w-[150px] max-w-[150px] bg-slate-50 rounded-2xl border border-slate-100/50 overflow-hidden group active:scale-95 transition-all duration-300 cursor-pointer"
           >
             <div class="relative h-24 overflow-hidden">
-               <LazyImage 
-                 :src="comb.display_image" 
-                 class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" 
-                 alt="Package" 
-               />
+              <LazyImage 
+                v-if="comb.display_image"
+                :src="comb.display_image" 
+                class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" 
+                alt="Package" 
+              />
+              <div v-else class="w-full h-full flex items-center justify-center text-3xl bg-slate-100 dark:bg-slate-800">
+                📦
+              </div>
                <div class="absolute top-2 right-2 bg-orange-500/90 backdrop-blur-sm px-1.5 py-0.5 rounded-full shadow-sm">
                   <span class="text-[8px] font-bold text-white uppercase tracking-wider">Hemat</span>
                </div>

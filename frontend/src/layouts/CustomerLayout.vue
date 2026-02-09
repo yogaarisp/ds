@@ -96,7 +96,7 @@ function handleNavClick(item) {
 </script>
 
 <template>
-  <div class="min-h-screen bg-slate-50 pb-[80px]">
+  <div class="min-h-screen bg-slate-50 dark:bg-slate-900 pb-[80px]">
     
     <!-- Page Content -->
     <router-view v-slot="{ Component }">
@@ -108,14 +108,14 @@ function handleNavClick(item) {
     </router-view>
 
     <!-- Bottom Navigation Bar -->
-    <div class="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-xl border-t border-slate-200/50 pb-safe pt-1 px-6 rounded-t-2xl shadow-[0_-4px_20px_rgba(0,0,0,0.04)] z-50">
+    <div class="fixed bottom-0 left-0 right-0 bg-white/80 dark:bg-slate-800/80 backdrop-blur-xl border-t border-slate-200/50 dark:border-slate-700/50 pb-safe pt-1 px-6 rounded-t-2xl shadow-[0_-4px_20px_rgba(0,0,0,0.04)] dark:shadow-[0_-4px_20px_rgba(0,0,0,0.2)] z-50">
       <div class="flex justify-between items-center max-w-md mx-auto">
         <div 
           v-for="item in navItems" 
           :key="item.name"
           @click="handleNavClick(item)"
           class="flex flex-col items-center gap-0.5 py-1 px-2 transition-all duration-300 group cursor-pointer"
-          :class="isActive(item.path) ? 'text-orange-500' : 'text-slate-400'"
+          :class="isActive(item.path) ? 'text-orange-500' : 'text-slate-400 dark:text-slate-500'"
         >
           <div 
             class="relative flex items-center justify-center transition-all duration-300"

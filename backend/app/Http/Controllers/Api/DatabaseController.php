@@ -13,16 +13,27 @@ use Carbon\Carbon;
 
 class DatabaseController extends Controller
 {
-    public function __construct()
+    /**
+     * Check if the authenticated user is an owner
+     */
+    private function checkOwnerRole()
     {
-        // Only allow owner role to access database management
-        $this->middleware('auth:sanctum');
+        if (!auth()->user() || auth()->user()->role !== 'owner') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Access denied. Owner role required.'
+            ], 403);
+        }
+        return null;
     }
     /**
      * Export database to SQL file
      */
     public function export()
     {
+        $roleCheck = $this->checkOwnerRole();
+        if ($roleCheck) return $roleCheck;
+
         try {
             $filename = 'database_backup_' . Carbon::now()->format('Y-m-d_H-i-s') . '.sql';
             $filepath = storage_path('app/backups/' . $filename);
@@ -68,10 +79,13 @@ class DatabaseController extends Controller
                 ], 500);
             }
 
-            // Return file download response
+            // Return file download response with proper headers
             return response()->download($filepath, $filename, [
                 'Content-Type' => 'application/sql',
-                'Content-Disposition' => 'attachment; filename="' . $filename . '"'
+                'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+                'Cache-Control' => 'no-cache, no-store, must-revalidate',
+                'Pragma' => 'no-cache',
+                'Expires' => '0'
             ])->deleteFileAfterSend(true);
 
         } catch (\Exception $e) {
@@ -89,11 +103,16 @@ class DatabaseController extends Controller
     {
         $database = config('database.connections.mysql.database');
         
-        $sql = "-- Database Export\n";
+        $sql = "-- MySQL Database Export\n";
         $sql .= "-- Generated on: " . Carbon::now()->format('Y-m-d H:i:s') . "\n";
-        $sql .= "-- Database: {$database}\n\n";
+        $sql .= "-- Database: {$database}\n";
+        $sql .= "-- Host: " . config('database.connections.mysql.host') . "\n\n";
         
-        $sql .= "SET FOREIGN_KEY_CHECKS = 0;\n\n";
+        $sql .= "SET FOREIGN_KEY_CHECKS = 0;\n";
+        $sql .= "SET SQL_MODE = \"NO_AUTO_VALUE_ON_ZERO\";\n";
+        $sql .= "SET AUTOCOMMIT = 0;\n";
+        $sql .= "START TRANSACTION;\n";
+        $sql .= "SET time_zone = \"+00:00\";\n\n";
 
         // Get all tables
         $tables = DB::select('SHOW TABLES');
@@ -104,7 +123,9 @@ class DatabaseController extends Controller
             
             // Get table structure
             $createTable = DB::select("SHOW CREATE TABLE `{$tableName}`")[0];
-            $sql .= "-- Table structure for `{$tableName}`\n";
+            $sql .= "-- --------------------------------------------------------\n";
+            $sql .= "-- Table structure for table `{$tableName}`\n";
+            $sql .= "-- --------------------------------------------------------\n\n";
             $sql .= "DROP TABLE IF EXISTS `{$tableName}`;\n";
             $sql .= $createTable->{'Create Table'} . ";\n\n";
             
@@ -112,8 +133,15 @@ class DatabaseController extends Controller
             $rows = DB::table($tableName)->get();
             
             if ($rows->count() > 0) {
-                $sql .= "-- Data for table `{$tableName}`\n";
-                $sql .= "INSERT INTO `{$tableName}` VALUES\n";
+                $sql .= "-- --------------------------------------------------------\n";
+                $sql .= "-- Dumping data for table `{$tableName}`\n";
+                $sql .= "-- --------------------------------------------------------\n\n";
+                
+                // Get column names
+                $columns = array_keys((array) $rows->first());
+                $columnList = '`' . implode('`, `', $columns) . '`';
+                
+                $sql .= "INSERT INTO `{$tableName}` ({$columnList}) VALUES\n";
                 
                 $values = [];
                 foreach ($rows as $row) {
@@ -121,6 +149,8 @@ class DatabaseController extends Controller
                     foreach ($row as $value) {
                         if (is_null($value)) {
                             $rowData[] = 'NULL';
+                        } elseif (is_numeric($value)) {
+                            $rowData[] = $value;
                         } else {
                             $rowData[] = "'" . addslashes($value) . "'";
                         }
@@ -132,7 +162,9 @@ class DatabaseController extends Controller
             }
         }
         
+        $sql .= "COMMIT;\n";
         $sql .= "SET FOREIGN_KEY_CHECKS = 1;\n";
+        $sql .= "\n-- Export completed on " . Carbon::now()->format('Y-m-d H:i:s') . "\n";
         
         file_put_contents($filepath, $sql);
     }
@@ -142,6 +174,9 @@ class DatabaseController extends Controller
      */
     public function import(Request $request)
     {
+        $roleCheck = $this->checkOwnerRole();
+        if ($roleCheck) return $roleCheck;
+
         $request->validate([
             'sql_file' => 'required|file|mimes:sql,txt|max:51200' // Max 50MB
         ]);
@@ -239,6 +274,9 @@ class DatabaseController extends Controller
      */
     public function info()
     {
+        $roleCheck = $this->checkOwnerRole();
+        if ($roleCheck) return $roleCheck;
+
         try {
             $database = config('database.connections.mysql.database');
             

@@ -251,8 +251,16 @@ class PackageController extends Controller
                     return $item->quantity . 'x ' . ($item->product->name ?? 'Produk');
                 })->implode(', ');
                 
-                // Fallback image to package image if combination image is missing
-                $comb->display_image = $comb->image ?? $pkg->image;
+                // User wants icons for missing images, so we remove the product fallback.
+                // Only use combination image or package image.
+                $imagePath = $comb->image ?? $pkg->image;
+                
+                // Prepend 'storage/' if it's a local path and not already prefixed
+                if ($imagePath && !str_starts_with($imagePath, 'http') && !str_starts_with($imagePath, 'storage/')) {
+                    $imagePath = 'storage/' . $imagePath;
+                }
+                
+                $comb->display_image = $imagePath;
                 
                 return $comb;
             });
