@@ -31,7 +31,7 @@ class PaymentMethodController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'type' => 'required|in:cash,transfer,qris,other',
+            'type' => 'required|in:cash,transfer,qris,ewallet,other',
             'account_name' => 'nullable|string|max:255',
             'account_number' => 'nullable|string|max:255',
             'qr_code_image' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
@@ -52,7 +52,7 @@ class PaymentMethodController extends Controller
     {
         $validated = $request->validate([
             'name' => 'string|max:255',
-            'type' => 'in:cash,transfer,qris,other',
+            'type' => 'in:cash,transfer,qris,ewallet,other',
             'account_name' => 'nullable|string|max:255',
             'account_number' => 'nullable|string|max:255',
             'qr_code_image' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',

@@ -509,7 +509,7 @@ function getRoleLabel(role) {
 }
 
 function getPaymentTypeLabel(type) {
-  const labels = { cash: 'Cash', transfer: 'Transfer', qris: 'QRIS', other: 'Lainnya' }
+  const labels = { cash: 'Cash', transfer: 'Transfer', qris: 'QRIS', ewallet: 'E-Wallet', other: 'Lainnya' }
   return labels[type] || type
 }
 
@@ -686,6 +686,7 @@ function getPaymentTypeIcon(type) {
     cash: '💵',
     transfer: '🏦',
     qris: '📱',
+    ewallet: '💰',
     other: '💳'
   }
   return icons[type] || '💳'
@@ -1469,11 +1470,12 @@ function handleImportFileChange(event) {
               <option value="cash">Cash (Tunai)</option>
               <option value="transfer">Transfer Bank</option>
               <option value="qris">QRIS</option>
+              <option value="ewallet">E-Wallet</option>
               <option value="other">Lainnya</option>
             </select>
           </div>
 
-          <div v-if="paymentForm.type === 'transfer' || paymentForm.type === 'qris'" class="space-y-3 animate-fade-in-up">
+          <div v-if="paymentForm.type === 'transfer' || paymentForm.type === 'qris' || paymentForm.type === 'ewallet'" class="space-y-3 animate-fade-in-up">
             <div class="space-y-1">
               <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">No. Rek / ID</label>
               <input v-model="paymentForm.account_number" type="text" class="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-primary-500/10" placeholder="Nomor rekening..." />
