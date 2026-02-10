@@ -774,19 +774,19 @@ async function printReceipt(transactionData) {
     <div v-if="showTransferModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end justify-center z-[200] animate-fade-in" @click="showTransferModal = false">
       <div @click.stop class="bg-white dark:bg-slate-800 rounded-t-3xl w-full max-w-md shadow-2xl overflow-hidden animate-slide-up">
         <!-- Handle Bar -->
-        <div class="flex justify-center pt-3 pb-2">
-          <div class="w-12 h-1.5 bg-slate-200 dark:bg-slate-600 rounded-full"></div>
+        <div class="flex justify-center pt-2 pb-1">
+          <div class="w-10 h-1 bg-slate-200 dark:bg-slate-600 rounded-full"></div>
         </div>
 
         <!-- Header -->
-        <div class="px-6 pb-4 border-b border-slate-100 dark:border-slate-700">
+        <div class="px-4 pb-3 border-b border-slate-100 dark:border-slate-700">
           <div class="flex items-center justify-between">
             <div>
-              <h2 class="text-lg font-bold text-slate-800 dark:text-slate-100">Detail Transfer</h2>
-              <p class="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{{ selectedTransferMethod?.name }}</p>
+              <h2 class="text-base font-bold text-slate-800 dark:text-slate-100">Detail Transfer</h2>
+              <p class="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">{{ selectedTransferMethod?.name }}</p>
             </div>
-            <button @click="showTransferModal = false" class="w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-500 hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-500 transition-all">
-              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <button @click="showTransferModal = false" class="w-7 h-7 flex items-center justify-center rounded-full bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-500 hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-500 transition-all">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
@@ -794,92 +794,65 @@ async function printReceipt(transactionData) {
         </div>
 
         <!-- Content -->
-        <div class="p-6 space-y-4 max-h-[60vh] overflow-y-auto">
-          <!-- Bank Icon -->
-          <div class="flex justify-center">
-            <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white shadow-lg shadow-blue-500/30">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z" />
-              </svg>
-            </div>
-          </div>
-
+        <div class="p-4 space-y-3">
           <!-- Account Number -->
-          <div class="bg-slate-50 dark:bg-slate-700/50 rounded-2xl p-4 border border-slate-100 dark:border-slate-600">
-            <div class="flex items-center justify-between mb-2">
-              <p class="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Nomor Rekening</p>
+          <div class="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-3 border border-slate-100 dark:border-slate-600">
+            <div class="flex items-center justify-between mb-1.5">
+              <p class="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Nomor Rekening</p>
               <button 
                 @click="copyToClipboard(selectedTransferMethod?.account_number, 'Nomor rekening')"
-                class="flex items-center gap-1.5 px-2.5 py-1 bg-white dark:bg-slate-600 rounded-lg text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30 transition-all active:scale-95 border border-slate-200 dark:border-slate-500"
+                class="flex items-center gap-1 px-2 py-0.5 bg-white dark:bg-slate-600 rounded-lg text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30 transition-all active:scale-95 border border-slate-200 dark:border-slate-500"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                 </svg>
-                <span class="text-[10px] font-bold">Salin</span>
+                <span class="text-[9px] font-bold">Salin</span>
               </button>
             </div>
-            <p class="text-2xl font-bold text-slate-800 dark:text-slate-100 tracking-wider font-mono">
+            <p class="text-lg font-bold text-slate-800 dark:text-slate-100 tracking-wider font-mono">
               {{ selectedTransferMethod?.account_number }}
             </p>
           </div>
 
           <!-- Account Name -->
-          <div v-if="selectedTransferMethod?.account_name" class="bg-slate-50 dark:bg-slate-700/50 rounded-2xl p-4 border border-slate-100 dark:border-slate-600">
-            <div class="flex items-center justify-between mb-2">
-              <p class="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Atas Nama</p>
+          <div v-if="selectedTransferMethod?.account_name" class="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-3 border border-slate-100 dark:border-slate-600">
+            <div class="flex items-center justify-between mb-1.5">
+              <p class="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Atas Nama</p>
               <button 
                 @click="copyToClipboard(selectedTransferMethod?.account_name, 'Nama rekening')"
-                class="flex items-center gap-1.5 px-2.5 py-1 bg-white dark:bg-slate-600 rounded-lg text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30 transition-all active:scale-95 border border-slate-200 dark:border-slate-500"
+                class="flex items-center gap-1 px-2 py-0.5 bg-white dark:bg-slate-600 rounded-lg text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30 transition-all active:scale-95 border border-slate-200 dark:border-slate-500"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                 </svg>
-                <span class="text-[10px] font-bold">Salin</span>
+                <span class="text-[9px] font-bold">Salin</span>
               </button>
             </div>
-            <p class="text-lg font-bold text-slate-800 dark:text-slate-100">
+            <p class="text-base font-bold text-slate-800 dark:text-slate-100">
               {{ selectedTransferMethod?.account_name }}
             </p>
           </div>
 
-          <!-- Total Amount -->
-          <div class="bg-gradient-to-br from-primary-500 to-primary-600 rounded-2xl p-4 text-white shadow-lg shadow-primary-500/30">
-            <p class="text-xs font-bold uppercase tracking-widest opacity-90 mb-1">Total Transfer</p>
-            <p class="text-3xl font-bold tracking-tight">
-              {{ formatCurrency(cartStore.subtotal) }}
-            </p>
-          </div>
-
           <!-- Instructions -->
-          <div class="bg-blue-50 dark:bg-blue-900/30 border border-blue-100 dark:border-blue-800 rounded-2xl p-4">
-            <div class="flex items-start gap-3">
-              <div class="w-8 h-8 rounded-lg bg-blue-500 flex items-center justify-center text-white shrink-0">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <div class="bg-blue-50 dark:bg-blue-900/30 border border-blue-100 dark:border-blue-800 rounded-xl p-3">
+            <div class="flex items-start gap-2">
+              <div class="w-6 h-6 rounded-lg bg-blue-500 flex items-center justify-center text-white shrink-0">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
               <div class="flex-1">
-                <p class="text-xs font-bold text-blue-700 dark:text-blue-300 mb-2">Cara Transfer:</p>
-                <ol class="text-xs text-blue-600 dark:text-blue-400 space-y-1.5 list-decimal list-inside">
-                  <li>Buka aplikasi mobile banking Anda</li>
+                <p class="text-[10px] font-bold text-blue-700 dark:text-blue-300 mb-1.5">Cara Transfer:</p>
+                <ol class="text-[10px] text-blue-600 dark:text-blue-400 space-y-1 list-decimal list-inside leading-relaxed">
+                  <li>Buka mobile banking Anda</li>
                   <li>Pilih menu Transfer</li>
-                  <li>Masukkan nomor rekening di atas</li>
-                  <li>Transfer sesuai nominal yang tertera</li>
-                  <li>Klik "Bayar Sekarang" setelah transfer berhasil</li>
+                  <li>Masukkan nomor rekening</li>
+                  <li>Transfer sesuai nominal</li>
+                  <li>Klik "Bayar Sekarang" setelah berhasil</li>
                 </ol>
               </div>
             </div>
           </div>
-        </div>
-
-        <!-- Footer Button -->
-        <div class="p-4 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
-          <button 
-            @click="showTransferModal = false"
-            class="w-full bg-primary-500 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-primary-500/25 hover:bg-primary-600 transition-all active:scale-[0.98]"
-          >
-            Mengerti, Lanjutkan
-          </button>
         </div>
       </div>
     </div>
