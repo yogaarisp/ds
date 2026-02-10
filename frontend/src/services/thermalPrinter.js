@@ -2,9 +2,9 @@
  * Thermal Printer Service
  * Support for RPN02N (58mm) and RPN02 (80mm)
  * Using ESC/POS commands via Web Bluetooth API
+ * Browser-compatible implementation (no Node.js dependencies)
  */
 
-import { Buffer } from 'escpos-buffer'
 import { useSettingsStore } from '@/stores/settings'
 
 class ThermalPrinterService {
@@ -13,6 +13,21 @@ class ThermalPrinterService {
     this.characteristic = null
     this.connected = false
     this.printerWidth = 58 // Default 58mm
+  }
+
+  /**
+   * Convert string to bytes for ESC/POS
+   */
+  stringToBytes(str) {
+    const encoder = new TextEncoder()
+    return encoder.encode(str)
+  }
+
+  /**
+   * Create ESC/POS command bytes
+   */
+  createCommand(...bytes) {
+    return new Uint8Array(bytes)
   }
 
   /**

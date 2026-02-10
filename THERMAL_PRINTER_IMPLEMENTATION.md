@@ -55,11 +55,13 @@ Implementasi auto-print untuk thermal printer RPN02N (58mm) dan RPN02 (80mm) men
 
 ## 🔧 Installation
 
-### 1. Install Dependencies
-```bash
-cd frontend
-npm install escpos-buffer
-```
+### 1. No Additional Dependencies Required
+The thermal printer feature uses native browser APIs only:
+- **TextEncoder**: For string to byte conversion
+- **Uint8Array**: For ESC/POS command generation
+- **Web Bluetooth API**: For printer communication
+
+No npm packages needed! The implementation is fully browser-compatible.
 
 ### 2. Files Created
 - `frontend/src/services/thermalPrinter.js`
@@ -326,8 +328,9 @@ setAutoPrint(true) // or false
 ## 📚 References
 
 - [Web Bluetooth API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Bluetooth_API)
-- [ESC/POS Commands](https://reference.epson-biz.com/modules/ref_escpos/index.php)
-- [escpos-buffer NPM](https://www.npmjs.com/package/escpos-buffer)
+- [ESC/POS Commands Reference](https://reference.epson-biz.com/modules/ref_escpos/index.php)
+- [TextEncoder API](https://developer.mozilla.org/en-US/docs/Web/API/TextEncoder)
+- [Uint8Array](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Uint8Array)
 
 ---
 
