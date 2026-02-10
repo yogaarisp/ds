@@ -47,8 +47,11 @@ const paymentForm = ref({
   type: 'cash',
   account_name: '',
   account_number: '',
+  qr_code_image: null,
   is_active: true,
 })
+const qrCodeFile = ref(null)
+const qrCodePreview = ref(null)
 
 // Carousel Slides
 const carouselSlides = ref([])
@@ -341,8 +344,11 @@ function openAddPayment() {
     type: 'cash',
     account_name: '',
     account_number: '',
+    qr_code_image: null,
     is_active: true,
   }
+  qrCodeFile.value = null
+  qrCodePreview.value = null
   showPaymentModal.value = true
 }
 
@@ -353,21 +359,57 @@ function openEditPayment(payment) {
     type: payment.type,
     account_name: payment.account_name,
     account_number: payment.account_number,
+    qr_code_image: payment.qr_code_image,
     is_active: payment.is_active,
+  }
+  qrCodeFile.value = null
+  // Set preview if QR code exists
+  if (payment.qr_code_image) {
+    qrCodePreview.value = `${STORAGE_BASE_URL}/${payment.qr_code_image}`
+  } else {
+    qrCodePreview.value = null
   }
   showPaymentModal.value = true
 }
 
+function handleQRCodeUpload(event) {
+  const file = event.target.files[0]
+  if (file) {
+    qrCodeFile.value = file
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      qrCodePreview.value = e.target.result
+    }
+    reader.readAsDataURL(file)
+  }
+}
+
 async function savePayment() {
   try {
+    const formData = new FormData()
+    formData.append('name', paymentForm.value.name)
+    formData.append('type', paymentForm.value.type)
+    formData.append('account_name', paymentForm.value.account_name || '')
+    formData.append('account_number', paymentForm.value.account_number || '')
+    formData.append('is_active', paymentForm.value.is_active ? '1' : '0')
+    
+    // Add QR code image if uploaded
+    if (qrCodeFile.value) {
+      formData.append('qr_code_image', qrCodeFile.value)
+    }
+
     if (editingPayment.value) {
-      await paymentMethodApi.update(editingPayment.value.id, paymentForm.value)
+      await paymentMethodApi.update(editingPayment.value.id, formData)
     } else {
-      await paymentMethodApi.create(paymentForm.value)
+      await paymentMethodApi.create(formData)
     }
 
     showPaymentModal.value = false
     await loadPaymentMethods()
+    
+    // Reset form
+    qrCodeFile.value = null
+    qrCodePreview.value = null
 
     Swal.fire({
       icon: 'success',
@@ -1439,6 +1481,43 @@ function handleImportFileChange(event) {
             <div class="space-y-1">
               <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Atas Nama</label>
               <input v-model="paymentForm.account_name" type="text" class="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-primary-500/10" placeholder="Nama pemilik..." />
+            </div>
+            
+            <!-- QR Code Upload (only for QRIS) -->
+            <div v-if="paymentForm.type === 'qris'" class="space-y-1">
+              <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">QR Code Image</label>
+              <div class="relative">
+                <input 
+                  type="file" 
+                  @change="handleQRCodeUpload" 
+                  accept="image/*"
+                  class="hidden" 
+                  id="qr-code-upload"
+                />
+                <label 
+                  for="qr-code-upload" 
+                  class="flex items-center justify-center gap-2 w-full bg-slate-50 border-2 border-dashed border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-500 hover:border-primary-300 hover:bg-primary-50/50 transition-all cursor-pointer"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  {{ qrCodePreview ? 'Ganti QR Code' : 'Upload QR Code' }}
+                </label>
+              </div>
+              
+              <!-- QR Code Preview -->
+              <div v-if="qrCodePreview" class="mt-2 relative">
+                <img :src="qrCodePreview" class="w-full h-48 object-contain bg-slate-50 rounded-xl border border-slate-200" alt="QR Code Preview" />
+                <button 
+                  @click="qrCodePreview = null; qrCodeFile = null" 
+                  type="button"
+                  class="absolute top-2 right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
             </div>
           </div>
 

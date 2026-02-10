@@ -524,6 +524,41 @@ async function printReceipt(transactionData) {
           </div>
         </div>
 
+        <!-- QR Code Display (for QRIS payment) -->
+        <div v-if="selectedPaymentMethod && paymentMethods.find(p => p.id === selectedPaymentMethod)?.type === 'qris' && paymentMethods.find(p => p.id === selectedPaymentMethod)?.qr_code_image" class="space-y-2 animate-fade-in-up">
+          <div class="flex items-center justify-between px-1">
+            <h2 class="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Scan QR Code</h2>
+          </div>
+          
+          <div class="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border border-slate-100 dark:border-slate-700">
+            <div class="text-center space-y-4">
+              <!-- QR Code Image -->
+              <div class="bg-white rounded-xl p-4 inline-block border-2 border-slate-100 dark:border-slate-600 shadow-sm">
+                <img 
+                  :src="`${STORAGE_BASE_URL}/${paymentMethods.find(p => p.id === selectedPaymentMethod)?.qr_code_image}`" 
+                  alt="QR Code" 
+                  class="w-48 h-48 object-contain mx-auto"
+                />
+              </div>
+              
+              <!-- Instructions -->
+              <div class="space-y-2">
+                <p class="text-sm font-bold text-slate-700 dark:text-slate-200">
+                  {{ paymentMethods.find(p => p.id === selectedPaymentMethod)?.name }}
+                </p>
+                <div class="bg-blue-50 dark:bg-blue-900/30 border border-blue-100 dark:border-blue-800 rounded-xl p-3">
+                  <p class="text-xs text-blue-700 dark:text-blue-300 font-medium flex items-start gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span>Scan QR code dengan aplikasi mobile banking Anda, lalu klik "Bayar Sekarang" setelah transfer berhasil</span>
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Summary -->
         <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 p-4 space-y-3">
           <!-- Guest Info (if not authenticated) -->

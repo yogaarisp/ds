@@ -11,6 +11,7 @@ class PaymentMethod extends Model
         'type',
         'account_name',
         'account_number',
+        'qr_code_image',
         'is_active',
     ];
 
