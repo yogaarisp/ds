@@ -2,11 +2,12 @@
 
 ## 📋 Ringkasan Cepat
 
-### 3 Cara Deploy ke VPS:
+### 4 Cara Deploy ke VPS:
 
-1. **Otomatis dengan Script** ⭐ (Recommended)
-2. **Manual Step-by-Step**
-3. **Git Pull** (Jika sudah setup)
+1. **Otomatis dengan Script** ⭐ (Recommended - Butuh SSH)
+2. **Manual Upload via FTP/FileZilla** 🌟 (Tanpa SSH)
+3. **Manual Step-by-Step** (Via SSH)
+4. **Git Pull** (Jika sudah setup)
 
 ---
 
@@ -57,7 +58,75 @@ nano check-vps-status.sh
 
 ---
 
-## 📝 Cara 2: Manual Step-by-Step
+## 🌟 Cara 2: Manual Upload via FTP/FileZilla (TANPA SSH)
+
+### Persiapan Files:
+```bash
+# Jalankan script untuk prepare files
+./prepare-manual-upload.sh
+
+# Script akan:
+# ✓ Build frontend
+# ✓ Copy backend files (exclude vendor, node_modules)
+# ✓ Create folder "upload-to-vps"
+# ✓ Create ZIP files
+# ✓ Create instructions
+```
+
+### Upload via FileZilla:
+
+1. **Install FileZilla:** https://filezilla-project.org/
+2. **Connect ke VPS:**
+   - Protocol: SFTP
+   - Host: your-vps-ip
+   - Port: 22
+   - User: root
+   - Password: your-password
+
+3. **Backup files lama:**
+   - Navigate ke: `/var/www/html/dimsumpos/`
+   - Rename `backend` → `backend-backup-20260210`
+
+4. **Upload:**
+   - Drag & drop folder `upload-to-vps/backend` ke server
+   - Atau upload `backend-upload.zip` lalu extract
+
+5. **Restore .env:**
+   - Copy `.env` dari backup folder
+   - Paste ke backend folder baru
+
+6. **Set permissions:**
+   - Right-click `backend/storage` → Permissions → 775
+   - Right-click `backend/bootstrap/cache` → Permissions → 775
+
+7. **Run commands** (butuh SSH atau cPanel Terminal):
+   ```bash
+   cd /var/www/html/dimsumpos/backend
+   composer install --no-dev --optimize-autoloader
+   php artisan migrate --force
+   php artisan config:cache
+   php artisan route:cache
+   php artisan storage:link
+   sudo systemctl restart php8.2-fpm nginx
+   ```
+
+### Upload via cPanel File Manager:
+
+1. **Login cPanel:** `http://your-domain.com:2083`
+2. **Open File Manager**
+3. **Navigate ke:** `public_html/dimsumpos/`
+4. **Backup:** Rename `backend` → `backend-backup-20260210`
+5. **Upload:** Click "Upload" → Upload `backend-upload.zip`
+6. **Extract:** Right-click ZIP → Extract
+7. **Restore .env** dari backup
+8. **Set permissions:** 775 untuk storage & cache
+9. **Run commands** via cPanel Terminal
+
+**Detail lengkap:** Baca `VPS_DEPLOY_MANUAL_UPLOAD.md`
+
+---
+
+## 📝 Cara 3: Manual Step-by-Step (Via SSH)
 
 ### Di Lokal:
 
@@ -135,7 +204,7 @@ php artisan up
 
 ---
 
-## 🔄 Cara 3: Git Pull (Jika Sudah Setup)
+## 🔄 Cara 4: Git Pull (Jika Sudah Setup)
 
 ### Setup (Sekali saja):
 ```bash
@@ -352,9 +421,11 @@ ls -la backups/
 
 ## 📚 Documentation Files
 
-- `VPS_UPDATE_GUIDE.md` - Panduan lengkap detail
+- `VPS_UPDATE_GUIDE.md` - Panduan lengkap detail (via SSH)
+- `VPS_DEPLOY_MANUAL_UPLOAD.md` - Panduan upload manual (tanpa SSH) 🌟
 - `DEPLOYMENT_QUICK_REFERENCE.md` - Quick reference (file ini)
-- `deploy-to-vps.sh` - Script deploy otomatis
+- `deploy-to-vps.sh` - Script deploy otomatis (butuh SSH)
+- `prepare-manual-upload.sh` - Script prepare files untuk upload manual 🌟
 - `rollback-vps.sh` - Script rollback
 - `check-vps-status.sh` - Script check status
 
