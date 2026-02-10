@@ -62,24 +62,22 @@ async function fetchPaymentMethods() {
       // Store all original methods
       allPaymentMethods.value = response.data.filter(pm => pm.is_active)
       
-      // Group payment methods - show only one "Transfer" option if there are transfer methods
+      // Group payment methods - show only one "Transfer Bank" option if there are transfer methods
       const transfers = allPaymentMethods.value.filter(pm => pm.type === 'transfer')
       const nonTransfers = allPaymentMethods.value.filter(pm => pm.type !== 'transfer')
       
-      // If there are transfer methods, add a grouped "Transfer" option
+      // Build payment methods list
+      paymentMethods.value = [...nonTransfers]
+      
+      // If there are transfer methods, add a grouped "Transfer Bank" option
       if (transfers.length > 0) {
-        paymentMethods.value = [
-          ...nonTransfers,
-          {
-            id: 'transfer-group',
-            name: 'Transfer Bank',
-            type: 'transfer',
-            is_active: true,
-            is_group: true // Flag to identify this as a group
-          }
-        ]
-      } else {
-        paymentMethods.value = nonTransfers
+        paymentMethods.value.push({
+          id: 'transfer-group',
+          name: 'Transfer Bank',
+          type: 'transfer',
+          is_active: true,
+          is_group: true // Flag to identify this as a group
+        })
       }
       
       // Set default to first method
@@ -146,8 +144,14 @@ const getPaymentIcon = (method) => {
       <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
       </svg>`
+  } else if (type === 'transfer' || method.is_group) {
+    // Bank / Transfer icon
+    return `
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z" />
+      </svg>`
   } else {
-    // Bank / Card / Transfer
+    // Card / Other
     return `
       <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
@@ -608,6 +612,7 @@ async function printReceipt(transactionData) {
                 <div class="flex-1 min-w-0">
                   <span class="block text-[11px] font-bold text-slate-700 dark:text-slate-200 leading-tight mb-0.5">{{ method.name }}</span>
                   <span class="block text-[9px] text-slate-400 dark:text-slate-500 leading-tight" v-if="method.type === 'cash'">Bayar di kasir</span>
+                  <span class="block text-[9px] text-slate-400 dark:text-slate-500 leading-tight" v-else-if="method.is_group">Pilih bank transfer</span>
                   <span class="block text-[9px] text-slate-400 dark:text-slate-500 leading-tight" v-else>Transfer otomatis</span>
                 </div>
                 <div v-if="selectedPaymentMethod === method.id" class="absolute top-2 right-2 text-primary-500 dark:text-primary-400">
@@ -635,7 +640,11 @@ async function printReceipt(transactionData) {
                 <p class="text-[10px] text-slate-400 dark:text-slate-500">
                   {{ selectedPaymentMethod === 'transfer-group' && selectedTransferMethod 
                     ? 'Transfer Bank' 
-                    : 'Bayar di Kasir' }}
+                    : selectedPaymentMethod === 'transfer-group'
+                      ? 'Pilih bank transfer'
+                      : paymentMethods.find(p => p.id === selectedPaymentMethod)?.type === 'cash'
+                        ? 'Bayar di Kasir'
+                        : 'Transfer Otomatis' }}
                 </p>
              </div>
              <div class="text-primary-500 dark:text-primary-400 text-xs font-bold">Ubah</div>
@@ -846,91 +855,83 @@ async function printReceipt(transactionData) {
 
     <!-- Transfer Bank List Modal -->
     <div v-if="showTransferModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end justify-center z-[200] animate-fade-in" @click="showTransferModal = false">
-      <div @click.stop class="bg-white dark:bg-slate-800 rounded-t-3xl w-full max-w-md shadow-2xl overflow-hidden animate-slide-up max-h-[80vh] flex flex-col">
+      <div @click.stop class="bg-white dark:bg-slate-800 rounded-t-2xl w-full max-w-md shadow-2xl overflow-hidden animate-slide-up max-h-[75vh] flex flex-col">
         <!-- Header -->
-        <div class="px-4 py-3 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between shrink-0">
-          <button @click="showTransferModal = false" class="flex items-center gap-1.5 text-primary-600 dark:text-primary-400 hover:text-primary-700 transition-all">
+        <div class="px-4 py-2.5 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between shrink-0">
+          <button @click="showTransferModal = false" class="flex items-center gap-1 text-primary-600 dark:text-primary-400 hover:text-primary-700 transition-all -ml-1">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7" />
             </svg>
-            <span class="text-sm font-bold">Kembali</span>
+            <span class="text-xs font-bold">Kembali</span>
           </button>
           <h2 class="text-sm font-bold text-slate-800 dark:text-slate-100">Pilih Bank</h2>
-          <div class="w-16"></div> <!-- Spacer for centering -->
+          <div class="w-14"></div>
         </div>
 
         <!-- Bank List -->
         <div class="flex-1 overflow-y-auto p-3 space-y-2">
-          <div 
+          <button
             v-for="bank in transferMethods" 
             :key="bank.id"
-            class="bg-white dark:bg-slate-700 rounded-xl p-3 border-2 transition-all"
+            @click="selectTransferBank(bank)"
+            class="w-full bg-slate-50 dark:bg-slate-700/50 rounded-xl p-2.5 border transition-all text-left"
             :class="selectedTransferMethod?.id === bank.id 
-              ? 'border-primary-500 shadow-md shadow-primary-500/20' 
-              : 'border-slate-100 dark:border-slate-600 hover:border-slate-200 dark:hover:border-slate-500'"
+              ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20' 
+              : 'border-slate-200 dark:border-slate-600 hover:border-slate-300 dark:hover:border-slate-500 active:scale-[0.98]'"
           >
-            <!-- Bank Name -->
-            <h3 class="text-sm font-bold text-slate-800 dark:text-slate-100 mb-2">
-              {{ bank.name }}
-            </h3>
-
-            <!-- Account Number -->
-            <div class="flex items-center gap-2 mb-1.5">
-              <div class="flex-1 flex items-center gap-2">
-                <div class="w-7 h-7 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center shrink-0">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-                  </svg>
+            <div class="flex items-center gap-2">
+              <!-- Bank Name & Number -->
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-1.5 mb-1">
+                  <h3 class="text-sm font-bold text-slate-800 dark:text-slate-100 truncate">
+                    {{ bank.name }}
+                  </h3>
+                  <div v-if="selectedTransferMethod?.id === bank.id" class="shrink-0 w-4 h-4 bg-primary-500 rounded-full flex items-center justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-2.5 w-2.5 text-white" viewBox="0 0 20 20" fill="currentColor">
+                      <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                    </svg>
+                  </div>
                 </div>
-                <span class="text-base font-bold text-slate-800 dark:text-slate-100 font-mono tracking-wide">
-                  {{ bank.account_number }}
-                </span>
+                <div class="flex items-center gap-1.5">
+                  <span class="text-xs font-mono font-semibold text-slate-600 dark:text-slate-300">
+                    {{ bank.account_number }}
+                  </span>
+                  <span v-if="bank.account_name" class="text-[10px] text-slate-400 dark:text-slate-500 truncate">
+                    • {{ bank.account_name }}
+                  </span>
+                </div>
               </div>
+
+              <!-- Copy Button -->
               <button 
-                @click="copyToClipboard(bank.account_number, 'Nomor rekening')"
-                class="w-8 h-8 bg-green-500 hover:bg-green-600 rounded-lg flex items-center justify-center text-white transition-all active:scale-95 shadow-sm"
+                @click.stop="copyToClipboard(bank.account_number, 'Nomor rekening')"
+                class="shrink-0 w-7 h-7 bg-green-500 hover:bg-green-600 rounded-lg flex items-center justify-center text-white transition-all active:scale-90"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                 </svg>
               </button>
             </div>
-
-            <!-- Account Name -->
-            <div v-if="bank.account_name" class="text-xs text-slate-500 dark:text-slate-400 ml-9 mb-2">
-              a.n. {{ bank.account_name }}
-            </div>
-
-            <!-- Select Button -->
-            <button
-              @click="selectTransferBank(bank)"
-              class="w-full py-1.5 rounded-lg font-bold text-xs transition-all"
-              :class="selectedTransferMethod?.id === bank.id
-                ? 'bg-primary-500 text-white shadow-sm'
-                : 'bg-slate-100 dark:bg-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-500'"
-            >
-              {{ selectedTransferMethod?.id === bank.id ? '✓ Dipilih' : 'Pilih Bank Ini' }}
-            </button>
-          </div>
+          </button>
 
           <!-- Empty State -->
           <div v-if="transferMethods.length === 0" class="text-center py-8">
-            <div class="w-12 h-12 bg-slate-100 dark:bg-slate-700 rounded-xl flex items-center justify-center mx-auto mb-3">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-slate-300 dark:text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <div class="w-10 h-10 bg-slate-100 dark:bg-slate-700 rounded-lg flex items-center justify-center mx-auto mb-2">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-slate-300 dark:text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
               </svg>
             </div>
-            <p class="text-xs text-slate-500 dark:text-slate-400">Tidak ada metode transfer tersedia</p>
+            <p class="text-xs text-slate-400 dark:text-slate-500">Tidak ada bank tersedia</p>
           </div>
         </div>
 
         <!-- Footer Button -->
-        <div v-if="selectedTransferMethod" class="p-3 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 shrink-0">
+        <div v-if="selectedTransferMethod" class="p-3 border-t border-slate-100 dark:border-slate-700 shrink-0">
           <button 
             @click="showTransferModal = false"
-            class="w-full bg-primary-500 text-white font-bold py-2.5 rounded-xl shadow-lg shadow-primary-500/25 hover:bg-primary-600 transition-all active:scale-[0.98] text-sm"
+            class="w-full bg-primary-500 text-white font-bold py-2 rounded-lg shadow-md shadow-primary-500/25 hover:bg-primary-600 transition-all active:scale-[0.98] text-xs"
           >
-            Lanjutkan dengan {{ selectedTransferMethod.name }}
+            Lanjutkan
           </button>
         </div>
       </div>
