@@ -18,9 +18,40 @@ const selectedPaymentMethod = ref(null)
 const paymentType = ref('full') // 'full' or 'dp'
 const dpAmount = ref('')
 
+// Transfer bank modal
+const showTransferModal = ref(false)
+const selectedTransferMethod = ref(null)
+const allPaymentMethods = ref([])
+
+// Grouped payment methods (transfer banks grouped into one)
+const displayPaymentMethods = computed(() => {
+  const transfers = allPaymentMethods.value.filter(pm => pm.type === 'transfer' && pm.is_active)
+  const nonTransfers = allPaymentMethods.value.filter(pm => pm.type !== 'transfer' && pm.is_active)
+  
+  if (transfers.length > 0) {
+    return [
+      ...nonTransfers,
+      {
+        id: 'transfer-group',
+        name: 'Transfer Bank',
+        type: 'transfer',
+        is_active: true,
+        is_group: true
+      }
+    ]
+  }
+  
+  return nonTransfers
+})
+
+// Transfer methods for modal
+const transferMethods = computed(() => {
+  return allPaymentMethods.value.filter(pm => pm.type === 'transfer' && pm.is_active)
+})
+
 // Initialize with Cash if available
 const initPaymentMethod = () => {
-  const cash = posStore.paymentMethods.find(m => m.type === 'cash')
+  const cash = displayPaymentMethods.value.find(m => m.type === 'cash')
   if (cash) selectPaymentMethod(cash)
 }
 
@@ -30,13 +61,18 @@ onMounted(async () => {
   if (posStore.paymentMethods.length === 0) {
     await posStore.fetchPaymentMethods()
   }
+  // Store all payment methods
+  allPaymentMethods.value = posStore.paymentMethods
   initPaymentMethod()
 })
 
 // Also watch for changes if initialized empty
 const unwatch = posStore.$subscribe((mutation, state) => {
-  if (state.paymentMethods.length > 0 && !selectedPaymentMethod.value) {
-    initPaymentMethod()
+  if (state.paymentMethods.length > 0) {
+    allPaymentMethods.value = state.paymentMethods
+    if (!selectedPaymentMethod.value) {
+      initPaymentMethod()
+    }
   }
 })
 
@@ -46,10 +82,43 @@ onUnmounted(() => {
 })
 
 function selectPaymentMethod(method) {
+  // If it's the transfer group, show bank list modal
+  if (method.id === 'transfer-group' || method.is_group) {
+    showTransferModal.value = true
+    return
+  }
+  
   selectedPaymentMethod.value = method
   if (method.type !== 'cash') {
     paidAmount.value = '' // Clear manual input
     dpAmount.value = ''
+  }
+}
+
+function selectTransferBank(method) {
+  selectedTransferMethod.value = method
+  selectedPaymentMethod.value = method
+  showTransferModal.value = false
+}
+
+async function copyToClipboard(text, label) {
+  try {
+    await navigator.clipboard.writeText(text)
+    Swal.fire({
+      icon: 'success',
+      title: 'Tersalin!',
+      text: `${label} berhasil disalin`,
+      timer: 1500,
+      showConfirmButton: false,
+      width: '280px',
+      customClass: {
+        popup: 'rounded-2xl text-sm',
+        title: 'text-base font-bold',
+        htmlContainer: 'text-xs'
+      }
+    })
+  } catch (err) {
+    console.error('Failed to copy:', err)
   }
 }
 
@@ -278,17 +347,40 @@ const quickDpAmounts = computed(() => {
 async function handleCheckout() {
   if (!isValid.value) return
 
+  // If transfer group selected but no bank chosen, show error
+  if (selectedPaymentMethod.value?.id === 'transfer-group' && !selectedTransferMethod.value) {
+    Swal.fire({
+      icon: 'warning',
+      title: 'Pilih Bank',
+      text: 'Silakan pilih bank untuk transfer',
+      confirmButtonColor: '#F97316',
+      width: '300px',
+      customClass: {
+        popup: 'rounded-2xl',
+        title: 'text-base font-bold',
+        htmlContainer: 'text-sm'
+      }
+    })
+    showTransferModal.value = true
+    return
+  }
+
   loading.value = true
   error.value = ''
 
   try {
     let result
     
+    // Use selected transfer bank ID if transfer group was selected
+    const paymentMethodId = selectedPaymentMethod.value?.id === 'transfer-group' 
+      ? selectedTransferMethod.value.id 
+      : selectedPaymentMethod.value.id
+    
     if (paymentType.value === 'dp') {
       // DP Payment
       result = await posStore.checkoutWithDp(
         dpAmountNumber.value,
-        selectedPaymentMethod.value.id
+        paymentMethodId
       )
       
       // Show DP success notification
@@ -312,7 +404,7 @@ async function handleCheckout() {
       })
     } else {
       // Full Payment (existing flow)
-      result = await posStore.checkout(paidAmountNumber.value, selectedPaymentMethod.value.id)
+      result = await posStore.checkout(paidAmountNumber.value, paymentMethodId)
       
       // Show SweetAlert2 notification
       await Swal.fire({
@@ -523,21 +615,21 @@ const quickAmounts = computed(() => {
             <label class="text-[9px] font-semibold text-slate-400 uppercase tracking-widest px-1">Metode Pembayaran</label>
             <div class="grid grid-cols-3 gap-2">
               <button
-                v-for="method in posStore.paymentMethods"
+                v-for="method in displayPaymentMethods"
                 :key="method.id"
                 @click="selectPaymentMethod(method)"
                 class="p-2.5 border-2 rounded-xl flex flex-col items-center justify-center gap-1.5 transition-all h-20 group relative"
-                :class="selectedPaymentMethod?.id === method.id 
+                :class="(selectedPaymentMethod?.id === method.id || (method.is_group && selectedTransferMethod))
                   ? 'border-primary-500 bg-primary-50/50 text-primary-700 shadow-sm' 
                   : 'border-slate-100 bg-slate-50/50 hover:bg-white hover:border-slate-200 text-slate-400'"
               >
                 <div 
                   class="transition-transform duration-300 group-hover:scale-110 [&>svg]:w-5 [&>svg]:h-5" 
-                  :class="selectedPaymentMethod?.id === method.id ? 'text-primary-500' : 'text-slate-300'"
+                  :class="(selectedPaymentMethod?.id === method.id || (method.is_group && selectedTransferMethod)) ? 'text-primary-500' : 'text-slate-300'"
                   v-html="getPaymentIcon(method)"
                 ></div>
                 <span class="text-[8px] font-semibold uppercase tracking-tight text-center leading-tight">{{ method.name }}</span>
-                <div v-if="selectedPaymentMethod?.id === method.id" class="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-primary-500 rounded-full"></div>
+                <div v-if="selectedPaymentMethod?.id === method.id || (method.is_group && selectedTransferMethod)" class="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-primary-500 rounded-full"></div>
               </button>
             </div>
           </div>
@@ -591,9 +683,22 @@ const quickAmounts = computed(() => {
           <!-- Non-Cash Info Compact -->
           <div v-else-if="selectedPaymentMethod" class="bg-slate-50 rounded-xl p-4 text-center border border-slate-100 animate-fade-in-up">
             <p class="text-[10px] text-slate-400 font-semibold mb-2 uppercase tracking-wider">Detail Pembayaran</p>
-            <p class="font-bold text-base text-slate-800 leading-tight">{{ selectedPaymentMethod.name }}</p>
+            <p class="font-bold text-base text-slate-800 leading-tight">
+              {{ selectedPaymentMethod.id === 'transfer-group' && selectedTransferMethod 
+                ? selectedTransferMethod.name 
+                : selectedPaymentMethod.name }}
+            </p>
             
-            <div v-if="selectedPaymentMethod.account_number" class="mt-3 pt-3 border-t border-slate-200/50">
+            <div v-if="selectedPaymentMethod.id === 'transfer-group' && selectedTransferMethod && selectedTransferMethod.account_number" class="mt-3 pt-3 border-t border-slate-200/50">
+              <p class="text-[9px] text-slate-400 font-semibold uppercase tracking-widest mb-1">No. Rekening / VA</p>
+              <p class="font-mono text-lg font-bold text-primary-600 tracking-wider">
+                {{ selectedTransferMethod.account_number }}
+              </p>
+              <p v-if="selectedTransferMethod.account_name" class="text-[11px] text-slate-500 font-semibold mt-0.5">
+                a.n. {{ selectedTransferMethod.account_name }}
+              </p>
+            </div>
+            <div v-else-if="selectedPaymentMethod.account_number" class="mt-3 pt-3 border-t border-slate-200/50">
               <p class="text-[9px] text-slate-400 font-semibold uppercase tracking-widest mb-1">No. Rekening / VA</p>
               <p class="font-mono text-lg font-bold text-primary-600 tracking-wider">
                 {{ selectedPaymentMethod.account_number }}
@@ -636,5 +741,119 @@ const quickAmounts = computed(() => {
         </div>
       </div>
     </div>
+
+    <!-- Transfer Bank List Modal -->
+    <div v-if="showTransferModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end justify-center z-[80] animate-fade-in" @click="showTransferModal = false">
+      <div @click.stop class="bg-white rounded-t-2xl w-full max-w-md shadow-2xl overflow-hidden animate-slide-up max-h-[75vh] flex flex-col">
+        <!-- Header -->
+        <div class="px-4 py-2.5 border-b border-slate-100 flex items-center justify-between shrink-0">
+          <button @click="showTransferModal = false" class="flex items-center gap-1 text-primary-600 hover:text-primary-700 transition-all -ml-1">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7" />
+            </svg>
+            <span class="text-xs font-bold">Kembali</span>
+          </button>
+          <h2 class="text-sm font-bold text-slate-800">Pilih Bank</h2>
+          <div class="w-14"></div>
+        </div>
+
+        <!-- Bank List -->
+        <div class="flex-1 overflow-y-auto p-3 space-y-2">
+          <button
+            v-for="bank in transferMethods" 
+            :key="bank.id"
+            @click="selectTransferBank(bank)"
+            class="w-full bg-slate-50 rounded-xl p-2.5 border transition-all text-left"
+            :class="selectedTransferMethod?.id === bank.id 
+              ? 'border-primary-500 bg-primary-50' 
+              : 'border-slate-200 hover:border-slate-300 active:scale-[0.98]'"
+          >
+            <div class="flex items-center gap-2">
+              <!-- Bank Name & Number -->
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-1.5 mb-1">
+                  <h3 class="text-sm font-bold text-slate-800 truncate">
+                    {{ bank.name }}
+                  </h3>
+                  <div v-if="selectedTransferMethod?.id === bank.id" class="shrink-0 w-4 h-4 bg-primary-500 rounded-full flex items-center justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-2.5 w-2.5 text-white" viewBox="0 0 20 20" fill="currentColor">
+                      <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                    </svg>
+                  </div>
+                </div>
+                <div class="flex items-center gap-1.5">
+                  <span class="text-xs font-mono font-semibold text-slate-600">
+                    {{ bank.account_number }}
+                  </span>
+                  <span v-if="bank.account_name" class="text-[10px] text-slate-400 truncate">
+                    • {{ bank.account_name }}
+                  </span>
+                </div>
+              </div>
+
+              <!-- Copy Button -->
+              <button 
+                @click.stop="copyToClipboard(bank.account_number, 'Nomor rekening')"
+                class="shrink-0 w-7 h-7 bg-green-500 hover:bg-green-600 rounded-lg flex items-center justify-center text-white transition-all active:scale-90"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+              </button>
+            </div>
+          </button>
+
+          <!-- Empty State -->
+          <div v-if="transferMethods.length === 0" class="text-center py-8">
+            <div class="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center mx-auto mb-2">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+              </svg>
+            </div>
+            <p class="text-xs text-slate-400">Tidak ada bank tersedia</p>
+          </div>
+        </div>
+
+        <!-- Footer Button -->
+        <div v-if="selectedTransferMethod" class="p-3 border-t border-slate-100 shrink-0">
+          <button 
+            @click="showTransferModal = false"
+            class="w-full bg-primary-500 text-white font-bold py-2 rounded-lg shadow-md shadow-primary-500/25 hover:bg-primary-600 transition-all active:scale-[0.98] text-xs"
+          >
+            Lanjutkan
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
+
+<style scoped>
+@keyframes slide-up {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-slide-up {
+  animation: slide-up 0.3s ease-out;
+}
+
+.animate-fade-in {
+  animation: fade-in 0.2s ease-out;
+}
+</style>
