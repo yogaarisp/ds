@@ -144,14 +144,8 @@ const getPaymentIcon = (method) => {
       <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
       </svg>`
-  } else if (type === 'transfer' || method.is_group) {
-    // Bank / Transfer icon
-    return `
-      <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z" />
-      </svg>`
   } else {
-    // Card / Other
+    // Bank / Card / Transfer
     return `
       <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
@@ -162,6 +156,7 @@ const getPaymentIcon = (method) => {
 function handlePaymentSelection(method) {
   // If it's the transfer group, show bank list modal
   if (method.id === 'transfer-group' || method.is_group) {
+    selectedPaymentMethod.value = 'transfer-group'
     showTransferModal.value = true
     return
   }
@@ -612,7 +607,6 @@ async function printReceipt(transactionData) {
                 <div class="flex-1 min-w-0">
                   <span class="block text-[11px] font-bold text-slate-700 dark:text-slate-200 leading-tight mb-0.5">{{ method.name }}</span>
                   <span class="block text-[9px] text-slate-400 dark:text-slate-500 leading-tight" v-if="method.type === 'cash'">Bayar di kasir</span>
-                  <span class="block text-[9px] text-slate-400 dark:text-slate-500 leading-tight" v-else-if="method.is_group">Pilih bank transfer</span>
                   <span class="block text-[9px] text-slate-400 dark:text-slate-500 leading-tight" v-else>Transfer otomatis</span>
                 </div>
                 <div v-if="selectedPaymentMethod === method.id" class="absolute top-2 right-2 text-primary-500 dark:text-primary-400">
@@ -641,10 +635,10 @@ async function printReceipt(transactionData) {
                   {{ selectedPaymentMethod === 'transfer-group' && selectedTransferMethod 
                     ? 'Transfer Bank' 
                     : selectedPaymentMethod === 'transfer-group'
-                      ? 'Pilih bank transfer'
+                      ? 'Pilih bank untuk transfer'
                       : paymentMethods.find(p => p.id === selectedPaymentMethod)?.type === 'cash'
                         ? 'Bayar di Kasir'
-                        : 'Transfer Otomatis' }}
+                        : 'Transfer otomatis' }}
                 </p>
              </div>
              <div class="text-primary-500 dark:text-primary-400 text-xs font-bold">Ubah</div>
