@@ -846,67 +846,67 @@ async function printReceipt(transactionData) {
 
     <!-- Transfer Bank List Modal -->
     <div v-if="showTransferModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end justify-center z-[200] animate-fade-in" @click="showTransferModal = false">
-      <div @click.stop class="bg-white dark:bg-slate-800 rounded-t-3xl w-full max-w-md shadow-2xl overflow-hidden animate-slide-up max-h-[85vh] flex flex-col">
+      <div @click.stop class="bg-white dark:bg-slate-800 rounded-t-3xl w-full max-w-md shadow-2xl overflow-hidden animate-slide-up max-h-[80vh] flex flex-col">
         <!-- Header -->
-        <div class="px-4 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between shrink-0">
-          <button @click="showTransferModal = false" class="flex items-center gap-2 text-primary-600 dark:text-primary-400 hover:text-primary-700 transition-all">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <div class="px-4 py-3 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between shrink-0">
+          <button @click="showTransferModal = false" class="flex items-center gap-1.5 text-primary-600 dark:text-primary-400 hover:text-primary-700 transition-all">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
             </svg>
             <span class="text-sm font-bold">Kembali</span>
           </button>
-          <h2 class="text-base font-bold text-slate-800 dark:text-slate-100">Pilih Bank</h2>
+          <h2 class="text-sm font-bold text-slate-800 dark:text-slate-100">Pilih Bank</h2>
           <div class="w-16"></div> <!-- Spacer for centering -->
         </div>
 
         <!-- Bank List -->
-        <div class="flex-1 overflow-y-auto p-4 space-y-3">
+        <div class="flex-1 overflow-y-auto p-3 space-y-2">
           <div 
             v-for="bank in transferMethods" 
             :key="bank.id"
-            class="bg-white dark:bg-slate-700 rounded-2xl p-4 border-2 transition-all"
+            class="bg-white dark:bg-slate-700 rounded-xl p-3 border-2 transition-all"
             :class="selectedTransferMethod?.id === bank.id 
-              ? 'border-primary-500 shadow-lg shadow-primary-500/20' 
+              ? 'border-primary-500 shadow-md shadow-primary-500/20' 
               : 'border-slate-100 dark:border-slate-600 hover:border-slate-200 dark:hover:border-slate-500'"
           >
             <!-- Bank Name -->
-            <h3 class="text-base font-bold text-slate-800 dark:text-slate-100 mb-3">
+            <h3 class="text-sm font-bold text-slate-800 dark:text-slate-100 mb-2">
               {{ bank.name }}
             </h3>
 
             <!-- Account Number -->
-            <div class="flex items-center gap-3 mb-2">
+            <div class="flex items-center gap-2 mb-1.5">
               <div class="flex-1 flex items-center gap-2">
-                <div class="w-8 h-8 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center shrink-0">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <div class="w-7 h-7 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center shrink-0">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
                   </svg>
                 </div>
-                <span class="text-lg font-bold text-slate-800 dark:text-slate-100 font-mono tracking-wide">
+                <span class="text-base font-bold text-slate-800 dark:text-slate-100 font-mono tracking-wide">
                   {{ bank.account_number }}
                 </span>
               </div>
               <button 
                 @click="copyToClipboard(bank.account_number, 'Nomor rekening')"
-                class="w-9 h-9 bg-green-500 hover:bg-green-600 rounded-xl flex items-center justify-center text-white transition-all active:scale-95 shadow-sm"
+                class="w-8 h-8 bg-green-500 hover:bg-green-600 rounded-lg flex items-center justify-center text-white transition-all active:scale-95 shadow-sm"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                 </svg>
               </button>
             </div>
 
             <!-- Account Name -->
-            <div v-if="bank.account_name" class="text-sm text-slate-500 dark:text-slate-400 ml-10">
+            <div v-if="bank.account_name" class="text-xs text-slate-500 dark:text-slate-400 ml-9 mb-2">
               a.n. {{ bank.account_name }}
             </div>
 
             <!-- Select Button -->
             <button
               @click="selectTransferBank(bank)"
-              class="w-full mt-3 py-2 rounded-xl font-bold text-sm transition-all"
+              class="w-full py-1.5 rounded-lg font-bold text-xs transition-all"
               :class="selectedTransferMethod?.id === bank.id
-                ? 'bg-primary-500 text-white shadow-md'
+                ? 'bg-primary-500 text-white shadow-sm'
                 : 'bg-slate-100 dark:bg-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-500'"
             >
               {{ selectedTransferMethod?.id === bank.id ? '✓ Dipilih' : 'Pilih Bank Ini' }}
@@ -914,21 +914,21 @@ async function printReceipt(transactionData) {
           </div>
 
           <!-- Empty State -->
-          <div v-if="transferMethods.length === 0" class="text-center py-12">
-            <div class="w-16 h-16 bg-slate-100 dark:bg-slate-700 rounded-2xl flex items-center justify-center mx-auto mb-4">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-slate-300 dark:text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <div v-if="transferMethods.length === 0" class="text-center py-8">
+            <div class="w-12 h-12 bg-slate-100 dark:bg-slate-700 rounded-xl flex items-center justify-center mx-auto mb-3">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-slate-300 dark:text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
               </svg>
             </div>
-            <p class="text-sm text-slate-500 dark:text-slate-400">Tidak ada metode transfer tersedia</p>
+            <p class="text-xs text-slate-500 dark:text-slate-400">Tidak ada metode transfer tersedia</p>
           </div>
         </div>
 
         <!-- Footer Button -->
-        <div v-if="selectedTransferMethod" class="p-4 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 shrink-0">
+        <div v-if="selectedTransferMethod" class="p-3 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 shrink-0">
           <button 
             @click="showTransferModal = false"
-            class="w-full bg-primary-500 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-primary-500/25 hover:bg-primary-600 transition-all active:scale-[0.98]"
+            class="w-full bg-primary-500 text-white font-bold py-2.5 rounded-xl shadow-lg shadow-primary-500/25 hover:bg-primary-600 transition-all active:scale-[0.98] text-sm"
           >
             Lanjutkan dengan {{ selectedTransferMethod.name }}
           </button>
