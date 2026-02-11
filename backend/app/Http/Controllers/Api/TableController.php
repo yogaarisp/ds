@@ -126,8 +126,14 @@ class TableController extends Controller
                 ->first();
         }
 
+        // Return table data directly (not nested) for easier frontend access
         return response()->json([
-            'table' => $table,
+            'id' => $table->id,
+            'name' => $table->name,
+            'code' => $table->code,
+            'status' => $table->status,
+            'capacity' => $table->capacity,
+            'qr_url' => $table->qr_url,
             'active_transaction' => $activeTransaction ? [
                 'customer_id' => $activeTransaction->customer_id,
                 'status' => $activeTransaction->status,

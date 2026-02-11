@@ -40,11 +40,26 @@ const transferMethods = computed(() => {
 onMounted(async () => {
   isMounted.value = true
   
+  // Wait a tick to ensure cartStore has fully initialized from localStorage
+  await new Promise(resolve => setTimeout(resolve, 50))
+  
+  console.log('🛒 Cart mounted - Auth & Table check:', {
+    isAuthenticated: authStore.isAuthenticated,
+    hasTable: cartStore.hasTable,
+    tableCode: cartStore.tableCode,
+    tableName: cartStore.tableName,
+    localStorage_table_code: localStorage.getItem('customer_table_code'),
+    localStorage_table_name: localStorage.getItem('customer_table_name')
+  })
+  
   // Prompt auth if guest without table
   if (!authStore.isAuthenticated && !cartStore.hasTable) {
+    console.log('⚠️ Guest without table - showing auth prompt')
     authStore.promptAuthChoice()
+    return // Don't load payment methods if showing auth prompt
   }
   
+  console.log('✅ Cart access allowed - loading data')
   await fetchPaymentMethods()
   await fetchTables()
 })

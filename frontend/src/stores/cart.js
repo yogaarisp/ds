@@ -5,9 +5,21 @@ export const useCartStore = defineStore('customerCart', () => {
   const cart = ref(JSON.parse(localStorage.getItem('customer_cart') || '[]'))
 
   // Table info (from QR scan)
-  const tableCode = ref(localStorage.getItem('customer_table_code') || null)
-  const tableName = ref(localStorage.getItem('customer_table_name') || null)
-  const tableExpiry = ref(localStorage.getItem('customer_table_expiry') || null)
+  // Make sure to handle "null" string and empty string
+  const storedTableCode = localStorage.getItem('customer_table_code')
+  const storedTableName = localStorage.getItem('customer_table_name')
+  const storedTableExpiry = localStorage.getItem('customer_table_expiry')
+  
+  const tableCode = ref(storedTableCode && storedTableCode !== 'null' ? storedTableCode : null)
+  const tableName = ref(storedTableName && storedTableName !== 'null' ? storedTableName : null)
+  const tableExpiry = ref(storedTableExpiry && storedTableExpiry !== 'null' ? storedTableExpiry : null)
+  
+  console.log('🏪 CartStore initialized:', {
+    tableCode: tableCode.value,
+    tableName: tableName.value,
+    tableExpiry: tableExpiry.value,
+    hasTable: !!tableCode.value
+  })
 
   // Persist cart to localStorage
   watch(cart, (newVal) => {
@@ -44,10 +56,12 @@ export const useCartStore = defineStore('customerCart', () => {
 
   // Actions
   function setTable(code, name) {
+    console.log('🏪 CartStore: Setting table -', { code, name })
     tableCode.value = code
     tableName.value = name
     // Clear old expiry when setting new table manually/via QR
     setTableExpiry(null)
+    console.log('✅ CartStore: Table set successfully')
   }
 
   function setTableExpiry(timestamp) {
@@ -135,6 +149,7 @@ export const useCartStore = defineStore('customerCart', () => {
     cart,
     subtotal,
     totalItems,
+    itemCount: totalItems, // Alias for backward compatibility
     tableCode,
     tableName,
     hasTable,

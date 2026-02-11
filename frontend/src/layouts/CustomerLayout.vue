@@ -15,12 +15,20 @@ const cartStore = useCartStore()
 async function detectTable(tableCode) {
   if (!tableCode) return
   
+  console.log('🔍 CustomerLayout: Detecting table from URL:', tableCode)
+  
   // Only proceed if the table code is DIFFERENT from current one
   // or if no table is set yet.
-  if (tableCode === cartStore.tableCode) return
+  if (tableCode === cartStore.tableCode) {
+    console.log('ℹ️ Table already set to:', tableCode)
+    return
+  }
 
   try {
+    console.log('📡 Calling API: /tables/code/' + tableCode)
     const res = await api.get(`/tables/code/${tableCode}`)
+    console.log('✅ API Response:', res.data)
+    
     if (res.data && res.data.id) {
       cartStore.setTable(res.data.code, res.data.name)
       
@@ -29,9 +37,17 @@ async function detectTable(tableCode) {
       cartStore.setTableExpiry(expiryTime)
       
       console.log('✅ Table session updated:', res.data.name, '(expires in 45 min)')
+      console.log('📦 CartStore state:', {
+        hasTable: cartStore.hasTable,
+        tableCode: cartStore.tableCode,
+        tableName: cartStore.tableName
+      })
+    } else {
+      console.warn('⚠️ API returned data but missing id:', res.data)
     }
   } catch (error) {
-    console.warn('⚠️ Table not found:', tableCode)
+    console.error('❌ Table not found:', tableCode)
+    console.error('Error details:', error.response?.data || error.message)
   }
 }
 

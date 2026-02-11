@@ -36,7 +36,7 @@ onMounted(async () => {
 
 async function handleLogout() {
   await authStore.logout()
-  router.push('/login')
+  // No need to push router here, authStore.logout() already handles redirect
 }
 
 const menuItems = [

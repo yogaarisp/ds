@@ -180,11 +180,17 @@ function handleAddToCartFromModal(item) {
    // We need to find the package ID. 
    // In the new logic, 'selectedCombination' has 'package_id'.
    
-   // Check auth or table session
-   if (!authStore.isAuthenticated && !cartStore.hasTable) {
-      authStore.promptAuthChoice()
-      return
-   }
+   console.log('🛒 Add to cart from modal - Auth & Table check:', {
+     isAuthenticated: authStore.isAuthenticated,
+     hasTable: cartStore.hasTable,
+     tableCode: cartStore.tableCode,
+     tableName: cartStore.tableName
+   })
+   
+   // REMOVED AUTH CHECK - Let user add to cart first, check auth at checkout
+   // This is more user-friendly for QR scan flow
+   
+   console.log('✅ Adding package to cart from modal')
    cartStore.addItem({
       type: 'package',
       id: selectedCombination.value.package_id, // Use stored package_id
@@ -200,12 +206,17 @@ function handleAddToCartFromModal(item) {
 }
 
 function addToCart(item, type = 'product') {
-  // Check auth or table session
-  if (!authStore.isAuthenticated && !cartStore.hasTable) {
-    authStore.promptAuthChoice()
-    return
-  }
+  console.log('🛒 Add to cart - Auth & Table check:', {
+    isAuthenticated: authStore.isAuthenticated,
+    hasTable: cartStore.hasTable,
+    tableCode: cartStore.tableCode,
+    tableName: cartStore.tableName
+  })
+  
+  // REMOVED AUTH CHECK - Let user add to cart first, check auth at checkout
+  // This is more user-friendly for QR scan flow
 
+  console.log('✅ Adding product to cart')
   if (type === 'product') {
     const price = item.final_price ?? item.base_price
     cartStore.addItem({
@@ -231,10 +242,18 @@ function formatCurrency(value) {
 }
 
 function goToCheckout() {
-  if (!authStore.isAuthenticated && !cartStore.hasTable) {
-    authStore.promptAuthChoice()
-    return
-  }
+  console.log('🛒 Go to checkout - Auth & Table check:', {
+    isAuthenticated: authStore.isAuthenticated,
+    hasTable: cartStore.hasTable,
+    tableCode: cartStore.tableCode,
+    tableName: cartStore.tableName,
+    cartItems: cartStore.cart.length
+  })
+  
+  // REMOVED AUTH CHECK - Let user go to cart, check auth there
+  // Cart page will handle auth prompt if needed
+  
+  console.log('✅ Navigating to cart')
   showCartPreview.value = false
   router.push('/customer/cart')
 }

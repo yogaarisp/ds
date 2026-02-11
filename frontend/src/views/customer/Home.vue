@@ -83,16 +83,33 @@ onMounted(async () => {
   // Handle table parameter from QR code
   const tableParam = route.query.table
   if (tableParam) {
+    console.log('🔍 QR Code detected with table:', tableParam)
     try {
       // Fetch table info from API
       const response = await api.get(`/tables/code/${tableParam}`)
+      console.log('✅ Table API response:', response.data)
       if (response.data) {
         cartStore.setTable(response.data.code, response.data.name)
-        console.log('Table set from QR:', response.data.name)
+        console.log('✅ Table set from QR:', response.data.name, '| Code:', response.data.code)
+        
+        // Set expiry 45 minutes from now
+        const expiryTime = Date.now() + (45 * 60 * 1000)
+        cartStore.setTableExpiry(expiryTime)
+        console.log('⏰ Table expiry set to:', new Date(expiryTime).toLocaleTimeString())
       }
     } catch (error) {
-      console.error('Failed to load table from QR:', error)
+      console.error('❌ Failed to load table from QR:', error)
+      console.error('Error details:', error.response?.data)
     }
+  } else {
+    console.log('ℹ️ No table parameter in URL')
+  }
+  
+  // Check if table is already set in store
+  if (cartStore.hasTable) {
+    console.log('✅ Table already in store:', cartStore.tableName, '| Code:', cartStore.tableCode)
+  } else {
+    console.log('⚠️ No table in store')
   }
   
   // Load user from auth store or local storage
@@ -151,12 +168,9 @@ function formatNumber(num) {
 
 
 function addToCart(product) {
-  // Check auth or table session
-  if (!authStore.isAuthenticated && !cartStore.hasTable) {
-    authStore.promptAuthChoice()
-    return
-  }
-
+  // REMOVED AUTH CHECK - Let user add to cart first
+  // Cart page will handle auth prompt if needed (only if no table session)
+  
   cartStore.addItem({
     type: 'product',
     id: product.id,
