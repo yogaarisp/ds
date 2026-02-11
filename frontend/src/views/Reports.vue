@@ -24,7 +24,8 @@ const historyFilters = ref({
   product_id: '',
 })
 
-const selectedDate = ref(new Date().toISOString().split('T')[0])
+const startDate = ref(new Date().toISOString().split('T')[0])
+const endDate = ref(new Date().toISOString().split('T')[0])
 
 onMounted(() => {
   loadDailySales()
@@ -53,7 +54,10 @@ async function loadProducts() {
 async function loadDailySales() {
   loading.value = true
   try {
-    const response = await reportApi.dailySales({ date: selectedDate.value })
+    const response = await reportApi.dailySales({ 
+      start_date: startDate.value,
+      end_date: endDate.value
+    })
     dailyData.value = response.data
   } catch (error) {
     console.error(error)
@@ -227,14 +231,26 @@ function getQuantityDisplay(item) {
 
     <!-- Daily Report -->
     <div v-else-if="activeTab === 'daily'" class="space-y-4 animate-fade-in-up">
-      <div class="flex items-center gap-3 bg-white/90 backdrop-blur px-3 py-2 rounded-2xl shadow-sm border border-slate-100 w-full md:w-fit">
-        <label class="text-[9px] uppercase tracking-widest text-slate-400 font-medium">Pilih Tanggal</label>
-        <input
-          v-model="selectedDate"
-          type="date"
-          class="bg-slate-50 border-none rounded-lg px-3 py-1.5 text-xs font-medium text-slate-600 focus:ring-4 focus:ring-primary-500/5 outline-none w-full md:w-auto"
-          @change="loadDailySales"
-        />
+      <div class="flex flex-row items-center gap-2 bg-white/90 backdrop-blur px-3 py-2 rounded-2xl shadow-sm border border-slate-100 w-fit max-w-full overflow-x-auto no-scrollbar">
+        <div class="flex items-center gap-2 shrink-0">
+          <label class="text-[9px] uppercase tracking-widest text-slate-400 font-medium whitespace-nowrap">Dari</label>
+          <input
+            v-model="startDate"
+            type="date"
+            class="bg-slate-50 border-none rounded-lg px-2 py-1.5 text-xs font-medium text-slate-600 focus:ring-4 focus:ring-primary-500/5 outline-none w-auto"
+            @change="loadDailySales"
+          />
+        </div>
+        <div class="text-slate-300 shrink-0">-</div>
+        <div class="flex items-center gap-2 shrink-0">
+          <label class="text-[9px] uppercase tracking-widest text-slate-400 font-medium whitespace-nowrap">Sampai</label>
+          <input
+            v-model="endDate"
+            type="date"
+            class="bg-slate-50 border-none rounded-lg px-2 py-1.5 text-xs font-medium text-slate-600 focus:ring-4 focus:ring-primary-500/5 outline-none w-auto"
+            @change="loadDailySales"
+          />
+        </div>
       </div>
 
       <div v-if="dailyData" class="grid grid-cols-1 md:grid-cols-3 gap-3">

@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useAuthStore } from '../stores/auth'
 import { useSettingsStore } from '../stores/settings'
 import { useRouter, useRoute } from 'vue-router'
@@ -29,72 +29,103 @@ onUnmounted(() => {
   document.removeEventListener('keydown', handleKeydown)
 })
 
-const menuItems = [
-  { 
-    name: 'Dashboard', 
-    path: '/', 
-    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>`, 
-    roles: ['owner'] 
+const menuGroups = [
+  {
+    title: 'Utama',
+    items: [
+      { 
+        name: 'Dashboard', 
+        path: '/', 
+        icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>`, 
+        roles: ['owner'] 
+      },
+      { 
+        name: 'POS', 
+        path: '/pos', 
+        icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg>`, 
+        roles: ['owner', 'kasir'] 
+      },
+      { 
+        name: 'Transaksi', 
+        path: '/transactions', 
+        icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/></svg>`, 
+        roles: ['owner', 'kasir'] 
+      },
+    ]
   },
-  { 
-    name: 'Transaksi', 
-    path: '/transactions', 
-    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/></svg>`, 
-    roles: ['owner', 'kasir'] 
+  {
+    title: 'Katalog',
+    items: [
+      { 
+        name: 'Produk', 
+        path: '/products', 
+        icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>`, 
+        roles: ['owner'] 
+      },
+      { 
+        name: 'Paket', 
+        path: '/packages', 
+        icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>`, 
+        roles: ['owner'] 
+      },
+      { 
+        name: 'Meja', 
+        path: '/tables', 
+        icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><rect width="18" height="12" x="3" y="4" rx="2" ry="2"/><line x1="2" x2="22" y1="20" y2="20"/><line x1="7" x2="7" y1="16" y2="20"/><line x1="17" x2="17" y1="16" y2="20"/></svg>`, 
+        roles: ['owner'] 
+      },
+    ]
   },
-  { 
-    name: 'POS', 
-    path: '/pos', 
-    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg>`, 
-    roles: ['owner', 'kasir'] 
+  {
+    title: 'Manajemen',
+    items: [
+      { 
+        name: 'Customers', 
+        path: '/customers', 
+        icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M15.31 6.5a4.5 4.5 0 0 1 0 7"/></svg>`, 
+        roles: ['owner', 'kasir'] 
+      },
+      { 
+        name: 'Inventory', 
+        path: '/inventory', 
+        icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="M2 20a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8l-7 5V8l-7 5V4a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/><path d="M17 18h1"/><path d="M12 18h1"/><path d="M7 18h1"/></svg>`, 
+        roles: ['owner', 'gudang'] 
+      },
+    ]
   },
-  { 
-    name: 'Customers', 
-    path: '/customers', 
-    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M15.31 6.5a4.5 4.5 0 0 1 0 7"/></svg>`, 
-    roles: ['owner', 'kasir'] 
-  },
-  { 
-    name: 'Produk', 
-    path: '/products', 
-    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>`, 
-    roles: ['owner'] 
-  },
-  { 
-    name: 'Paket', 
-    path: '/packages', 
-    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>`, 
-    roles: ['owner'] 
-  },
-  { 
-    name: 'Inventory', 
-    path: '/inventory', 
-    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="M2 20a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8l-7 5V8l-7 5V4a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/><path d="M17 18h1"/><path d="M12 18h1"/><path d="M7 18h1"/></svg>`, 
-    roles: ['owner', 'gudang'] 
-  },
-  { 
-    name: 'Laporan', 
-    path: '/reports', 
-    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>`, 
-    roles: ['owner'] 
-  },
-  { 
-    name: 'Pengaturan', 
-    path: '/settings', 
-    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1-1-1.72v-.51a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>`, 
-    roles: ['owner'] 
-  },
-  { 
-    name: 'Meja', 
-    path: '/tables', 
-    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><rect width="18" height="12" x="3" y="4" rx="2" ry="2"/><line x1="2" x2="22" y1="20" y2="20"/><line x1="7" x2="7" y1="16" y2="20"/><line x1="17" x2="17" y1="16" y2="20"/></svg>`, 
-    roles: ['owner'] 
-  },
+  {
+    title: 'Sistem',
+    items: [
+      { 
+        name: 'Laporan', 
+        path: '/reports', 
+        icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>`, 
+        roles: ['owner'] 
+      },
+      { 
+        name: 'Pengaturan', 
+        path: '/settings', 
+        icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1-1-1.72v-.51a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>`, 
+        roles: ['owner'] 
+      },
+    ]
+  }
 ]
 
-const filteredMenu = menuItems.filter(item => 
-  item.roles.includes(authStore.user?.role)
-)
+// Specific order for mobile bottom nav (Dashboard, Transaksi, POS, Customers)
+const mobileNavOrder = ['/', '/transactions', '/pos', '/customers']
+const allMenuItems = menuGroups.flatMap(group => group.items)
+const filteredMenu = mobileNavOrder
+  .map(path => allMenuItems.find(item => item.path === path))
+  .filter(item => item && item.roles.includes(authStore.user?.role))
+
+// Filter groups and items based on role
+const filteredGroups = computed(() => {
+  return menuGroups.map(group => ({
+    ...group,
+    items: group.items.filter(item => item.roles.includes(authStore.user?.role))
+  })).filter(group => group.items.length > 0)
+})
 
 function isActive(path) {
   if (path === '/') {
@@ -191,32 +222,39 @@ function clearStorageOnly() {
       </div>
 
       <!-- Navigation Menu -->
-      <nav class="flex-1 px-4 py-6 space-y-1.5 overflow-y-auto custom-scrollbar">
-        <router-link
-          v-for="item in filteredMenu"
-          :key="item.path"
-          :to="item.path"
-          @click="closeSidebar"
-          class="relative flex items-center gap-3.5 px-4 py-3.5 rounded-2xl transition-all duration-200 group overflow-hidden"
-          :class="[
-            isActive(item.path) 
-              ? 'bg-gradient-to-r from-primary-500 to-primary-600 text-white shadow-lg shadow-primary-200 translate-x-1' 
-              : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900 hover:translate-x-1'
-          ]"
-        >
-          <!-- Active Background Pattern (Dots) -->
-          <div v-if="isActive(item.path)" class="absolute inset-0 opacity-10">
-             <svg width="100%" height="100%" fill="none"><pattern id="dots" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1" fill="currentColor"/></pattern><rect width="100%" height="100%" fill="url(#dots)"/></svg>
-          </div>
-
-          <div class="relative z-10" v-html="item.icon"></div>
-          <span class="relative z-10 text-[13px] font-semibold tracking-wide">{{ item.name }}</span>
+      <nav class="flex-1 px-4 py-6 space-y-8 overflow-y-auto custom-scrollbar">
+        <div v-for="group in filteredGroups" :key="group.title" class="space-y-2">
+          <!-- Group Title -->
+          <h3 class="px-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">{{ group.title }}</h3>
           
-          <!-- Chevron for active -->
-          <svg v-if="isActive(item.path)" class="w-4 h-4 ml-auto relative z-10 text-white/80" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7" />
-          </svg>
-        </router-link>
+          <div class="space-y-1.5">
+            <router-link
+              v-for="item in group.items"
+              :key="item.path"
+              :to="item.path"
+              @click="closeSidebar"
+              class="relative flex items-center gap-3.5 px-4 py-3.5 rounded-2xl transition-all duration-200 group overflow-hidden"
+              :class="[
+                isActive(item.path) 
+                  ? 'bg-gradient-to-r from-primary-500 to-primary-600 text-white shadow-lg shadow-primary-200 translate-x-1' 
+                  : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900 hover:translate-x-1'
+              ]"
+            >
+              <!-- Active Background Pattern (Dots) -->
+              <div v-if="isActive(item.path)" class="absolute inset-0 opacity-10">
+                 <svg width="100%" height="100%" fill="none"><pattern id="dots" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1" fill="currentColor"/></pattern><rect width="100%" height="100%" fill="url(#dots)"/></svg>
+              </div>
+
+              <div class="relative z-10" v-html="item.icon"></div>
+              <span class="relative z-10 text-[13px] font-semibold tracking-wide">{{ item.name }}</span>
+              
+              <!-- Chevron for active -->
+              <svg v-if="isActive(item.path)" class="w-4 h-4 ml-auto relative z-10 text-white/80" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7" />
+              </svg>
+            </router-link>
+          </div>
+        </div>
       </nav>
 
       <!-- Sidebar Footer (User Profile) -->
@@ -251,7 +289,10 @@ function clearStorageOnly() {
     <!-- Main Content Area -->
     <main class="flex-1 relative bg-slate-50 lg:rounded-l-2xl lg:overflow-hidden flex flex-col min-h-screen pt-[67px] lg:pt-0 no-scrollbar">
        <!-- Scrollable wrapper for Desktop Content -->
-       <div class="flex-1 w-full lg:overflow-y-auto lg:h-full pb-16 lg:pb-0 px-2 py-2 lg:px-2 lg:py-4">
+       <div 
+         class="flex-1 w-full lg:overflow-y-auto lg:h-full pb-16 lg:pb-0 py-2 lg:py-4 transition-all duration-300"
+         :class="route.path === '/pos' ? 'px-1 lg:pl-1 lg:pr-1' : 'px-2 lg:px-4'"
+       >
           <router-view v-slot="{ Component }">
              <transition 
                enter-active-class="transition duration-200 ease-out"

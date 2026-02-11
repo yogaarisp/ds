@@ -1,7 +1,9 @@
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, computed } from 'vue'
 import { customerApi, customerTypeApi, transactionApi } from '../api'
 import Swal from 'sweetalert2'
+
+const STORAGE_URL = computed(() => import.meta.env.VITE_STORAGE_URL || '/storage')
 
 const customers = ref([])
 const customerTypes = ref([])
@@ -24,8 +26,12 @@ const form = ref({
   discount_percentage: '',
   address: '',
   notes: '',
-  password: ''
+  password: '',
+  avatar: null
 })
+
+const avatarFile = ref(null)
+const avatarPreview = ref(null)
 
 onMounted(() => {
   loadCustomers()
@@ -81,11 +87,19 @@ async function loadCustomerTypes() {
 
 function openModal(customer = null) {
   editingCustomer.value = customer
+  avatarFile.value = null
+  avatarPreview.value = null
+  
   if (customer) {
     form.value = { 
       ...customer,
       customer_type_id: customer.customer_type?.id || customer.customer_type_id,
-      password: ''
+      password: '',
+      avatar: null
+    }
+    // Set preview if customer has avatar
+    if (customer.avatar) {
+      avatarPreview.value = `${STORAGE_URL.value}/${customer.avatar}`
     }
   } else {
     form.value = {
@@ -96,26 +110,57 @@ function openModal(customer = null) {
       discount_percentage: '',
       address: '',
       notes: '',
-      password: 'dimsumsarang'
+      password: 'dimsumsarang',
+      avatar: null
     }
   }
   showModal.value = true
 }
 
+function handleAvatarChange(event) {
+  const file = event.target.files[0]
+  if (file) {
+    avatarFile.value = file
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      avatarPreview.value = e.target.result
+    }
+    reader.readAsDataURL(file)
+  }
+}
+
+function removeAvatar() {
+  avatarFile.value = null
+  avatarPreview.value = null
+  form.value.avatar = null
+}
+
 async function saveCustomer() {
   try {
-    const data = {
-      ...form.value,
-      discount_percentage: parseInt(form.value.discount_percentage) || 0,
+    const formData = new FormData()
+    
+    // Append all form fields
+    formData.append('name', form.value.name)
+    formData.append('phone', form.value.phone)
+    formData.append('email', form.value.email || '')
+    formData.append('customer_type_id', form.value.customer_type_id)
+    formData.append('discount_percentage', parseInt(form.value.discount_percentage) || 0)
+    formData.append('address', form.value.address || '')
+    formData.append('notes', form.value.notes || '')
+    
+    if (form.value.password) {
+      formData.append('password', form.value.password)
     }
-    if (!form.value.password) {
-      delete data.password
+    
+    // Append avatar if selected
+    if (avatarFile.value) {
+      formData.append('avatar', avatarFile.value)
     }
 
     if (editingCustomer.value) {
-      await customerApi.update(editingCustomer.value.id, data)
+      await customerApi.update(editingCustomer.value.id, formData)
     } else {
-      await customerApi.create(data)
+      await customerApi.create(formData)
     }
 
     showModal.value = false
@@ -377,8 +422,9 @@ function getStatusColor(status) {
         <div v-for="customer in customers" :key="customer.id" @click="viewHistory(customer)" class="bg-white rounded-2xl p-3 shadow-[0_4px_20px_rgb(0,0,0,0.03)] border border-slate-50 relative group active:scale-[0.98] transition-all cursor-pointer">
           <div class="flex justify-between items-start mb-2">
             <div class="flex items-center gap-3">
-              <div class="w-10 h-10 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-400 text-sm font-medium shadow-sm">
-                {{ customer.name.charAt(0).toUpperCase() }}
+              <div class="w-10 h-10 rounded-xl overflow-hidden bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-400 text-sm font-medium shadow-sm">
+                <img v-if="customer.avatar" :src="`${STORAGE_URL}/${customer.avatar}`" class="w-full h-full object-cover" />
+                <span v-else>{{ customer.name.charAt(0).toUpperCase() }}</span>
               </div>
               <div>
                 <h3 class="font-medium text-slate-800 text-sm leading-none">{{ customer.name }}</h3>
@@ -445,8 +491,9 @@ function getStatusColor(status) {
             <tr v-for="customer in customers" :key="customer.id" @click="viewHistory(customer)" class="group hover:bg-slate-50/30 transition-colors border-b border-slate-50 last:border-b-0 cursor-pointer">
               <td class="pl-8 pr-4 py-4">
                 <div class="flex items-center gap-3">
-                  <div class="w-9 h-9 rounded-xl bg-white border border-slate-100 flex items-center justify-center text-slate-400 text-xs font-medium italic shadow-sm group-hover:bg-primary-50 group-hover:text-primary-500 group-hover:border-primary-100 transition-all">
-                    {{ customer.name.charAt(0).toUpperCase() }}
+                  <div class="w-9 h-9 rounded-xl overflow-hidden bg-white border border-slate-100 flex items-center justify-center text-slate-400 text-xs font-medium italic shadow-sm group-hover:bg-primary-50 group-hover:text-primary-500 group-hover:border-primary-100 transition-all">
+                    <img v-if="customer.avatar" :src="`${STORAGE_URL}/${customer.avatar}`" class="w-full h-full object-cover" />
+                    <span v-else>{{ customer.name.charAt(0).toUpperCase() }}</span>
                   </div>
                   <div>
                     <p class="font-medium text-slate-800 text-sm group-hover:text-primary-600 transition-colors">{{ customer.name }}</p>
@@ -542,144 +589,125 @@ function getStatusColor(status) {
     <!-- Modal -->
     <!-- Modal -->
     <Teleport to="body">
-      <div v-if="showModal" class="fixed inset-0 z-[9999] md:z-50 flex items-center justify-center md:bg-black/50 md:p-3 md:backdrop-blur-sm overflow-hidden h-[100dvh] overscroll-none">
-        <div class="bg-white w-full h-full md:h-auto md:max-w-md md:rounded-[2.5rem] shadow-none md:shadow-2xl overflow-hidden flex flex-col overscroll-none">
+      <div v-if="showModal" class="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 overflow-hidden h-[100dvh]">
+        <div class="bg-white w-full max-w-2xl max-h-[90vh] rounded-[2rem] md:rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col animate-in fade-in zoom-in duration-300">
           <!-- Header -->
-          <div class="px-5 py-4 flex items-center gap-3 shrink-0 border-b border-slate-100/50">
+          <div class="px-6 py-4 flex items-center justify-between shrink-0 border-b border-slate-100/50">
+            <h2 class="text-lg font-bold text-slate-800 tracking-tight">
+                {{ editingCustomer ? 'Edit Customer' : 'Customer Baru' }}
+            </h2>
             <button 
               @click="showModal = false" 
-              class="w-8 h-8 flex items-center justify-center rounded-xl bg-slate-50 text-slate-400 hover:text-slate-600 transition-all active:scale-90"
+              class="w-8 h-8 flex items-center justify-center rounded-full bg-slate-50 text-slate-400 hover:bg-red-50 hover:text-red-500 transition-all active:scale-90"
             >
               <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
-            <h2 class="text-lg font-medium text-slate-800 tracking-tight">
-              {{ editingCustomer ? 'Edit Customer' : 'Customer Baru' }}
-            </h2>
           </div>
 
           <!-- Form Content -->
-          <div class="flex-1 px-5 py-4 space-y-3 overflow-y-auto custom-scrollbar">
-            <!-- Main Info -->
-            <div class="space-y-1">
-              <label class="text-[11px] font-medium text-slate-500 ml-1 uppercase tracking-wide">Nama Lengkap</label>
-              <input 
-                v-model="form.name" 
-                type="text" 
-                class="w-full bg-slate-50/50 border border-slate-200/50 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-700 focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 focus:bg-white transition-all placeholder:text-slate-400" 
-                style="font-size: 16px;"
-                placeholder="Nama Customer..." 
-                required 
-              />
-            </div>
+          <div class="flex-1 px-6 py-5 overflow-y-auto custom-scrollbar bg-slate-50/30">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
+              
+              <!-- Left Column: Primary Info -->
+              <div class="space-y-4">
+                <!-- Avatar Upload (Integrated) -->
+                <div class="flex items-center gap-4 p-3 bg-white rounded-2xl border border-slate-100 shadow-sm mb-2">
+                  <div class="relative group shrink-0">
+                    <div class="w-16 h-16 rounded-2xl overflow-hidden bg-slate-50 border-2 border-slate-100 flex items-center justify-center">
+                      <img v-if="avatarPreview" :src="avatarPreview" class="w-full h-full object-cover" />
+                      <svg v-else xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                    </div>
+                    <button v-if="avatarPreview" @click="removeAvatar" type="button" class="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center shadow-md">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Foto Profil</p>
+                    <input type="file" @change="handleAvatarChange" accept="image/*" class="hidden" ref="avatarInput" />
+                    <button @click="$refs.avatarInput.click()" type="button" class="text-xs font-bold text-primary-500 hover:text-primary-600 transition-colors">
+                      {{ avatarPreview ? 'Ganti Foto' : 'Upload Foto' }}
+                    </button>
+                  </div>
+                </div>
 
-            <div class="grid grid-cols-2 gap-3">
-              <div class="space-y-1">
-                <label class="text-[11px] font-medium text-slate-500 ml-1 uppercase tracking-wide">Telepon</label>
-                <input 
-                  v-model="form.phone" 
-                  type="text" 
-                  class="w-full bg-slate-50/50 border border-slate-200/50 rounded-xl px-3 py-2.5 text-sm text-slate-600 focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 focus:bg-white transition-all placeholder:text-slate-400" 
-                  style="font-size: 16px;"
-                  placeholder="08xxxxxxxx" 
-                  required 
-                />
+                <div class="space-y-1.5">
+                  <label class="text-[10px] font-bold text-slate-400 ml-1 uppercase tracking-widest">Nama Lengkap</label>
+                  <input v-model="form.name" type="text" class="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-medium text-slate-700 focus:ring-4 focus:ring-primary-500/5 focus:border-primary-500 transition-all outline-none" placeholder="Masukkan nama..." required />
+                </div>
+
+                <div class="space-y-1.5">
+                  <label class="text-[10px] font-bold text-slate-400 ml-1 uppercase tracking-widest">Nomor Telepon</label>
+                  <input v-model="form.phone" type="text" class="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-medium text-slate-700 focus:ring-4 focus:ring-primary-500/5 focus:border-primary-500 transition-all outline-none" placeholder="08xxxxxxxx" required />
+                </div>
+
+                <div class="space-y-1.5">
+                    <label class="text-[10px] font-bold text-slate-400 ml-1 uppercase tracking-widest">Tipe Customer</label>
+                    <select v-model="form.customer_type_id" class="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-medium text-slate-700 focus:ring-4 focus:ring-primary-500/5 focus:border-primary-500 transition-all outline-none appearance-none cursor-pointer" required>
+                      <option value="" disabled>Pilih tipe...</option>
+                      <option v-for="type in customerTypes" :key="type.id" :value="type.id">{{ type.name }}</option>
+                    </select>
+                </div>
               </div>
-              <div class="space-y-1">
-                <label class="text-[11px] font-medium text-slate-500 ml-1 uppercase tracking-wide">Diskon (%)</label>
-                <input 
-                  v-model="form.discount_percentage" 
-                  type="number" 
-                  class="w-full bg-slate-50/50 border border-slate-200/50 rounded-xl px-3 py-2.5 text-sm font-medium text-primary-600 focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 focus:bg-white transition-all placeholder:text-slate-400" 
-                  style="font-size: 16px;"
-                  placeholder="0" 
-                  min="0" 
-                  max="100"
-                />
+
+              <!-- Right Column: Security & Misc -->
+              <div class="space-y-4">
+                <div class="space-y-1.5">
+                  <label class="text-[10px] font-bold text-slate-400 ml-1 uppercase tracking-widest">Email (Login)</label>
+                  <input v-model="form.email" type="email" class="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-medium text-slate-700 focus:ring-4 focus:ring-primary-500/5 focus:border-primary-500 transition-all outline-none" placeholder="user@gmail.com" />
+                </div>
+
+                <div class="space-y-1.5">
+                  <label class="text-[10px] font-bold text-slate-400 ml-1 uppercase tracking-widest">Password</label>
+                  <input v-model="form.password" type="password" class="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-medium text-slate-700 focus:ring-4 focus:ring-primary-500/5 focus:border-primary-500 transition-all outline-none" :placeholder="editingCustomer ? 'Kosongkan jika tidak diubah' : 'Min 6 karakter'" />
+                </div>
+
+                <div class="grid grid-cols-1 gap-4">
+                  <div class="space-y-1.5">
+                    <label class="text-[10px] font-bold text-slate-400 ml-1 uppercase tracking-widest">Diskon Khusus (%)</label>
+                    <input v-model="form.discount_percentage" type="number" class="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold text-primary-500 focus:ring-4 focus:ring-primary-500/5 focus:border-primary-500 transition-all outline-none" placeholder="0" />
+                  </div>
+                </div>
+
+                <div class="space-y-1.5">
+                    <label class="text-[10px] font-bold text-slate-400 ml-1 uppercase tracking-widest">Catatan Admin</label>
+                    <textarea v-model="form.notes" class="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-medium text-slate-700 focus:ring-4 focus:ring-primary-500/5 focus:border-primary-500 transition-all outline-none resize-none" rows="2" placeholder="Tambahkan catatan..."></textarea>
+                </div>
               </div>
-            </div>
 
-            <div class="space-y-1">
-              <label class="text-[11px] font-medium text-slate-500 ml-1 uppercase tracking-wide">Email (Opsional)</label>
-              <input 
-                v-model="form.email" 
-                type="email" 
-                class="w-full bg-slate-50/50 border border-slate-200/50 rounded-xl px-3 py-2.5 text-sm text-slate-700 focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 focus:bg-white transition-all placeholder:text-slate-400" 
-                style="font-size: 16px;"
-                placeholder="email@domain.com" 
-              />
-            </div>
+              <!-- Full Width Column: Address -->
+              <div class="md:col-span-2 space-y-1.5">
+                <label class="text-[10px] font-bold text-slate-400 ml-1 uppercase tracking-widest">Alamat Lengkap</label>
+                <textarea v-model="form.address" class="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-medium text-slate-700 focus:ring-4 focus:ring-primary-500/5 focus:border-primary-500 transition-all outline-none resize-none" rows="2" placeholder="Jl. Contoh No. 123..."></textarea>
+              </div>
 
-            <div class="space-y-1">
-              <label class="text-[11px] font-medium text-slate-500 ml-1 uppercase tracking-wide">Password</label>
-              <input 
-                v-model="form.password" 
-                type="password" 
-                class="w-full bg-slate-50/50 border border-slate-200/50 rounded-xl px-3 py-2.5 text-sm text-slate-700 focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 focus:bg-white transition-all placeholder:text-slate-400" 
-                style="font-size: 16px;"
-                :placeholder="editingCustomer ? 'Kosongkan jika tidak diubah' : 'dimsumsarang'"
-              />
-            </div>
-
-            <div class="space-y-1">
-              <label class="text-[11px] font-medium text-slate-500 ml-1 uppercase tracking-wide">Tipe Customer</label>
-              <select 
-                v-model="form.customer_type_id" 
-                class="w-full bg-slate-50/50 border border-slate-200/50 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-700 focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 focus:bg-white transition-all appearance-none cursor-pointer" 
-                style="font-size: 16px;"
-                required
-              >
-                <option value="" disabled>Pilih tipe customer</option>
-                <option v-for="type in customerTypes" :key="type.id" :value="type.id">
-                  {{ type.name }}
-                </option>
-              </select>
-            </div>
-
-            <div class="space-y-1">
-              <label class="text-[11px] font-medium text-slate-500 ml-1 uppercase tracking-wide">Alamat</label>
-              <textarea 
-                v-model="form.address" 
-                class="w-full bg-slate-50/50 border border-slate-200/50 rounded-xl px-3 py-2.5 text-sm text-slate-700 focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 focus:bg-white transition-all resize-none placeholder:text-slate-400" 
-                style="font-size: 16px;"
-                rows="2" 
-                placeholder="Alamat lengkap..."
-              ></textarea>
-            </div>
-
-            <div class="space-y-1">
-              <label class="text-[11px] font-medium text-slate-500 ml-1 uppercase tracking-wide">Catatan</label>
-              <textarea 
-                v-model="form.notes" 
-                class="w-full bg-slate-50/50 border border-slate-200/50 rounded-xl px-3 py-2.5 text-sm text-slate-700 focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 focus:bg-white transition-all resize-none placeholder:text-slate-400" 
-                style="font-size: 16px;"
-                rows="2" 
-                placeholder="Catatan khusus..."
-              ></textarea>
             </div>
           </div>
 
-          <!-- Fixed Footer Buttons -->
-          <div class="p-4 bg-white md:rounded-b-[2.5rem] border-t border-slate-50">
-            <form @submit.prevent="saveCustomer" class="flex gap-3">
-              <button 
-                type="button" 
-                @click="showModal = false" 
-                class="flex-1 py-2.5 px-3 rounded-xl bg-slate-50 text-slate-600 font-medium text-xs hover:bg-slate-100 hover:text-slate-700 transition-all duration-200 active:scale-[0.98] border border-slate-200/50"
-              >
-                Batal
-              </button>
-              <button 
-                type="submit" 
-                class="flex-1 py-2.5 px-3 rounded-xl bg-primary-500 text-white font-medium text-xs shadow-lg shadow-primary-500/20 hover:bg-primary-600 hover:shadow-primary-500/30 transition-all duration-200 active:scale-[0.98] flex items-center justify-center gap-2"
-              >
-                <span>{{ editingCustomer ? 'Update' : 'Simpan' }}</span>
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
-                </svg>
-              </button>
-            </form>
+          <!-- Footer -->
+          <div class="px-6 py-4 bg-white border-t border-slate-100 flex gap-3">
+            <button 
+              type="button" 
+              @click="showModal = false" 
+              class="flex-1 py-3 px-4 rounded-2xl bg-slate-50 text-slate-500 font-bold text-xs hover:bg-slate-100 transition-all active:scale-95"
+            >
+              Batal
+            </button>
+            <button 
+              @click="saveCustomer"
+              type="submit" 
+              class="flex-[2] py-3 px-4 rounded-2xl bg-primary-500 text-white font-bold text-xs shadow-lg shadow-primary-500/20 hover:bg-primary-600 transition-all active:scale-95 flex items-center justify-center gap-2"
+            >
+              <span>{{ editingCustomer ? 'Update Data' : 'Simpan Customer' }}</span>
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
+              </svg>
+            </button>
           </div>
         </div>
       </div>

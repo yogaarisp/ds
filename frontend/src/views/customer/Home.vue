@@ -19,11 +19,7 @@ const popularPackages = ref([])
 // Carousel State
 const currentSlide = ref(0)
 const carouselSlides = ref([])
-const defaultSlides = [
-  { id: 1, image_url: 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80', title: 'Selamat Datang', period_text: 'Nikmati menu terbaik kami' },
-  { id: 2, image_url: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80', title: 'Menu Spesial', period_text: 'Tersedia berbagai pilihan paket' },
-  { id: 3, image_url: 'https://images.unsplash.com/photo-1496116218417-7a17478ee177?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80', title: 'Promo Menarik', period_text: 'Cek promo bulanan kami' },
-]
+const defaultSlides = []
 
 // Use API slides if available, otherwise fallback to default
 const slides = computed(() => {
@@ -32,20 +28,51 @@ const slides = computed(() => {
 
 let slideInterval
 
-function showComingSoon(e) {
-  if (e) e.preventDefault()
+
+
+function openHelpModal() {
+  const phone = settingsStore.settings?.store_phone
+  const instagram = settingsStore.settings?.store_instagram?.replace('@', '')
+
   Swal.fire({
-    title: 'Coming Soon!',
-    text: 'Fitur ini akan segera hadir.',
-    icon: 'info',
-    confirmButtonColor: '#f97316',
-    confirmButtonText: 'Oke',
-    width: '280px',
+    title: 'Butuh Bantuan?',
+    html: `
+      <div class="flex flex-col gap-3 mt-2">
+        ${phone ? `
+          <a href="https://wa.me/${phone.replace(/^0/, '62')}" target="_blank" class="flex items-center gap-3 bg-emerald-50 p-3 rounded-xl border border-emerald-100 hover:bg-emerald-100 transition-colors">
+            <div class="w-10 h-10 bg-emerald-500 rounded-full flex items-center justify-center text-white shrink-0">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/></svg>
+            </div>
+            <div class="text-left">
+              <span class="block text-xs font-bold text-slate-800">Hubungi WhatsApp</span>
+              <span class="block text-[10px] text-slate-500">${phone}</span>
+            </div>
+          </a>
+        ` : ''}
+
+        ${instagram ? `
+          <a href="https://instagram.com/${instagram}" target="_blank" class="flex items-center gap-3 bg-purple-50 p-3 rounded-xl border border-purple-100 hover:bg-purple-100 transition-colors">
+            <div class="w-10 h-10 bg-gradient-to-tr from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white shrink-0">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
+            </div>
+            <div class="text-left">
+               <span class="block text-xs font-bold text-slate-800">Kunjungi Instagram</span>
+               <span class="block text-[10px] text-slate-500">@${instagram}</span>
+            </div>
+          </a>
+        ` : ''}
+
+        ${!phone && !instagram ? '<p class="text-sm text-slate-400 italic py-4">Belum ada kontak yang ditambahkan.</p>' : ''}
+      </div>
+    `,
+    showConfirmButton: false,
+    showCloseButton: true,
+    width: '320px',
     customClass: {
-      popup: 'rounded-xl',
-      title: 'text-lg font-bold',
-      htmlContainer: 'text-sm',
-      confirmButton: 'px-4 py-1.5 text-sm rounded-lg'
+      popup: 'rounded-2xl p-0 overflow-hidden',
+      title: 'text-base font-bold text-slate-800 pt-6 border-b border-transparent',
+      htmlContainer: 'px-6 pb-6 pt-0 m-0',
+      closeButton: 'focus:outline-none'
     }
   })
 }
@@ -250,13 +277,13 @@ function changeTable() {
     
     <!-- 1. Top Section with Carousel -->
     <div class="relative rounded-b-xl overflow-hidden shadow-lg">
-      <!-- QR Button (Top Right) -->
+      <!-- Help Button (Top Right) -->
       <div class="absolute top-4 right-4 z-30">
-        <button @click="showComingSoon" class="bg-white/90 backdrop-blur-sm px-3 py-1.5 rounded-full flex items-center gap-2 shadow-sm active:scale-95 transition-transform">
+        <button @click="openHelpModal" class="bg-white/90 backdrop-blur-sm px-3 py-1.5 rounded-full flex items-center gap-2 shadow-sm active:scale-95 transition-transform hover:bg-white">
           <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-slate-800" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 14.5V12m0 0V8.825m0 0a5.5 5.5 0 11-11 0c0 3.037 2.463 5.5 5.5 5.5m0 0h6.25m0-9.75a2.768 2.768 0 00-2.756 3.456m0-3.344A2.756 2.756 0 005.5 8.5m10.25 1.25a1.25 1.25 0 112.5 0 1.25 1.25 0 01-2.5 0z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          <span class="text-sm font-semibold text-slate-800">QR</span>
+          <span class="text-xs font-bold text-slate-800 uppercase tracking-wider">Bantuan</span>
         </button>
       </div>
 

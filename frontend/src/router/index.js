@@ -20,6 +20,18 @@ const routes = [
     meta: { guest: true }
   },
   {
+    path: '/customer/forgot-password',
+    name: 'CustomerForgotPassword',
+    component: () => import('../views/customer/auth/ForgotPassword.vue'),
+    meta: { guest: true }
+  },
+  {
+    path: '/customer/reset-password',
+    name: 'CustomerResetPassword',
+    component: () => import('../views/customer/auth/ResetPassword.vue'),
+    meta: { guest: true }
+  },
+  {
     path: '/',
     component: () => import('../layouts/MainLayout.vue'),
     meta: { requiresAuth: true },

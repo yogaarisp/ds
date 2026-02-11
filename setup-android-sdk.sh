@@ -1,4 +1,4 @@
-#!/bin/bash
+pus#!/bin/bash
 
 echo "🔍 Checking Android SDK Setup..."
 echo ""

@@ -147,7 +147,7 @@ async function handleLogin() {
               >
               <label for="remember-me" class="ml-1.5 text-[10px] font-medium text-slate-500 cursor-pointer">Ingat Saya</label>
             </div>
-            <a href="#" class="text-[10px] font-medium text-orange-500 hover:text-orange-600 transition-colors">Lupa Password?</a>
+            <a href="/customer/forgot-password" class="text-[10px] font-medium text-orange-500 hover:text-orange-600 transition-colors">Lupa Password?</a>
           </div>
 
           <button 

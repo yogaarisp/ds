@@ -617,7 +617,7 @@ const filteredPackagingItems = computed(() => {
       <!-- Left Side: Products & Selection -->
       <div class="flex-1 flex flex-col min-w-0 min-h-0">
         <!-- Top Navigation -->
-        <div class="p-6 pb-2 shrink-0">
+        <div class="pt-6 pl-4 pr-2 pb-2 shrink-0">
           <div class="flex items-center justify-between gap-4">
             
             <div class="bg-slate-200/50 p-1 rounded-xl flex gap-1 flex-1">
@@ -677,10 +677,10 @@ const filteredPackagingItems = computed(() => {
         </div>
 
         <!-- Desktop Content Area -->
-        <div class="flex-1 overflow-y-auto px-6 pb-12 custom-scrollbar">
+        <div class="flex-1 overflow-y-auto pl-4 pr-2 pb-12 custom-scrollbar">
           <!-- Skeleton Loading State Desktop -->
           <div v-if="posStore.loading" class="animate-fade-in">
-             <div class="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-4 gap-3">
+             <div class="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3">
                <div v-for="i in 12" :key="i" class="bg-white rounded-xl p-3 border border-slate-100 shadow-sm space-y-3">
                   <Skeleton width="100%" :height="activeTab === 'packages' ? '120px' : '150px'" customClass="rounded-lg" />
                   <Skeleton width="80%" height="16px" />
@@ -700,7 +700,7 @@ const filteredPackagingItems = computed(() => {
                 <span class="text-5xl mb-4">🍽️</span>
                 <p class="text-lg">Produk tidak ditemukan</p>
               </div>
-              <div v-else class="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-4 gap-2.5">
+              <div v-else class="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2.5">
                 <div
                   v-for="product in filteredProducts"
                   :key="product.id"
@@ -767,7 +767,7 @@ const filteredPackagingItems = computed(() => {
                 <span class="text-5xl mb-4">🎁</span>
                 <p class="text-lg">Paket tidak ditemukan</p>
               </div>
-              <div v-else class="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-4 gap-2.5">
+              <div v-else class="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2.5">
                 <button
                    v-for="pkg in filteredPackages"
                    :key="pkg.id"
@@ -798,7 +798,7 @@ const filteredPackagingItems = computed(() => {
                 <span class="text-5xl mb-4">🥡</span>
                 <p class="text-lg">Packaging tidak ditemukan</p>
               </div>
-              <div v-else class="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-4 gap-2.5">
+              <div v-else class="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2.5">
                 <div
                    v-for="item in filteredPackagingItems"
                    :key="item.id"
@@ -862,7 +862,7 @@ const filteredPackagingItems = computed(() => {
       </div>
 
       <!-- Right Sidebar: Cart (Desktop) -->
-      <div class="w-[360px] flex flex-col p-4 space-y-3">
+      <div class="w-[360px] flex flex-col pt-6 pb-6 pr-6 pl-2 space-y-3">
         <!-- ... Copy existing cart layout ... -->
         <div class="flex-1 bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 flex flex-col overflow-hidden">
           <!-- Sidebar Header -->

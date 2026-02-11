@@ -289,6 +289,7 @@ export const settingApi = {
     })
   },
   deleteLogo: () => api.delete('/settings/logo'),
+  testEmail: (email) => api.post('/settings/test-email', { test_email: email })
 }
 
 // Users

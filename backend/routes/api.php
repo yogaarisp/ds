@@ -15,11 +15,17 @@ use App\Http\Controllers\Api\PaymentMethodController;
 use App\Http\Controllers\Api\SettingController;
 use App\Http\Controllers\Api\CarouselSlideController;
 use App\Http\Controllers\Api\DatabaseController;
+use App\Http\Controllers\Api\PasswordResetController;
 use Illuminate\Support\Facades\Route;
 
 // Auth routes
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/register', [AuthController::class, 'register']);
+
+// Password Reset routes
+Route::post('/password/forgot', [\App\Http\Controllers\Api\PasswordResetController::class, 'sendResetLink']);
+Route::post('/password/reset', [\App\Http\Controllers\Api\PasswordResetController::class, 'resetPassword']);
+Route::post('/password/verify-token', [\App\Http\Controllers\Api\PasswordResetController::class, 'verifyToken']);
 
 // Public Settings
 Route::get('/settings', [SettingController::class, 'index']);
@@ -113,10 +119,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/settings/logo', [SettingController::class, 'uploadLogo']);
     Route::post('/settings/favicon', [SettingController::class, 'uploadFavicon']);
     Route::delete('/settings/logo', [SettingController::class, 'deleteLogo']);
+    Route::post('/settings/test-email', [PasswordResetController::class, 'testEmail']);
 
     // Tables (Meja Resto)
     Route::apiResource('tables', \App\Http\Controllers\Api\TableController::class);
     Route::get('/tables/{table}/qr', [\App\Http\Controllers\Api\TableController::class, 'generateQr']);
+    Route::post('/tables/{table}/clear', [\App\Http\Controllers\Api\TableController::class, 'clear']);
 
     // Carousel Slides (Admin)
     Route::apiResource('carousel-slides', CarouselSlideController::class);

@@ -62,22 +62,24 @@ async function fetchPaymentMethods() {
       // Store all original methods
       allPaymentMethods.value = response.data.filter(pm => pm.is_active)
       
-      // Group payment methods - show only one "Transfer Bank" option if there are transfer methods
+      // Group payment methods - show only one "Transfer" option if there are transfer methods
       const transfers = allPaymentMethods.value.filter(pm => pm.type === 'transfer')
       const nonTransfers = allPaymentMethods.value.filter(pm => pm.type !== 'transfer')
       
-      // Build payment methods list
-      paymentMethods.value = [...nonTransfers]
-      
-      // If there are transfer methods, add a grouped "Transfer Bank" option
+      // If there are transfer methods, add a grouped "Transfer" option
       if (transfers.length > 0) {
-        paymentMethods.value.push({
-          id: 'transfer-group',
-          name: 'Transfer Bank',
-          type: 'transfer',
-          is_active: true,
-          is_group: true // Flag to identify this as a group
-        })
+        paymentMethods.value = [
+          ...nonTransfers,
+          {
+            id: 'transfer-group',
+            name: 'Transfer Bank',
+            type: 'transfer',
+            is_active: true,
+            is_group: true // Flag to identify this as a group
+          }
+        ]
+      } else {
+        paymentMethods.value = nonTransfers
       }
       
       // Set default to first method
@@ -156,7 +158,6 @@ const getPaymentIcon = (method) => {
 function handlePaymentSelection(method) {
   // If it's the transfer group, show bank list modal
   if (method.id === 'transfer-group' || method.is_group) {
-    selectedPaymentMethod.value = 'transfer-group'
     showTransferModal.value = true
     return
   }
@@ -634,11 +635,7 @@ async function printReceipt(transactionData) {
                 <p class="text-[10px] text-slate-400 dark:text-slate-500">
                   {{ selectedPaymentMethod === 'transfer-group' && selectedTransferMethod 
                     ? 'Transfer Bank' 
-                    : selectedPaymentMethod === 'transfer-group'
-                      ? 'Pilih bank untuk transfer'
-                      : paymentMethods.find(p => p.id === selectedPaymentMethod)?.type === 'cash'
-                        ? 'Bayar di Kasir'
-                        : 'Transfer otomatis' }}
+                    : 'Bayar di Kasir' }}
                 </p>
              </div>
              <div class="text-primary-500 dark:text-primary-400 text-xs font-bold">Ubah</div>

@@ -4,11 +4,19 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Customer;
+use App\Services\ImageService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 
 class CustomerController extends Controller
 {
+    protected $imageService;
+
+    public function __construct(ImageService $imageService)
+    {
+        $this->imageService = $imageService;
+    }
+
     public function index(Request $request)
     {
         $query = Customer::query();
@@ -47,7 +55,13 @@ class CustomerController extends Controller
             'customer_type_id' => 'required|exists:customer_types,id',
             'discount_percentage' => 'integer|min:0|max:100',
             'notes' => 'nullable|string',
+            'avatar' => 'nullable|image|mimes:jpeg,jpg,png,webp|max:2048',
         ]);
+
+        // Handle avatar upload
+        if ($request->hasFile('avatar')) {
+            $validated['avatar'] = $this->imageService->upload($request->file('avatar'), 'avatars');
+        }
 
         $password = $request->input('password') ?: 'dimsumsarang';
         $validated['password'] = Hash::make($password);
@@ -75,7 +89,17 @@ class CustomerController extends Controller
             'discount_percentage' => 'integer|min:0|max:100',
             'notes' => 'nullable|string',
             'is_active' => 'boolean',
+            'avatar' => 'nullable|image|mimes:jpeg,jpg,png,webp|max:2048',
         ]);
+
+        // Handle avatar upload
+        if ($request->hasFile('avatar')) {
+            // Delete old avatar
+            if ($customer->avatar) {
+                $this->imageService->delete($customer->avatar);
+            }
+            $validated['avatar'] = $this->imageService->upload($request->file('avatar'), 'avatars');
+        }
 
         if ($request->filled('password')) {
             $validated['password'] = Hash::make($request->input('password'));
@@ -90,6 +114,11 @@ class CustomerController extends Controller
 
     public function destroy(Customer $customer)
     {
+        // Delete avatar if exists
+        if ($customer->avatar) {
+            $this->imageService->delete($customer->avatar);
+        }
+        
         $customer->delete();
 
         return response()->json(null, 204);

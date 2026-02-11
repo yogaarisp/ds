@@ -14,14 +14,17 @@ class ReportController extends Controller
 {
     public function dailySales(Request $request)
     {
-        $date = $request->get('date', today()->toDateString());
+        $startDate = $request->get('start_date', $request->get('date', today()->toDateString()));
+        $endDate = $request->get('end_date', $request->get('date', today()->toDateString()));
 
-        $transactions = Transaction::whereDate('created_at', $date)
+        $transactions = Transaction::whereDate('created_at', '>=', $startDate)
+            ->whereDate('created_at', '<=', $endDate)
             ->completed()
             ->get();
 
         return response()->json([
-            'date' => $date,
+            'start_date' => $startDate,
+            'end_date' => $endDate,
             'total_transactions' => $transactions->count(),
             'total_revenue' => $transactions->sum('total'),
             'total_discount' => $transactions->sum('discount'),

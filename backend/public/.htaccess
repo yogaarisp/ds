@@ -1,4 +1,4 @@
-# MIME Types Configuration
+# MIME Types Configuration - CRITICAL for SPA
 <IfModule mod_mime.c>
     AddType application/javascript .js .mjs
     AddType text/css .css
@@ -29,9 +29,14 @@
 
     RewriteEngine On
 
-    # Serve static assets directly with correct MIME types
+    # CRITICAL: Serve assets folder files directly - DO NOT REWRITE
+    RewriteCond %{REQUEST_URI} ^/assets/ [NC]
     RewriteCond %{REQUEST_FILENAME} -f
-    RewriteCond %{REQUEST_URI} \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ [NC]
+    RewriteRule ^ - [L]
+
+    # Serve other static files directly
+    RewriteCond %{REQUEST_FILENAME} -f
+    RewriteCond %{REQUEST_URI} \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot|json)$ [NC]
     RewriteRule ^ - [L]
 
     # Handle API routes
@@ -42,13 +47,6 @@
     RewriteCond %{REQUEST_URI} ^/storage/
     RewriteRule ^ index.php [L]
 
-    # Handle Angular and Vue.js History API for SPA
-    RewriteCond %{REQUEST_FILENAME} !-f
-    RewriteCond %{REQUEST_FILENAME} !-d
-    RewriteCond %{REQUEST_URI} !^/api/
-    RewriteCond %{REQUEST_URI} !^/storage/
-    RewriteRule ^(.*)$ index.html [L]
-
     # Handle Authorization Header
     RewriteCond %{HTTP:Authorization} .
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
@@ -58,11 +56,13 @@
     RewriteCond %{REQUEST_URI} (.+)/$
     RewriteRule ^ %1 [L,R=301]
 
-    # Send Requests To Front Controller...
-    RewriteCond %{REQUEST_FILENAME} !-d
+    # SPA Fallback - Send all other requests to index.html
     RewriteCond %{REQUEST_FILENAME} !-f
-    RewriteCond %{REQUEST_URI} ^/api/
-    RewriteRule ^ index.php [L]
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_URI} !^/api/
+    RewriteCond %{REQUEST_URI} !^/storage/
+    RewriteCond %{REQUEST_URI} !^/assets/
+    RewriteRule ^ index.html [L]
 </IfModule>
 
 # PHP Settings for file uploads

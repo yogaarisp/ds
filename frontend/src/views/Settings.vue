@@ -8,7 +8,7 @@ import Swal from 'sweetalert2'
 
 const settingsStore = useSettingsStore()
 const authStore = useAuthStore()
-const activeTab = ref('store') // store | users | payments
+const activeTab = ref('store') // store | users | payments | email
 const loading = ref(false)
 const saving = ref(false)
 
@@ -19,12 +19,25 @@ const settings = ref({
   store_favicon: null,
   store_address: '',
   store_phone: '',
+  store_instagram: '',
+  mail_host: 'smtp.gmail.com',
+  mail_port: '587',
+  mail_username: '',
+  mail_password: '',
+  mail_encryption: 'tls',
+  mail_from_address: '',
+  mail_from_name: '',
 })
 const logoPreview = ref(null)
 const logoFile = ref(null)
 
 const faviconPreview = ref(null)
 const faviconFile = ref(null)
+
+// Email test
+const testEmail = ref('')
+const testingEmail = ref(false)
+const testEmailResult = ref(null)
 
 // Users
 const users = ref([])
@@ -37,6 +50,8 @@ const userForm = ref({
   role: 'kasir',
   is_active: true,
 })
+const userAvatarFile = ref(null)
+const userAvatarPreview = ref(null)
 
 // Payment Methods
 const paymentMethods = ref([])
@@ -145,6 +160,14 @@ async function saveSettings() {
       store_name: settings.value.store_name,
       store_address: settings.value.store_address,
       store_phone: settings.value.store_phone,
+      store_instagram: settings.value.store_instagram,
+      mail_host: settings.value.mail_host,
+      mail_port: settings.value.mail_port,
+      mail_username: settings.value.mail_username,
+      mail_password: settings.value.mail_password,
+      mail_encryption: settings.value.mail_encryption,
+      mail_from_address: settings.value.mail_from_address,
+      mail_from_name: settings.value.mail_from_name,
     })
 
     await Swal.fire({
@@ -231,6 +254,8 @@ async function deleteLogo() {
 // User management
 function openAddUser() {
   editingUser.value = null
+  userAvatarFile.value = null
+  userAvatarPreview.value = null
   userForm.value = {
     name: '',
     email: '',
@@ -243,6 +268,8 @@ function openAddUser() {
 
 function openEditUser(user) {
   editingUser.value = user
+  userAvatarFile.value = null
+  userAvatarPreview.value = null
   userForm.value = {
     name: user.name,
     email: user.email,
@@ -250,18 +277,51 @@ function openEditUser(user) {
     role: user.role,
     is_active: user.is_active,
   }
+  // Set preview if user has avatar
+  if (user.avatar) {
+    userAvatarPreview.value = `${STORAGE_BASE_URL}/${user.avatar}`
+  }
   showUserModal.value = true
+}
+
+function handleUserAvatarChange(event) {
+  const file = event.target.files[0]
+  if (file) {
+    userAvatarFile.value = file
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      userAvatarPreview.value = e.target.result
+    }
+    reader.readAsDataURL(file)
+  }
+}
+
+function removeUserAvatar() {
+  userAvatarFile.value = null
+  userAvatarPreview.value = null
 }
 
 async function saveUser() {
   try {
-    const data = { ...userForm.value }
-    if (!data.password) delete data.password
+    const formData = new FormData()
+    formData.append('name', userForm.value.name)
+    formData.append('email', userForm.value.email)
+    formData.append('role', userForm.value.role)
+    formData.append('is_active', userForm.value.is_active ? '1' : '0')
+    
+    if (userForm.value.password) {
+      formData.append('password', userForm.value.password)
+    }
+    
+    // Append avatar if selected
+    if (userAvatarFile.value) {
+      formData.append('avatar', userAvatarFile.value)
+    }
 
     if (editingUser.value) {
-      await userApi.update(editingUser.value.id, data)
+      await userApi.update(editingUser.value.id, formData)
     } else {
-      await userApi.create(data)
+      await userApi.create(formData)
     }
 
     showUserModal.value = false
@@ -932,6 +992,71 @@ function handleImportFileChange(event) {
     importFile.value = file
   }
 }
+
+// Test Email Function
+async function sendTestEmail() {
+  if (!testEmail.value) {
+    Swal.fire({
+      icon: 'warning',
+      title: 'Email Diperlukan',
+      text: 'Masukkan email untuk test',
+      width: '300px',
+      customClass: {
+        popup: 'rounded-xl text-sm',
+        title: 'text-lg font-bold',
+        htmlContainer: 'text-xs'
+      }
+    })
+    return
+  }
+
+  testingEmail.value = true
+  testEmailResult.value = null
+
+  try {
+    const response = await settingApi.testEmail(testEmail.value)
+    
+    testEmailResult.value = {
+      success: true,
+      message: response.data.message
+    }
+
+    Swal.fire({
+      icon: 'success',
+      title: 'Email Terkirim! ✉️',
+      text: response.data.message,
+      width: '350px',
+      customClass: {
+        popup: 'rounded-xl text-sm',
+        title: 'text-lg font-bold',
+        htmlContainer: 'text-xs'
+      }
+    })
+  } catch (error) {
+    console.error('Test email error:', error)
+    
+    const errorMsg = error.response?.data?.error || error.response?.data?.message || 'Gagal mengirim email test'
+    
+    testEmailResult.value = {
+      success: false,
+      message: errorMsg
+    }
+
+    Swal.fire({
+      icon: 'error',
+      title: 'Gagal Kirim Email',
+      html: `<div class="text-left"><p class="text-xs mb-2">${errorMsg}</p><p class="text-[10px] text-gray-500">Periksa konfigurasi SMTP Anda</p></div>`,
+      width: '350px',
+      customClass: {
+        popup: 'rounded-xl text-sm',
+        title: 'text-lg font-bold',
+        htmlContainer: 'text-xs'
+      }
+    })
+  } finally {
+    testingEmail.value = false
+  }
+}
 </script>
 
 <template>
@@ -953,6 +1078,7 @@ function handleImportFileChange(event) {
             { id: 'users', label: 'User', icon: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z' },
             { id: 'customer_types', label: 'Tipe', icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z' },
             { id: 'payments', label: 'Bayar', icon: 'M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z' },
+            { id: 'email', label: 'Email', icon: 'M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z' },
             ...(authStore.user?.role === 'owner' ? [{ id: 'database', label: 'Database', icon: 'M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4' }] : [])
           ]"
           :key="tab.id"
@@ -1054,6 +1180,15 @@ function handleImportFileChange(event) {
                   <input v-model="settings.store_phone" type="text" class="w-full bg-slate-50 border-none rounded-xl pl-12 pr-5 py-3.5 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-primary-500/10" placeholder="08xxxxxxxxxx" />
                 </div>
               </div>
+
+              <!-- Instagram / Social Media -->
+              <div class="space-y-1.5">
+                <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Instagram</label>
+                <div class="relative">
+                  <span class="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400">📸</span>
+                  <input v-model="settings.store_instagram" type="text" class="w-full bg-slate-50 border-none rounded-xl pl-12 pr-5 py-3.5 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-primary-500/10" placeholder="@username" />
+                </div>
+              </div>
               
               <!-- Save Button -->
               <button @click="saveSettings" :disabled="saving" class="w-full bg-primary-500 py-3.5 rounded-xl text-white font-bold text-[11px] tracking-widest uppercase shadow-lg shadow-primary-500/20 hover:bg-primary-600 transition-all active:scale-[0.98]">
@@ -1095,8 +1230,13 @@ function handleImportFileChange(event) {
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pb-20">
         <div v-for="slide in carouselSlides" :key="slide.id" class="group bg-white rounded-2xl overflow-hidden shadow-lg shadow-slate-200/40 border border-slate-100 hover:border-primary-200 transition-all">
           <!-- Image Preview -->
-          <div class="relative h-36 bg-gradient-to-br from-orange-400 to-orange-600 overflow-hidden">
-            <img v-if="slide.image_url" :src="slide.image_url" class="w-full h-full object-cover opacity-70 mix-blend-overlay" alt="Slide">
+          <div class="relative h-36 bg-slate-100 overflow-hidden">
+            <img v-if="slide.image_url" :src="slide.image_url" class="w-full h-full object-cover" alt="Slide">
+            <div v-else class="w-full h-full flex items-center justify-center text-slate-300">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+            </div>
+            <!-- Subtle bottom gradient for text readability -->
+            <div class="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent"></div>
             <div class="absolute inset-0 p-4 flex flex-col justify-end">
               <div class="text-white">
                 <h3 class="font-bold text-lg drop-shadow-md leading-tight">{{ slide.title }}</h3>
@@ -1287,8 +1427,9 @@ function handleImportFileChange(event) {
               <tr v-for="user in users" :key="user.id" class="hover:bg-slate-50/50 transition-colors">
                 <td class="px-6 py-4">
                   <div class="flex items-center gap-3">
-                    <div class="w-9 h-9 rounded-xl bg-slate-50 text-slate-500 flex items-center justify-center font-bold text-sm shrink-0 border border-slate-100 shadow-sm">
-                      {{ user.name.charAt(0).toUpperCase() }}
+                    <div class="w-9 h-9 rounded-xl overflow-hidden bg-slate-50 text-slate-500 flex items-center justify-center font-bold text-sm shrink-0 border border-slate-100 shadow-sm">
+                      <img v-if="user.avatar" :src="`${STORAGE_BASE_URL}/${user.avatar}`" class="w-full h-full object-cover" />
+                      <span v-else>{{ user.name.charAt(0).toUpperCase() }}</span>
                     </div>
                     <div class="min-w-0">
                       <p class="font-bold text-slate-700 text-sm truncate leading-tight">{{ user.name }}</p>
@@ -1404,6 +1545,36 @@ function handleImportFileChange(event) {
         </div>
 
         <div class="p-6 pt-2 space-y-3">
+          <!-- Avatar Upload -->
+          <div class="space-y-1">
+            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Foto Profil</label>
+            <div class="flex items-center gap-4">
+              <!-- Avatar Preview -->
+              <div class="relative group">
+                <div class="w-16 h-16 rounded-full overflow-hidden bg-slate-100 border-2 border-slate-200 flex items-center justify-center">
+                  <img v-if="userAvatarPreview" :src="userAvatarPreview" class="w-full h-full object-cover" />
+                  <svg v-else xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                </div>
+                <button v-if="userAvatarPreview" @click="removeUserAvatar" type="button" class="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              
+              <!-- Upload Button -->
+              <div class="flex-1">
+                <input type="file" @change="handleUserAvatarChange" accept="image/*" class="hidden" ref="userAvatarInput" />
+                <button @click="$refs.userAvatarInput.click()" type="button" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium rounded-lg transition-colors">
+                  {{ userAvatarPreview ? 'Ganti' : 'Upload' }}
+                </button>
+                <p class="text-[10px] text-slate-400 mt-1">JPG, PNG, WEBP (Max 2MB)</p>
+              </div>
+            </div>
+          </div>
+
           <div class="space-y-1">
             <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Nama Lengkap</label>
             <input v-model="userForm.name" type="text" class="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-primary-500/10" placeholder="Nama..." required />
@@ -1535,6 +1706,148 @@ function handleImportFileChange(event) {
             <button @click="savePayment" class="flex-[2] bg-primary-500 py-3.5 rounded-xl text-white font-bold text-xs uppercase tracking-widest shadow-lg shadow-primary-500/20 hover:bg-primary-600 transition-all">
               Simpan Metode
             </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Email Settings -->
+    <div v-if="activeTab === 'email'" class="w-full animate-fade-in-up">
+      <div class="bg-white rounded-xl p-6 shadow-xl shadow-slate-200/50 border border-slate-100">
+        <h2 class="text-lg font-bold text-slate-800 mb-2 flex items-center gap-3">
+           <div class="w-9 h-9 rounded-xl bg-blue-100 flex items-center justify-center text-blue-600 shadow-sm shadow-blue-500/10">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
+           </div>
+           Konfigurasi Email (SMTP)
+        </h2>
+        <p class="text-xs text-slate-400 mb-6 ml-12">Untuk fitur reset password via email</p>
+
+        <!-- Info Box -->
+        <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
+          <div class="flex items-start gap-3">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-500 shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+            </svg>
+            <div class="text-xs text-blue-700 leading-relaxed">
+              <p class="font-bold mb-2">📧 Cara Setup Gmail SMTP (GRATIS):</p>
+              <ol class="list-decimal list-inside space-y-1 text-[11px]">
+                <li>Buka <strong>Google Account</strong> → <strong>Security</strong></li>
+                <li>Aktifkan <strong>2-Step Verification</strong></li>
+                <li>Buka <strong>App Passwords</strong> → Pilih <strong>Mail</strong> dan <strong>Other</strong></li>
+                <li>Copy <strong>App Password</strong> yang dihasilkan (16 karakter)</li>
+                <li>Paste ke field <strong>Password</strong> di bawah</li>
+              </ol>
+              <p class="mt-2 text-[10px] text-blue-600">💡 Limit: 500 email/hari (lebih dari cukup untuk bisnis kecil)</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="space-y-4">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <!-- SMTP Host -->
+            <div class="space-y-1.5">
+              <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">SMTP Host</label>
+              <input v-model="settings.mail_host" type="text" class="w-full bg-slate-50 border-none rounded-xl px-5 py-3.5 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-primary-500/10" placeholder="smtp.gmail.com" />
+            </div>
+
+            <!-- SMTP Port -->
+            <div class="space-y-1.5">
+              <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">SMTP Port</label>
+              <input v-model="settings.mail_port" type="text" class="w-full bg-slate-50 border-none rounded-xl px-5 py-3.5 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-primary-500/10" placeholder="587" />
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <!-- Email Username -->
+            <div class="space-y-1.5">
+              <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Email / Username</label>
+              <input v-model="settings.mail_username" type="email" class="w-full bg-slate-50 border-none rounded-xl px-5 py-3.5 text-sm text-slate-700 focus:ring-2 focus:ring-primary-500/10" placeholder="your-email@gmail.com" />
+            </div>
+
+            <!-- Email Password -->
+            <div class="space-y-1.5">
+              <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Password / App Password</label>
+              <input v-model="settings.mail_password" type="password" class="w-full bg-slate-50 border-none rounded-xl px-5 py-3.5 text-sm text-slate-700 focus:ring-2 focus:ring-primary-500/10" placeholder="••••••••••••••••" />
+              <p class="text-[9px] text-slate-400 ml-1">Untuk Gmail, gunakan App Password (16 karakter)</p>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <!-- Encryption -->
+            <div class="space-y-1.5">
+              <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Encryption</label>
+              <select v-model="settings.mail_encryption" class="w-full bg-slate-50 border-none rounded-xl px-5 py-3.5 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-primary-500/10">
+                <option value="tls">TLS (Recommended)</option>
+                <option value="ssl">SSL</option>
+              </select>
+            </div>
+
+            <!-- From Name -->
+            <div class="space-y-1.5">
+              <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Nama Pengirim</label>
+              <input v-model="settings.mail_from_name" type="text" class="w-full bg-slate-50 border-none rounded-xl px-5 py-3.5 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-primary-500/10" placeholder="Dimsum Sarang" />
+            </div>
+          </div>
+
+          <!-- From Address (Optional) -->
+          <div class="space-y-1.5">
+            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">From Email (Opsional)</label>
+            <input v-model="settings.mail_from_address" type="email" class="w-full bg-slate-50 border-none rounded-xl px-5 py-3.5 text-sm text-slate-700 focus:ring-2 focus:ring-primary-500/10" placeholder="Kosongkan untuk menggunakan email username" />
+            <p class="text-[9px] text-slate-400 ml-1">Jika kosong, akan menggunakan email dari field Username</p>
+          </div>
+
+          <!-- Save Button -->
+          <button @click="saveSettings" :disabled="saving" class="w-full bg-primary-500 py-3.5 rounded-xl text-white font-bold text-[11px] tracking-widest uppercase shadow-lg shadow-primary-500/20 hover:bg-primary-600 transition-all active:scale-[0.98] disabled:opacity-70">
+            {{ saving ? 'Menyimpan...' : 'Simpan Konfigurasi Email' }}
+          </button>
+
+          <!-- Test Email Section -->
+          <div class="mt-6 pt-6 border-t border-slate-200">
+            <h3 class="text-sm font-bold text-slate-700 mb-4 flex items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Test Konfigurasi Email
+            </h3>
+            <p class="text-xs text-slate-400 mb-3">Kirim email test untuk memastikan konfigurasi SMTP sudah benar</p>
+            
+            <div class="flex gap-2">
+              <input 
+                v-model="testEmail" 
+                type="email" 
+                class="flex-1 bg-slate-50 border-none rounded-xl px-4 py-3 text-sm text-slate-700 focus:ring-2 focus:ring-blue-500/10" 
+                placeholder="Email tujuan test (contoh: your@email.com)"
+              />
+              <button 
+                @click="sendTestEmail" 
+                :disabled="testingEmail || !testEmail"
+                class="px-6 py-3 bg-blue-500 text-white rounded-xl font-bold text-xs hover:bg-blue-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 whitespace-nowrap"
+              >
+                <svg v-if="testingEmail" class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <svg v-else xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+                {{ testingEmail ? 'Mengirim...' : 'Kirim Test' }}
+              </button>
+            </div>
+
+            <!-- Test Result -->
+            <div v-if="testEmailResult" :class="['mt-3 p-3 rounded-xl text-xs', testEmailResult.success ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-700 border border-red-200']">
+              <div class="flex items-start gap-2">
+                <svg v-if="testEmailResult.success" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                </svg>
+                <svg v-else xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                </svg>
+                <p class="leading-relaxed">{{ testEmailResult.message }}</p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
