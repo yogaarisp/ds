@@ -3,14 +3,32 @@ import { ref, onMounted } from 'vue'
 import { settingApi, userApi, paymentMethodApi, carouselApi, databaseApi, STORAGE_BASE_URL } from '../api'
 import { useSettingsStore } from '../stores/settings'
 import { useAuthStore } from '../stores/auth'
+import { usePrinter } from '@/composables/usePrinter'
 import SettingsCustomerTypes from './SettingsCustomerTypes.vue'
 import Swal from 'sweetalert2'
 
 const settingsStore = useSettingsStore()
 const authStore = useAuthStore()
-const activeTab = ref('store') // store | users | payments | email
+const { 
+  printerConnected, 
+  printerWidth, 
+  autoPrint,
+  setPrinterWidth,
+  setAutoPrint,
+  connectPrinter,
+  disconnectPrinter,
+  thermalPrinter
+} = usePrinter()
+
+const activeTab = ref('store') // store | users | payments | email | printer | database
 const loading = ref(false)
 const saving = ref(false)
+const connecting = ref(false)
+
+const logoInput = ref(null)
+const faviconInput = ref(null)
+const carouselImageInput = ref(null)
+const userAvatarInput = ref(null)
 
 // Store settings
 const settings = ref({
@@ -96,6 +114,10 @@ const exportingDatabase = ref(false)
 const importingDatabase = ref(false)
 const importFile = ref(null)
 const importFileInput = ref(null)
+
+// Native Printing State
+const discoveredPrinters = ref([])
+const showNativeScanResult = ref(false)
 
 onMounted(() => {
   loadSettings()
@@ -205,6 +227,7 @@ async function saveSettings() {
     saving.value = false
   }
 }
+
 
 function handleLogoChange(event) {
   const file = event.target.files[0]
@@ -646,7 +669,7 @@ async function saveCarousel() {
     formData.append('link_url', carouselForm.value.link_url || '')
     formData.append('start_date', carouselForm.value.start_date || '')
     formData.append('end_date', carouselForm.value.end_date || '')
-    formData.append('is_active', carouselForm.value.is_active ? 1 : 0)
+    formData.append('is_active', carouselForm.value.is_active ? '1' : '0')
 
     if (carouselImageFile.value) {
       formData.append('image', carouselImageFile.value)
@@ -1057,6 +1080,192 @@ async function sendTestEmail() {
     testingEmail.value = false
   }
 }
+
+// Printer Functions
+async function handleConnect() {
+  if (thermalPrinter.isAndroidApp()) {
+    connecting.value = true
+    try {
+      const printers = await thermalPrinter.scanNative()
+      discoveredPrinters.value = printers
+      showNativeScanResult.value = true
+    } catch (error) {
+      console.error('Native scan error:', error)
+      Swal.fire({
+        icon: 'error',
+        title: 'Gagal Scan',
+        text: 'Gagal memindai printer paired Bluetooth/USB',
+        width: '300px',
+        customClass: { popup: 'rounded-xl text-sm' }
+      })
+    } finally {
+      connecting.value = false
+    }
+    return
+  }
+
+  connecting.value = true
+  try {
+    const success = await connectPrinter()
+    if (success) {
+      await Swal.fire({
+        icon: 'success',
+        title: 'Terhubung!',
+        text: 'Printer berhasil disambungkan',
+        timer: 1500,
+        showConfirmButton: false,
+        width: '300px',
+        customClass: {
+          popup: 'rounded-xl text-sm',
+          title: 'text-lg font-bold',
+          htmlContainer: 'text-xs'
+        }
+      })
+    }
+  } catch (error) {
+    console.error('Error connecting printer:', error)
+    if (error.name !== 'NotFoundError' && error.name !== 'AbortError') {
+      Swal.fire({
+        icon: 'error',
+        title: 'Gagal',
+        text: error.message || 'Gagal menghubungkan printer',
+        width: '300px',
+        customClass: {
+          popup: 'rounded-xl text-sm',
+          title: 'text-lg font-bold',
+          htmlContainer: 'text-xs'
+        }
+      })
+    }
+  } finally {
+    connecting.value = false
+  }
+}
+
+async function connectToNativePrinter(printer) {
+  loading.value = true
+  try {
+    await thermalPrinter.connectNative(printer)
+    printerConnected.value = true
+    showNativeScanResult.value = false
+    Swal.fire({
+      icon: 'success',
+      title: 'Terhubung!',
+      text: `Tersambung ke ${printer.name}`,
+      timer: 1500,
+      showConfirmButton: false,
+      width: '300px',
+      customClass: { popup: 'rounded-xl text-sm' }
+    })
+  } catch (error) {
+    Swal.fire({
+      icon: 'error',
+      title: 'Gagal',
+      text: error.message || 'Gagal menghubungkan printer',
+      width: '300px',
+      customClass: { popup: 'rounded-xl text-sm' }
+    })
+  } finally {
+    loading.value = false
+  }
+}
+
+async function handleDisconnect() {
+  if (thermalPrinter.isAndroidApp()) {
+    try {
+      await thermalPrinter.disconnect()
+      printerConnected.value = false
+      Swal.fire({
+        icon: 'success',
+        title: 'Terputus!',
+        text: 'Printer berhasil diputuskan',
+        timer: 1500,
+        showConfirmButton: false,
+        width: '300px',
+        customClass: { popup: 'rounded-xl text-sm' }
+      })
+    } catch (error) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Gagal',
+        text: error.message || 'Gagal memutuskan printer',
+        width: '300px',
+        customClass: { popup: 'rounded-xl text-sm' }
+      })
+    }
+    return
+  }
+  
+  await disconnectPrinter()
+  Swal.fire({
+    icon: 'success',
+    title: 'Terputus!',
+    text: 'Printer berhasil diputuskan',
+    timer: 1500,
+    showConfirmButton: false,
+    width: '300px',
+    customClass: {
+      popup: 'rounded-xl text-sm',
+      title: 'text-lg font-bold',
+      htmlContainer: 'text-xs'
+    }
+  })
+}
+
+async function handleTestPrint() {
+  if (!printerConnected.value) {
+    Swal.fire({
+      icon: 'warning',
+      title: 'Printer Belum Terhubung',
+      text: 'Hubungkan printer terlebih dahulu',
+      confirmButtonColor: '#F97316',
+      width: '300px',
+      customClass: {
+        popup: 'rounded-2xl shadow-xl',
+        title: 'text-base font-bold'
+      }
+    })
+    return
+  }
+
+  try {
+    await thermalPrinter.testPrint()
+    Swal.fire({
+      icon: 'success',
+      title: 'Test Print Berhasil',
+      text: 'Cek printer Anda',
+      confirmButtonColor: '#F97316',
+      timer: 2000,
+      showConfirmButton: false,
+      width: '300px',
+      customClass: {
+        popup: 'rounded-2xl shadow-xl',
+        title: 'text-base font-bold'
+      }
+    })
+  } catch (error) {
+    Swal.fire({
+      icon: 'error',
+      title: 'Test Print Gagal',
+      text: error.message,
+      confirmButtonColor: '#F97316',
+      width: '300px',
+      customClass: {
+        popup: 'rounded-2xl shadow-xl',
+        title: 'text-base font-bold'
+      }
+    })
+  }
+}
+
+function handleWidthChange(width) {
+  setPrinterWidth(width)
+  thermalPrinter.setPrinterWidth(parseInt(width))
+}
+
+function handleAutoPrintChange(enabled) {
+  setAutoPrint(enabled)
+}
 </script>
 
 <template>
@@ -1078,6 +1287,7 @@ async function sendTestEmail() {
             { id: 'users', label: 'User', icon: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z' },
             { id: 'customer_types', label: 'Tipe', icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z' },
             { id: 'payments', label: 'Bayar', icon: 'M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z' },
+            { id: 'printer', label: 'Printer', icon: 'M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0110.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0l.229 2.523a1.125 1.125 0 01-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0021 15.75V9.456c0-1.081-.768-2.015-1.837-2.175a48.055 48.055 0 00-1.913-.247M6.34 18H5.25A2.25 2.25 0 013 15.75V9.456c0-1.081.768-2.015 1.837-2.175a48.041 48.041 0 011.913-.247m10.5 0a48.536 48.536 0 00-10.5 0m10.5 0V3.375c0-.621-.504-1.125-1.125-1.125h-8.25c-.621 0-1.125.504-1.125 1.125v3.659M18 10.5h.008v.008H18V10.5zm-3 0h.008v.008H15V10.5z' },
             { id: 'email', label: 'Email', icon: 'M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z' },
             ...(authStore.user?.role === 'owner' ? [{ id: 'database', label: 'Database', icon: 'M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4' }] : [])
           ]"
@@ -1110,7 +1320,7 @@ async function sendTestEmail() {
           <!-- Logo Uploader -->
           <div>
             <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1 mb-2 block">Logo Toko</label>
-            <div class="group relative border-2 border-dashed border-slate-200 rounded-xl p-4 flex flex-col items-center justify-center text-center hover:border-primary-500 hover:bg-primary-50 transition-all cursor-pointer h-48" @click="$refs.logoInput.click()">
+            <div class="group relative border-2 border-dashed border-slate-200 rounded-xl p-4 flex flex-col items-center justify-center text-center hover:border-primary-500 hover:bg-primary-50 transition-all cursor-pointer h-48" @click="logoInput.click()">
               <div v-if="logoPreview" class="relative w-28 h-28 mb-2">
                  <img :src="logoPreview" alt="Logo" class="w-full h-full object-contain drop-shadow-sm" />
                  <div class="absolute inset-0 bg-black/40 rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
@@ -1138,7 +1348,7 @@ async function sendTestEmail() {
           <!-- Favicon Uploader -->
           <div>
             <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1 mb-2 block">Favicon Website</label>
-             <div class="group relative border-2 border-dashed border-slate-200 rounded-xl p-4 flex flex-col items-center justify-center text-center hover:border-primary-500 hover:bg-primary-50 transition-all cursor-pointer h-48" @click="$refs.faviconInput.click()">
+             <div class="group relative border-2 border-dashed border-slate-200 rounded-xl p-4 flex flex-col items-center justify-center text-center hover:border-primary-500 hover:bg-primary-50 transition-all cursor-pointer h-48" @click="faviconInput.click()">
               <div v-if="faviconPreview" class="relative w-20 h-20 mb-2">
                  <img :src="faviconPreview" alt="Favicon" class="w-full h-full object-contain" />
                   <div class="absolute inset-0 bg-black/40 rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
@@ -1308,7 +1518,7 @@ async function sendTestEmail() {
           <!-- Image Upload/Preview -->
           <div>
             <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1 mb-2 block">Gambar Banner</label>
-            <div class="group relative border-2 border-dashed border-slate-200 rounded-xl overflow-hidden hover:border-primary-500 hover:bg-primary-50/50 transition-all cursor-pointer h-32" @click="$refs.carouselImageInput.click()">
+            <div class="group relative border-2 border-dashed border-slate-200 rounded-xl overflow-hidden hover:border-primary-500 hover:bg-primary-50/50 transition-all cursor-pointer h-32" @click="carouselImageInput.click()">
               <div v-if="carouselImagePreview" class="absolute inset-0">
                 <img :src="carouselImagePreview" class="w-full h-full object-cover" alt="Preview">
                 <div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
@@ -1567,7 +1777,7 @@ async function sendTestEmail() {
               <!-- Upload Button -->
               <div class="flex-1">
                 <input type="file" @change="handleUserAvatarChange" accept="image/*" class="hidden" ref="userAvatarInput" />
-                <button @click="$refs.userAvatarInput.click()" type="button" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium rounded-lg transition-colors">
+                <button @click="userAvatarInput.click()" type="button" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium rounded-lg transition-colors">
                   {{ userAvatarPreview ? 'Ganti' : 'Upload' }}
                 </button>
                 <p class="text-[10px] text-slate-400 mt-1">JPG, PNG, WEBP (Max 2MB)</p>
@@ -1706,6 +1916,170 @@ async function sendTestEmail() {
             <button @click="savePayment" class="flex-[2] bg-primary-500 py-3.5 rounded-xl text-white font-bold text-xs uppercase tracking-widest shadow-lg shadow-primary-500/20 hover:bg-primary-600 transition-all">
               Simpan Metode
             </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Printer Settings -->
+    <div v-if="activeTab === 'printer'" class="w-full animate-fade-in-up">
+      <div class="bg-white rounded-xl p-6 shadow-xl shadow-slate-200/50 border border-slate-100 space-y-6">
+        <h2 class="text-lg font-bold text-slate-800 mb-6 flex items-center gap-3">
+           <div class="w-9 h-9 rounded-xl bg-orange-100 flex items-center justify-center text-orange-600 shadow-sm shadow-orange-500/10">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0110.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0l.229 2.523a1.125 1.125 0 01-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0021 15.75V9.456c0-1.081-.768-2.015-1.837-2.175a48.055 48.055 0 00-1.913-.247M6.34 18H5.25A2.25 2.25 0 013 15.75V9.456c0-1.081.768-2.015 1.837-2.175a48.041 48.041 0 011.913-.247m10.5 0a48.536 48.536 0 00-10.5 0m10.5 0V3.375c0-.621-.504-1.125-1.125-1.125h-8.25c-.621 0-1.125.504-1.125 1.125v3.659M18 10.5h.008v.008H18V10.5zm-3 0h.008v.008H15V10.5z" />
+              </svg>
+           </div>
+           Pengaturan Printer
+        </h2>
+
+        <!-- Connection Status -->
+        <div class="bg-slate-50 rounded-2xl p-6 border border-slate-100">
+          <div class="flex items-center justify-between mb-6">
+            <div class="flex items-center gap-4">
+              <div class="w-14 h-14 rounded-2xl bg-white shadow-sm flex items-center justify-center group">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-7 h-7" :class="printerConnected ? 'text-green-500' : 'text-slate-300'">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0110.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0l.229 2.523a1.125 1.125 0 01-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0021 15.75V9.456c0-1.081-.768-2.015-1.837-2.175a48.055 48.055 0 00-1.913-.247M6.34 18H5.25A2.25 2.25 0 013 15.75V9.456c0-1.081.768-2.015 1.837-2.175a48.041 48.041 0 011.913-.247m10.5 0a48.536 48.536 0 00-10.5 0m10.5 0V3.375c0-.621-.504-1.125-1.125-1.125h-8.25c-.621 0-1.125.504-1.125 1.125v3.659M18 10.5h.008v.008H18V10.5zm-3 0h.008v.008H15V10.5z" />
+                </svg>
+              </div>
+              <div>
+                <h3 class="font-bold text-slate-800">Status Printer</h3>
+                <p class="text-xs font-medium" :class="printerConnected ? 'text-green-600' : 'text-slate-400'">
+                  {{ printerConnected ? 'Terhubung & Siap Mencetak' : 'Printer Belum Terhubung' }}
+                </p>
+              </div>
+            </div>
+            <div v-if="printerConnected" class="flex items-center gap-2 px-3 py-1 bg-green-50 text-green-600 rounded-full text-[10px] font-bold uppercase tracking-wider">
+              <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+              Online
+            </div>
+          </div>
+
+          <div class="flex flex-col md:flex-row gap-3">
+            <button 
+              v-if="!printerConnected"
+              @click="handleConnect"
+              :disabled="connecting"
+              class="flex-1 bg-orange-500 text-white font-bold py-3.5 rounded-xl hover:bg-orange-600 transition-all shadow-lg shadow-orange-500/20 active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              <svg v-if="connecting" class="animate-spin h-5 w-5 text-white" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              {{ connecting ? 'Menghubungkan...' : 'Scan & Hubungkan Printer' }}
+            </button>
+            <button 
+              v-else
+              @click="handleDisconnect"
+              class="flex-1 bg-red-50 text-red-500 border border-red-100 font-bold py-3.5 rounded-xl hover:bg-red-100 transition-all active:scale-[0.98]"
+            >
+              Putuskan Koneksi
+            </button>
+            <button 
+              @click="handleTestPrint"
+              :disabled="!printerConnected"
+              class="px-8 bg-white text-slate-700 font-bold py-3.5 rounded-xl border border-slate-200 hover:bg-slate-50 transition-all active:scale-[0.98] disabled:opacity-50 disabled:bg-slate-50 flex items-center justify-center gap-2"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+              </svg>
+              Test Print
+            </button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <!-- Printer Width -->
+          <div class="bg-slate-50 rounded-2xl p-6 border border-slate-100">
+            <div class="flex items-center gap-2 mb-4">
+              <h3 class="font-bold text-slate-800">Ukuran Kertas</h3>
+              <div class="group relative">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-slate-400 cursor-help" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-slate-800 text-white text-[10px] rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 shadow-xl">
+                  Pilih ukuran kertas sesuai printer thermal Anda.
+                </div>
+              </div>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+              <button
+                @click="handleWidthChange('58')"
+                class="p-5 rounded-2xl border-2 transition-all group relative overflow-hidden"
+                :class="printerWidth === '58' 
+                  ? 'border-orange-500 bg-orange-50/50 shadow-md shadow-orange-500/10' 
+                  : 'border-white bg-white hover:border-orange-200'"
+              >
+                <div class="text-center relative z-10">
+                  <div class="text-2xl font-black" :class="printerWidth === '58' ? 'text-orange-600' : 'text-slate-400'">58mm</div>
+                  <div class="text-[10px] font-bold uppercase tracking-widest mt-1" :class="printerWidth === '58' ? 'text-orange-400' : 'text-slate-300'">Standard</div>
+                </div>
+                <div v-if="printerWidth === '58'" class="absolute -right-2 -bottom-2 opacity-10">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-orange-600" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                  </svg>
+                </div>
+              </button>
+              <button
+                @click="handleWidthChange('80')"
+                class="p-5 rounded-2xl border-2 transition-all group relative overflow-hidden"
+                :class="printerWidth === '80' 
+                  ? 'border-orange-500 bg-orange-50/50 shadow-md shadow-orange-500/10' 
+                  : 'border-white bg-white hover:border-orange-200'"
+              >
+                <div class="text-center relative z-10">
+                  <div class="text-2xl font-black" :class="printerWidth === '80' ? 'text-orange-600' : 'text-slate-400'">80mm</div>
+                  <div class="text-[10px] font-bold uppercase tracking-widest mt-1" :class="printerWidth === '80' ? 'text-orange-400' : 'text-slate-300'">Large</div>
+                </div>
+                <div v-if="printerWidth === '80'" class="absolute -right-2 -bottom-2 opacity-10">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-orange-600" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                  </svg>
+                </div>
+              </button>
+            </div>
+          </div>
+
+          <!-- Auto Print Toggle -->
+          <div class="bg-slate-50 rounded-2xl p-6 border border-slate-100 flex flex-col justify-center">
+            <div class="flex items-center justify-between">
+              <div>
+                <h3 class="font-bold text-slate-800">Auto Print Struk</h3>
+                <p class="text-[11px] text-slate-500 mt-1 max-w-[200px]">Cetak otomatis setelah transaksi berhasil diselesaikan</p>
+              </div>
+              <button
+                @click="handleAutoPrintChange(!autoPrint)"
+                class="relative w-16 h-9 rounded-full transition-all duration-300 shadow-inner"
+                :class="autoPrint ? 'bg-orange-500' : 'bg-slate-300'"
+              >
+                <div
+                  class="absolute top-1 w-7 h-7 bg-white rounded-full shadow-lg transition-all duration-300 flex items-center justify-center"
+                  :class="autoPrint ? 'translate-x-8' : 'translate-x-1'"
+                >
+                  <div class="w-1 h-3 bg-orange-100 rounded-full" v-if="autoPrint"></div>
+                </div>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Notes -->
+        <div class="bg-blue-50/50 border border-blue-100 rounded-2xl p-5">
+          <div class="flex gap-4">
+            <div class="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center text-blue-600 shrink-0">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <div class="text-xs text-blue-700 leading-relaxed">
+              <p class="font-bold mb-2 uppercase tracking-widest text-[10px]">Petunjuk Penggunaan Printer:</p>
+              <ul class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-1 list-disc list-inside">
+                <li>Pastikan Bluetooth perangkat menyala</li>
+                <li>Printer harus mendukung perintah ESC/POS</li>
+                <li>Gunakan Chrome atau Edge (Web Bluetooth)</li>
+                <li>Pastikan printer sudah di-pairing dengan perangkat</li>
+              </ul>
+            </div>
           </div>
         </div>
       </div>
@@ -2042,6 +2416,60 @@ async function sendTestEmail() {
             </svg>
             <span class="font-medium">Memuat informasi database...</span>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Native Printer Scan Result Modal -->
+    <div v-if="showNativeScanResult" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+      <div class="bg-white rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl animate-scale-in">
+        <div class="p-6 border-b border-slate-100 flex items-center justify-between">
+          <h3 class="font-bold text-slate-800">Pilih Printer</h3>
+          <button @click="showNativeScanResult = false" class="text-slate-400 hover:text-slate-600">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l18 18" />
+            </svg>
+          </button>
+        </div>
+        <div class="p-4 max-h-[60vh] overflow-y-auto space-y-3">
+          <div v-if="discoveredPrinters.length === 0" class="text-center py-10 text-slate-400">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto mb-3 opacity-20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+            </svg>
+            <p class="text-sm">Tidak ada printer ditemukan.<br>Pastikan Bluetooth aktif & sudah dipairing.</p>
+          </div>
+          <button 
+            v-for="printer in discoveredPrinters" 
+            :key="printer.address"
+            @click="connectToNativePrinter(printer)"
+            class="w-full flex items-center gap-4 p-4 rounded-2xl border border-slate-100 bg-slate-50 hover:bg-orange-50 hover:border-orange-200 transition-all group active:scale-[0.98]"
+          >
+            <div class="w-10 h-10 rounded-xl flex items-center justify-center" :class="printer.type === 'usb' ? 'bg-blue-100 text-blue-600' : 'bg-orange-100 text-orange-600'">
+              <svg v-if="printer.type === 'usb'" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+              <svg v-else xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <div class="text-left flex-1 min-w-0">
+              <div class="font-bold text-slate-800 truncate">{{ printer.name }}</div>
+              <div class="text-[10px] text-slate-400 font-mono">{{ printer.address }}</div>
+            </div>
+            <div class="text-slate-300 group-hover:text-orange-400 transition-colors">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+              </svg>
+            </div>
+          </button>
+        </div>
+        <div class="p-4 bg-slate-50 border-t border-slate-100">
+           <button @click="handleConnect" class="w-full py-2.5 text-xs font-bold text-slate-500 hover:text-orange-600 flex items-center justify-center gap-2">
+             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" :class="connecting ? 'animate-spin' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+             </svg>
+             Refresh List
+           </button>
         </div>
       </div>
     </div>

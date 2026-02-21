@@ -1,9 +1,10 @@
 <script setup>
 import { ref, onMounted, watch, computed } from 'vue'
-import { customerApi, customerTypeApi, transactionApi } from '../api'
+import { customerApi, customerTypeApi, transactionApi } from '@/api'
 import Swal from 'sweetalert2'
 
 const STORAGE_URL = computed(() => import.meta.env.VITE_STORAGE_URL || '/storage')
+const avatarInput = ref(null)
 
 const customers = ref([])
 const customerTypes = ref([])
@@ -144,7 +145,7 @@ async function saveCustomer() {
     formData.append('phone', form.value.phone)
     formData.append('email', form.value.email || '')
     formData.append('customer_type_id', form.value.customer_type_id)
-    formData.append('discount_percentage', parseInt(form.value.discount_percentage) || 0)
+    formData.append('discount_percentage', String(form.value.discount_percentage || 0))
     formData.append('address', form.value.address || '')
     formData.append('notes', form.value.notes || '')
     
@@ -408,7 +409,7 @@ function getStatusColor(status) {
     </div>
 
     <!-- Main Content wrapper -->
-    <div class="px-2 md:px-6">
+    <div class="px-3 md:px-6 mt-3">
 
     <!-- Loading -->
     <div v-if="loading" class="text-center py-12 text-gray-500">
@@ -418,58 +419,58 @@ function getStatusColor(status) {
     <!-- Customers Table -->
     <div v-else class="min-h-0">
       <!-- Mobile Cards (Lighter & Premium) -->
-      <div class="lg:hidden space-y-3">
-        <div v-for="customer in customers" :key="customer.id" @click="viewHistory(customer)" class="bg-white rounded-2xl p-3 shadow-[0_4px_20px_rgb(0,0,0,0.03)] border border-slate-50 relative group active:scale-[0.98] transition-all cursor-pointer">
-          <div class="flex justify-between items-start mb-2">
-            <div class="flex items-center gap-3">
-              <div class="w-10 h-10 rounded-xl overflow-hidden bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-400 text-sm font-medium shadow-sm">
+      <div class="lg:hidden space-y-2.5">
+        <div v-for="customer in customers" :key="customer.id" @click="viewHistory(customer)" class="bg-white rounded-2xl p-3.5 shadow-[0_2px_12px_rgb(0,0,0,0.04)] border border-slate-100 relative group active:scale-[0.98] transition-all cursor-pointer">
+          <div class="flex justify-between items-start mb-2.5">
+            <div class="flex items-center gap-2.5">
+              <div class="w-11 h-11 rounded-xl overflow-hidden bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-400 text-sm font-medium shadow-sm shrink-0">
                 <img v-if="customer.avatar" :src="`${STORAGE_URL}/${customer.avatar}`" class="w-full h-full object-cover" />
                 <span v-else>{{ customer.name.charAt(0).toUpperCase() }}</span>
               </div>
-              <div>
-                <h3 class="font-medium text-slate-800 text-sm leading-none">{{ customer.name }}</h3>
+              <div class="min-w-0">
+                <h3 class="font-semibold text-slate-800 text-sm leading-tight truncate">{{ customer.name }}</h3>
                 <div class="flex items-center gap-2 mt-1">
-                  <span class="text-[10px] font-medium text-slate-400">{{ formatPhone(customer.phone) }}</span>
+                  <span class="text-xs font-medium text-slate-400 truncate">{{ formatPhone(customer.phone) }}</span>
                 </div>
               </div>
             </div>
-            <div class="flex gap-1">
+            <div class="flex gap-1.5 shrink-0">
               <button 
                 @click.stop="openModal(customer)" 
-                class="w-9 h-9 flex items-center justify-center rounded-xl bg-blue-50 text-blue-500 hover:bg-blue-100 transition-all active:scale-90"
+                class="w-8 h-8 flex items-center justify-center rounded-xl bg-blue-50 text-blue-500 hover:bg-blue-100 transition-all active:scale-90"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                 </svg>
               </button>
               <button 
                 @click.stop="deleteCustomer(customer)" 
-                class="w-9 h-9 flex items-center justify-center rounded-xl bg-red-50 text-red-500 hover:bg-red-100 transition-all active:scale-90"
+                class="w-8 h-8 flex items-center justify-center rounded-xl bg-red-50 text-red-500 hover:bg-red-100 transition-all active:scale-90"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                 </svg>
               </button>
             </div>
           </div>
           
-          <div class="flex flex-wrap gap-2 mb-2">
-            <span :class="['px-2 py-0.5 rounded text-[9px] font-medium uppercase tracking-wider', getLevelColor(customer.customer_type)]">
+          <div class="flex flex-wrap gap-1.5 mb-2.5">
+            <span :class="['px-2 py-1 rounded-lg text-[10px] font-semibold uppercase tracking-wider', getLevelColor(customer.customer_type)]">
               {{ customer.customer_type?.name }}
             </span>
-            <span v-if="customer.discount_percentage > 0" class="px-2 py-0.5 rounded text-[9px] font-medium uppercase tracking-wider bg-emerald-50 text-emerald-600 border border-emerald-100/50">
+            <span v-if="customer.discount_percentage > 0" class="px-2 py-1 rounded-lg text-[10px] font-semibold uppercase tracking-wider bg-emerald-50 text-emerald-600 border border-emerald-100/50">
               {{ customer.discount_percentage }}% Off
             </span>
           </div>
           
-          <div class="grid grid-cols-2 gap-2 pt-2 border-t border-slate-50">
-            <div class="bg-slate-50/50 rounded-lg p-1.5">
-               <p class="text-[7px] font-medium text-slate-400 uppercase tracking-widest mb-0.5">Orders</p>
-               <p class="text-[11px] font-medium text-slate-700">{{ customer.total_orders }}x</p>
+          <div class="grid grid-cols-2 gap-2 pt-2.5 border-t border-slate-100">
+            <div class="bg-slate-50/50 rounded-xl p-2">
+               <p class="text-[9px] font-semibold text-slate-400 uppercase tracking-widest mb-1">Orders</p>
+               <p class="text-sm font-semibold text-slate-700">{{ customer.total_orders }}x</p>
             </div>
-            <div class="bg-slate-50/50 rounded-lg p-1.5 text-right">
-               <p class="text-[7px] font-medium text-slate-400 uppercase tracking-widest mb-0.5">Spending</p>
-               <p class="text-[11px] font-medium text-primary-600">Rp {{ new Intl.NumberFormat('id-ID').format(customer.total_spent) }}</p>
+            <div class="bg-slate-50/50 rounded-xl p-2 text-right">
+               <p class="text-[9px] font-semibold text-slate-400 uppercase tracking-widest mb-1">Spending</p>
+               <p class="text-sm font-semibold text-primary-600">Rp {{ new Intl.NumberFormat('id-ID').format(customer.total_spent) }}</p>
             </div>
           </div>
         </div>
@@ -555,31 +556,31 @@ function getStatusColor(status) {
       </div>
     </div>
 
-      <div v-if="customers.length === 0" class="text-center py-20 text-slate-300">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="w-16 h-16 mx-auto mb-4 opacity-50"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M15.31 6.5a4.5 4.5 0 0 1 0 7"/></svg>
-        <p class="font-medium text-slate-400">Belum ada customer</p>
+      <div v-if="customers.length === 0" class="text-center py-16 text-slate-300">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="w-14 h-14 mx-auto mb-3 opacity-50"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M15.31 6.5a4.5 4.5 0 0 1 0 7"/></svg>
+        <p class="font-medium text-slate-400 text-sm">Belum ada customer</p>
       </div>
 
       <!-- Pagination (Modern) -->
-      <div v-if="pagination.last_page > 1" class="mt-8 flex flex-col sm:flex-row justify-between items-center gap-4 px-4 py-3">
-        <div class="text-xs font-medium text-slate-500">
+      <div v-if="pagination.last_page > 1" class="mt-6 flex flex-col sm:flex-row justify-between items-center gap-3 px-2">
+        <div class="text-xs font-medium text-slate-500 order-2 sm:order-1">
           Menampilkan {{ customers.length }} dari {{ pagination.total }} pelanggan
         </div>
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2 order-1 sm:order-2">
           <button
             @click="loadCustomers(pagination.current_page - 1)"
             :disabled="pagination.current_page <= 1"
-            class="w-10 h-10 flex items-center justify-center rounded-xl bg-white border border-slate-100 text-slate-400 hover:bg-slate-50 disabled:opacity-30 transition-all shadow-sm active:scale-90"
+            class="w-9 h-9 flex items-center justify-center rounded-xl bg-white border border-slate-100 text-slate-400 hover:bg-slate-50 disabled:opacity-30 transition-all shadow-sm active:scale-90"
           >
             ←
           </button>
-          <div class="px-4 py-2 bg-white border border-slate-100 rounded-xl text-sm font-medium text-slate-700 shadow-sm">
-            {{ pagination.current_page }} <span class="text-slate-300 mx-1">/</span> {{ pagination.last_page }}
+          <div class="px-3 py-2 bg-white border border-slate-100 rounded-xl text-xs font-medium text-slate-700 shadow-sm min-w-[70px] text-center">
+            {{ pagination.current_page }} <span class="text-slate-300 mx-0.5">/</span> {{ pagination.last_page }}
           </div>
           <button
             @click="loadCustomers(pagination.current_page + 1)"
             :disabled="pagination.current_page >= pagination.last_page"
-            class="w-10 h-10 flex items-center justify-center rounded-xl bg-white border border-slate-100 text-slate-400 hover:bg-slate-50 disabled:opacity-30 transition-all shadow-sm active:scale-90"
+            class="w-9 h-9 flex items-center justify-center rounded-xl bg-white border border-slate-100 text-slate-400 hover:bg-slate-50 disabled:opacity-30 transition-all shadow-sm active:scale-90"
           >
             →
           </button>
@@ -587,13 +588,12 @@ function getStatusColor(status) {
       </div>
 
     <!-- Modal -->
-    <!-- Modal -->
     <Teleport to="body">
-      <div v-if="showModal" class="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 overflow-hidden h-[100dvh]">
-        <div class="bg-white w-full max-w-2xl max-h-[90vh] rounded-[2rem] md:rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col animate-in fade-in zoom-in duration-300">
+      <div v-if="showModal" class="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 backdrop-blur-sm p-0 sm:p-4 overflow-hidden h-[100dvh]">
+        <div class="bg-white w-full h-full sm:h-auto sm:max-w-2xl sm:max-h-[90vh] sm:rounded-[2rem] md:rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col animate-in fade-in zoom-in duration-300">
           <!-- Header -->
-          <div class="px-6 py-4 flex items-center justify-between shrink-0 border-b border-slate-100/50">
-            <h2 class="text-lg font-bold text-slate-800 tracking-tight">
+          <div class="px-4 sm:px-6 py-3.5 sm:py-4 flex items-center justify-between shrink-0 border-b border-slate-100/50 bg-white sticky top-0 z-10">
+            <h2 class="text-base sm:text-lg font-bold text-slate-800 tracking-tight">
                 {{ editingCustomer ? 'Edit Customer' : 'Customer Baru' }}
             </h2>
             <button 
@@ -607,8 +607,8 @@ function getStatusColor(status) {
           </div>
 
           <!-- Form Content -->
-          <div class="flex-1 px-6 py-5 overflow-y-auto custom-scrollbar bg-slate-50/30">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
+          <div class="flex-1 px-4 sm:px-6 py-4 sm:py-5 overflow-y-auto custom-scrollbar bg-slate-50/30">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-x-4 sm:gap-x-6 gap-y-4 sm:gap-y-5">
               
               <!-- Left Column: Primary Info -->
               <div class="space-y-4">
@@ -630,7 +630,7 @@ function getStatusColor(status) {
                   <div class="flex-1 min-w-0">
                     <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Foto Profil</p>
                     <input type="file" @change="handleAvatarChange" accept="image/*" class="hidden" ref="avatarInput" />
-                    <button @click="$refs.avatarInput.click()" type="button" class="text-xs font-bold text-primary-500 hover:text-primary-600 transition-colors">
+                    <button @click="avatarInput.click()" type="button" class="text-xs font-bold text-primary-500 hover:text-primary-600 transition-colors">
                       {{ avatarPreview ? 'Ganti Foto' : 'Upload Foto' }}
                     </button>
                   </div>
@@ -690,18 +690,18 @@ function getStatusColor(status) {
           </div>
 
           <!-- Footer -->
-          <div class="px-6 py-4 bg-white border-t border-slate-100 flex gap-3">
+          <div class="px-4 sm:px-6 py-3 sm:py-4 bg-white border-t border-slate-100 flex gap-2 sm:gap-3 sticky bottom-0 z-10">
             <button 
               type="button" 
               @click="showModal = false" 
-              class="flex-1 py-3 px-4 rounded-2xl bg-slate-50 text-slate-500 font-bold text-xs hover:bg-slate-100 transition-all active:scale-95"
+              class="flex-1 py-2.5 sm:py-3 px-3 sm:px-4 rounded-xl sm:rounded-2xl bg-slate-50 text-slate-500 font-bold text-xs hover:bg-slate-100 transition-all active:scale-95"
             >
               Batal
             </button>
             <button 
               @click="saveCustomer"
               type="submit" 
-              class="flex-[2] py-3 px-4 rounded-2xl bg-primary-500 text-white font-bold text-xs shadow-lg shadow-primary-500/20 hover:bg-primary-600 transition-all active:scale-95 flex items-center justify-center gap-2"
+              class="flex-[2] py-2.5 sm:py-3 px-3 sm:px-4 rounded-xl sm:rounded-2xl bg-primary-500 text-white font-bold text-xs shadow-lg shadow-primary-500/20 hover:bg-primary-600 transition-all active:scale-95 flex items-center justify-center gap-2"
             >
               <span>{{ editingCustomer ? 'Update Data' : 'Simpan Customer' }}</span>
               <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -715,30 +715,38 @@ function getStatusColor(status) {
 
     <!-- History Modal -->
     <Teleport to="body">
-      <div v-if="showHistoryModal" class="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-3 overflow-hidden h-[100dvh]">
-        <div class="bg-white w-full max-w-4xl h-[90vh] md:h-[85vh] rounded-[2rem] shadow-2xl overflow-hidden flex flex-col">
+      <div v-if="showHistoryModal" class="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-0 sm:p-3 overflow-hidden h-[100dvh]">
+        <div class="bg-white w-full h-full sm:h-[85vh] sm:max-w-4xl sm:rounded-[2rem] shadow-2xl overflow-hidden flex flex-col">
           <!-- Header -->
-          <div class="px-6 py-5 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between bg-white sticky top-0 z-10 gap-4">
-            <div class="flex flex-col">
-              <h2 class="text-xl font-medium text-slate-800 tracking-tight">Riwayat Transaksi</h2>
-              <p v-if="selectedCustomer" class="text-sm text-slate-500 font-medium mt-0.5">{{ selectedCustomer.name }}</p>
+          <div class="px-4 sm:px-6 py-4 sm:py-5 border-b border-slate-100 flex flex-col gap-3 bg-white sticky top-0 z-10">
+            <div class="flex items-center justify-between">
+              <div class="flex flex-col">
+                <h2 class="text-lg sm:text-xl font-medium text-slate-800 tracking-tight">Riwayat Transaksi</h2>
+                <p v-if="selectedCustomer" class="text-sm text-slate-500 font-medium mt-0.5">{{ selectedCustomer.name }}</p>
+              </div>
+              
+              <button @click="showHistoryModal = false" class="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-2xl bg-slate-50 text-slate-400 hover:bg-red-50 hover:text-red-500 transition-all border border-slate-100 shadow-sm shrink-0">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
             </div>
             
-            <div class="flex items-center gap-2">
-              <div class="flex items-center gap-1.5 md:gap-3 bg-white p-1 rounded-2xl border border-slate-100 shadow-sm relative group">
-                <div class="relative">
+            <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+              <div class="flex items-center gap-2 bg-white p-2 rounded-2xl border border-slate-100 shadow-sm flex-1 overflow-hidden">
+                <div class="relative flex-1 min-w-0">
                   <input 
                     v-model="historyStartDate" 
                     type="date" 
-                    class="bg-slate-50 border-none rounded-xl text-[10px] md:text-xs font-medium text-slate-600 focus:ring-2 focus:ring-primary-500/20 py-2 px-3 appearance-none outline-none"
+                    class="w-full bg-slate-50 border-none rounded-xl text-xs font-medium text-slate-600 focus:ring-2 focus:ring-primary-500/20 py-2.5 px-2.5 appearance-none outline-none"
                   />
                 </div>
-                <span class="text-slate-300 font-medium text-xs">–</span>
-                <div class="relative">
+                <span class="text-slate-300 font-medium text-xs shrink-0">–</span>
+                <div class="relative flex-1 min-w-0">
                   <input 
                     v-model="historyEndDate" 
                     type="date" 
-                    class="bg-slate-50 border-none rounded-xl text-[10px] md:text-xs font-medium text-slate-600 focus:ring-2 focus:ring-primary-500/20 py-2 px-3 appearance-none outline-none"
+                    class="w-full bg-slate-50 border-none rounded-xl text-xs font-medium text-slate-600 focus:ring-2 focus:ring-primary-500/20 py-2.5 px-2.5 appearance-none outline-none"
                   />
                 </div>
                 
@@ -746,7 +754,7 @@ function getStatusColor(status) {
                 <button 
                   v-if="historyStartDate || historyEndDate"
                   @click="historyStartDate = ''; historyEndDate = '';"
-                  class="ml-1 p-2 text-slate-300 hover:text-red-500 transition-colors"
+                  class="p-2 text-slate-300 hover:text-red-500 transition-colors shrink-0"
                   title="Bersihkan Filter"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -757,18 +765,13 @@ function getStatusColor(status) {
               
               <button 
                 @click="loadCustomerTransactions(selectedCustomer.id, 1)"
-                class="w-10 h-10 flex items-center justify-center rounded-2xl bg-white text-slate-400 hover:text-primary-500 transition-all border border-slate-100 shadow-sm active:rotate-180 duration-500"
+                class="w-full sm:w-auto h-10 flex items-center justify-center gap-2 rounded-2xl bg-primary-500 text-white hover:bg-primary-600 transition-all border border-primary-600 shadow-sm active:scale-95 px-4 font-medium text-sm"
                 title="Refresh"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
-              </button>
-
-              <button @click="showHistoryModal = false" class="w-10 h-10 flex items-center justify-center rounded-2xl bg-slate-50 text-slate-400 hover:bg-red-50 hover:text-red-500 transition-all border border-slate-100 shadow-sm">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
-                </svg>
+                <span>Refresh Data</span>
               </button>
             </div>
           </div>

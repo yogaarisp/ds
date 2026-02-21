@@ -34,6 +34,7 @@ const form = ref({
   stock: 0,
   min_stock: 10,
   image: null,
+  is_active: true,
 })
 const imageFile = ref(null)
 const imagePreview = ref(null)
@@ -62,10 +63,10 @@ async function loadProducts() {
 function openModal(product = null) {
   editingProduct.value = product
   if (product) {
-    form.value = { ...product, image: null }
+    form.value = { ...product, image: null, is_active: Boolean(product.is_active) }
     imagePreview.value = product.image ? `${STORAGE_BASE_URL}/${product.image}` : null
   } else {
-    form.value = { name: '', sku: '', base_price: '', stock: 0, min_stock: 10, image: null }
+    form.value = { name: '', sku: '', base_price: '', stock: 0, min_stock: 10, image: null, is_active: true }
     imagePreview.value = null
   }
   imageFile.value = null
@@ -94,9 +95,10 @@ async function saveProduct() {
     const formData = new FormData()
     formData.append('name', form.value.name)
     formData.append('sku', form.value.sku)
-    formData.append('base_price', form.value.base_price)
-    formData.append('stock', form.value.stock || 0)
-    formData.append('min_stock', form.value.min_stock || 10)
+    formData.append('base_price', String(form.value.base_price))
+    formData.append('stock', String(form.value.stock || 0))
+    formData.append('min_stock', String(form.value.min_stock || 10))
+    formData.append('is_active', form.value.is_active ? '1' : '0')
     
     if (imageFile.value) {
       formData.append('image', imageFile.value)
@@ -130,6 +132,20 @@ async function deleteProduct(product) {
   }
 }
 
+async function toggleProductStatus(product) {
+  try {
+    const newStatus = !product.is_active
+    await productApi.update(product.id, {
+      is_active: newStatus
+    })
+    // Update local state directly for instant feedback
+    product.is_active = newStatus
+  } catch (error) {
+    console.error('Toggle status error:', error)
+    alert('Gagal mengubah status')
+  }
+}
+
 function openStockModal(product) {
   stockForm.value = {
     product_id: product.id,
@@ -151,7 +167,7 @@ async function saveStockAdjustment() {
   if (!stockForm.value.adjustment) return
   
   try {
-    const newStock = parseInt(stockForm.value.current_stock) + parseInt(stockForm.value.adjustment)
+    const newStock = parseInt(String(stockForm.value.current_stock)) + parseInt(String(stockForm.value.adjustment))
     await productApi.updateStock(stockForm.value.product_id, {
       stock: newStock,
       notes: stockForm.value.notes || 'Penyesuaian stok manual'
@@ -175,44 +191,44 @@ function formatPrice(price) {
 <template>
   <div class="h-full overflow-y-auto bg-slate-50/50 custom-scrollbar pb-6">
     <!-- Simple & Cool Header -->
-    <div class="sticky top-0 z-20 bg-slate-50/80 backdrop-blur-md px-4 md:px-6 pt-2.5 pb-1.5 border-b border-slate-100/50 shrink-0">
-      <div class="flex flex-col md:flex-row justify-between md:items-center gap-3">
+    <div class="sticky top-0 z-20 bg-slate-50/80 backdrop-blur-md px-4 sm:px-6 pt-2.5 pb-1.5 border-b border-slate-100/50 shrink-0">
+      <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
         <div class="flex items-center gap-4">
           <div>
-            <h1 class="text-base font-medium text-slate-800 leading-none">Produk</h1>
-            <p class="text-[9px] font-medium text-slate-400 uppercase tracking-wide mt-1">Management Menu & Stok</p>
+            <h1 class="text-base font-bold text-slate-800 leading-none">Produk</h1>
+            <p class="text-[9px] font-semibold text-slate-400 uppercase tracking-wide mt-1">Management Menu & Stok</p>
           </div>
         </div>
 
-        <div class="flex items-center gap-2 w-full md:w-auto">
-          <div class="relative flex-1 md:w-64 group">
+        <div class="flex items-center gap-2 w-full sm:w-auto">
+          <div class="relative flex-1 sm:w-64 group">
             <input
               v-model="searchQuery"
               type="text"
               placeholder="Cari produk..."
-              class="w-full pl-8 pr-4 py-1.5 rounded-xl bg-white border border-slate-200 text-xs font-normal placeholder:text-[10px] placeholder:text-slate-300 focus:border-primary-500 focus:ring-4 focus:ring-primary-500/5 transition-all outline-none shadow-sm"
+              class="w-full pl-8 pr-4 py-1.5 rounded-xl bg-white border border-slate-200 text-xs font-semibold placeholder:text-[10px] placeholder:text-slate-400 focus:border-primary-500 focus:ring-4 focus:ring-primary-500/5 transition-all outline-none shadow-sm"
             />
             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 group-focus-within:text-primary-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
           </div>
           
-          <button @click="openModal()" class="h-9 w-9 md:h-[38px] md:w-auto bg-primary-500 text-white rounded-xl flex items-center justify-center gap-0 md:gap-1.5 px-0 md:px-4 shadow-lg shadow-primary-500/20 active:scale-95 transition-all shrink-0">
+          <button @click="openModal()" class="h-9 w-9 sm:h-[38px] sm:w-auto bg-primary-500 text-white rounded-xl flex items-center justify-center gap-0 sm:gap-1.5 px-0 sm:px-4 shadow-lg shadow-primary-500/20 hover:bg-primary-600 transition-all active:scale-95 shrink-0">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="w-3 h-3"><line x1="12" x2="12" y1="5" y2="19"/><line x1="5" x2="19" y1="12" y2="12"/></svg>
-            <span class="hidden md:inline text-[10px] font-medium uppercase tracking-wider">Produk Baru</span>
+            <span class="hidden sm:inline text-[10px] font-bold uppercase tracking-wider">Produk Baru</span>
           </button>
         </div>
       </div>
     </div>
 
     <!-- Main Content -->
-    <div class="px-2 md:px-6">
+    <div class="px-4 sm:px-6">
 
     <!-- Skeleton Loading Grid -->
-    <div v-if="loading" class="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-4 gap-3 md:gap-4">
-      <div v-for="i in 6" :key="i" class="card p-4 space-y-4">
-        <div class="flex items-start gap-3">
-          <Skeleton width="56px" height="56px" customClass="rounded-xl shrink-0" />
+    <div v-if="loading" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
+      <div v-for="i in 8" :key="i" class="bg-white rounded-2xl p-4 border border-slate-100 space-y-4">
+        <div class="flex items-start gap-4">
+          <Skeleton width="64px" height="64px" customClass="rounded-xl shrink-0" />
           <div class="flex-1 space-y-2">
             <div class="flex justify-between gap-2">
               <Skeleton width="60%" height="16px" />
@@ -222,7 +238,7 @@ function formatPrice(price) {
             <Skeleton width="50%" height="20px" customClass="mt-1" />
           </div>
         </div>
-        <div class="flex justify-between items-center pt-3 border-t border-gray-100">
+        <div class="flex justify-between items-center pt-3 border-t border-gray-50">
           <Skeleton width="80px" height="16px" />
           <div class="flex gap-2">
             <Skeleton width="32px" height="32px" customClass="rounded-lg" />
@@ -232,15 +248,15 @@ function formatPrice(price) {
       </div>
     </div>
 
-    <div v-else class="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-4 gap-3 md:gap-4">
+    <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 pb-20 md:pb-6">
       <div
         v-for="product in filteredProducts"
         :key="product.id"
-        class="card p-3 md:p-4 hover:shadow-md transition-shadow"
+        class="bg-white rounded-2xl p-4 border border-slate-100 hover:shadow-lg hover:border-primary-100 transition-all duration-300 group flex flex-col h-full"
       >
         <!-- Header: Thumbnail + Info + Badge -->
-        <div class="flex items-start gap-3 mb-2.5">
-          <div class="w-14 h-14 flex-shrink-0 bg-gray-100 rounded-xl overflow-hidden">
+        <div class="flex items-start gap-4 mb-3">
+          <div class="w-16 h-16 flex-shrink-0 bg-slate-50 rounded-xl overflow-hidden border border-slate-100 group-hover:scale-105 transition-transform duration-300">
             <img 
               v-if="product.image" 
               :src="`${STORAGE_BASE_URL}/${product.image}`" 
@@ -248,63 +264,76 @@ function formatPrice(price) {
               alt="Product Image"
             />
             <div v-else class="w-full h-full flex items-center justify-center text-slate-300">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="w-8 h-8"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
             </div>
           </div>
           <div class="flex-1 min-w-0">
             <div class="flex items-start justify-between gap-2">
               <div class="min-w-0">
-                <h3 class="font-medium text-gray-900 text-sm truncate">{{ product.name }}</h3>
-                <p class="text-xs text-gray-400">{{ product.sku }}</p>
+                <h3 class="font-bold text-slate-800 text-sm truncate leading-tight mb-1">{{ product.name }}</h3>
+                <p class="text-[10px] font-mono text-slate-400 bg-slate-50 inline-block px-1.5 py-0.5 rounded border border-slate-100">{{ product.sku }}</p>
               </div>
-              <span
+              <button
+                @click.stop="toggleProductStatus(product)"
                 :class="[
-                  'px-2 py-0.5 rounded-full text-xs font-medium flex-shrink-0',
-                  product.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'
+                  'relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ring-0',
+                  product.is_active ? 'bg-primary-500' : 'bg-slate-200'
                 ]"
               >
-                {{ product.is_active ? 'Aktif' : 'Nonaktif' }}
-              </span>
+                <span
+                  :class="[
+                    'pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out',
+                    product.is_active ? 'translate-x-4' : 'translate-x-0'
+                  ]"
+                />
+              </button>
             </div>
-            <p class="text-sm font-medium text-primary-600 mt-0.5">
+            <p class="text-base font-bold text-primary-600 mt-1">
               Rp {{ formatPrice(product.base_price) }}
             </p>
           </div>
         </div>
 
         <!-- Footer: Stock + Actions -->
-        <div class="flex justify-between items-center pt-2.5 border-t border-gray-100">
-          <span 
-            :class="[
-              'text-sm font-medium',
-              product.stock <= product.min_stock ? 'text-red-600' : 'text-gray-500'
-            ]"
-          >
-            Stok: {{ product.stock }}
-          </span>
-          <div class="flex gap-2">
+        <div class="mt-auto pt-3 border-t border-slate-50 flex justify-between items-center">
+          <div class="flex flex-col">
+            <span class="text-[9px] font-semibold text-slate-400 uppercase tracking-wider">Stok Tersedia</span>
+            <span 
+              :class="[
+                'text-sm font-bold flex items-center gap-1.5',
+                product.stock <= product.min_stock ? 'text-red-500' : 'text-slate-700'
+              ]"
+            >
+              {{ product.stock }} <span class="text-[10px] text-slate-400 font-normal">pcs</span>
+              <span v-if="product.stock <= product.min_stock" class="flex h-2 w-2 relative">
+                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                <span class="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+              </span>
+            </span>
+          </div>
+          <div class="flex gap-1">
             <button 
               @click="openStockModal(product)" 
-              class="p-2 text-primary-500 hover:bg-primary-50 rounded-lg transition-colors"
-              title="Tambah/Kurangi Stok"
+              class="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-primary-600 hover:bg-primary-50 rounded-xl transition-all active:scale-95"
+              title="Update Stok"
             >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-5 w-5"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 21h5v-5"/></svg>
             </button>
             <button 
               @click="openModal(product)" 
-              class="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+              class="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all active:scale-95"
               title="Edit Produk"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
               </svg>
             </button>
             <button 
               @click="deleteProduct(product)" 
-              class="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+              class="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all active:scale-95"
               title="Hapus Produk"
             >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-5 w-5"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
             </button>
           </div>
         </div>
@@ -389,6 +418,23 @@ function formatPrice(price) {
                   style="font-size: 16px;"
                 />
               </div>
+            </div>
+
+            <!-- Compact Photo Section -->
+            <div class="flex items-center justify-between p-3 bg-slate-50/50 rounded-xl border border-slate-100 mb-2">
+              <div class="flex items-center gap-2">
+                <div class="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-sm shadow-sm ring-1 ring-slate-200/50">
+                  {{ form.is_active ? '✅' : '❌' }}
+                </div>
+                <div>
+                  <p class="text-[11px] font-bold text-slate-700 leading-none">Status Menu</p>
+                  <p class="text-[9px] text-slate-400 font-medium mt-1">{{ form.is_active ? 'Menu Aktif & Muncul' : 'Menu Nonaktif / Sembunyi' }}</p>
+                </div>
+              </div>
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" v-model="form.is_active" class="sr-only peer">
+                <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none ring-4 ring-primary-500/0 peer-focus:ring-primary-500/10 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500"></div>
+              </label>
             </div>
 
             <!-- Compact Photo Section -->

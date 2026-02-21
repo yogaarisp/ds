@@ -100,6 +100,10 @@ function formatCurrency(value) {
               class="w-full h-full object-cover"
             />
             <div v-else class="w-full h-full flex items-center justify-center text-4xl">📦</div>
+            <!-- Sold Out Overlay -->
+            <div v-if="combination.stock <= 0" class="absolute inset-0 bg-white/60 backdrop-blur-[2px] flex items-center justify-center z-10">
+              <span class="text-xl font-black text-slate-400 border-2 border-slate-300 px-4 py-2 rounded-xl rotate-[-12deg] tracking-widest uppercase bg-white/80 shadow-md">SOLD OUT</span>
+            </div>
             <!-- Gradient Overlay for text readability if needed -->
             <div class="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/50 to-transparent sm:hidden"></div>
           </div>
@@ -127,16 +131,16 @@ function formatCurrency(value) {
              <div class="flex items-center bg-slate-50 rounded-xl border border-slate-200 h-9 px-1">
                 <button 
                   @click="decrementQty"
-                  class="w-8 h-full flex items-center justify-center text-slate-400 hover:text-red-500 transition-colors text-base font-bold"
-                  :disabled="quantity <= 1"
+                  class="w-8 h-full flex items-center justify-center text-slate-400 hover:text-red-500 transition-colors text-base font-bold disabled:opacity-30 disabled:pointer-events-none"
+                  :disabled="quantity <= 1 || combination.stock <= 0"
                 >
                   -
                 </button>
                 <span class="w-8 text-center font-bold text-slate-700 text-sm">{{ quantity }}</span>
                 <button 
                   @click="incrementQty"
-                  class="w-8 h-full flex items-center justify-center text-slate-400 hover:text-primary-500 transition-colors text-base font-bold"
-                  :disabled="quantity >= (combination.stock || 99)"
+                  class="w-8 h-full flex items-center justify-center text-slate-400 hover:text-primary-500 transition-colors text-base font-bold disabled:opacity-30 disabled:pointer-events-none"
+                  :disabled="quantity >= (combination.stock || 99) || combination.stock <= 0"
                 >
                   +
                 </button>
@@ -146,9 +150,10 @@ function formatCurrency(value) {
            <!-- Add Button -->
            <button 
              @click="handleAdd"
-             class="w-full h-11 bg-primary-500 text-white font-bold text-sm rounded-xl shadow-lg shadow-primary-500/30 active:scale-95 transition-all flex items-center justify-center gap-2"
+             class="w-full h-11 bg-primary-500 text-white font-bold text-sm rounded-xl shadow-lg shadow-primary-500/30 active:scale-95 transition-all flex items-center justify-center gap-2 disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none disabled:pointer-events-none"
+             :disabled="combination.stock <= 0"
            >
-             <span>Masuk Keranjang</span>
+             <span>{{ combination.stock <= 0 ? 'Stok Habis' : 'Masuk Keranjang' }}</span>
            </button>
         </div>
       </div>

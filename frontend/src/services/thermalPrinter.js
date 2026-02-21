@@ -13,6 +13,14 @@ class ThermalPrinterService {
     this.characteristic = null
     this.connected = false
     this.printerWidth = 58 // Default 58mm
+    this.type = 'web' // 'web' or 'native'
+  }
+
+  /**
+   * Check if running inside the Android APK
+   */
+  isAndroidApp() {
+    return !!window.AndroidInterface
   }
 
   /**
@@ -42,6 +50,12 @@ class ThermalPrinterService {
    */
   async connect() {
     try {
+      if (this.isAndroidApp()) {
+        // Native scan/connect logic is usually handled via scanNative()
+        // but we'll leave this for compatibility
+        return true
+      }
+
       if (!this.isBluetoothSupported()) {
         throw new Error('Web Bluetooth tidak didukung di browser ini')
       }
@@ -63,14 +77,15 @@ class ThermalPrinterService {
 
       // Connect to GATT server
       const server = await this.device.gatt.connect()
-      
+
       // Get service
       const service = await server.getPrimaryService('000018f0-0000-1000-8000-00805f9b34fb')
-      
+
       // Get characteristic
       this.characteristic = await service.getCharacteristic('00002af1-0000-1000-8000-00805f9b34fb')
 
       this.connected = true
+      this.type = 'web'
       console.log('Printer connected successfully')
 
       return true
@@ -81,9 +96,60 @@ class ThermalPrinterService {
   }
 
   /**
+   * Scan native printers (Bluetooth paired & USB)
+   */
+  async scanNative() {
+    if (!this.isAndroidApp()) return []
+    try {
+      const data = window.AndroidInterface.scanPrinters()
+      return JSON.parse(data || '[]')
+    } catch (error) {
+      console.error('Scan native failed:', error)
+      return []
+    }
+  }
+
+  /**
+   * Connect to native printer
+   */
+  async connectNative(printer) {
+    if (!this.isAndroidApp()) return false
+    try {
+      let result = ''
+      if (printer.type === 'bluetooth') {
+        result = window.AndroidInterface.connectBluetoothPrinter(printer.address)
+      } else {
+        result = window.AndroidInterface.connectUsbPrinter()
+      }
+
+      if (result === 'SUCCESS') {
+        this.connected = true
+        this.type = 'native'
+
+        // Sync settings
+        window.AndroidInterface.setPrinterSettings(
+          203, // DPI
+          this.printerWidth === 58 ? 48.0 : 72.0, // Width MM
+          this.printerWidth === 58 ? 32 : 48 // Chars per line
+        )
+        return true
+      }
+      throw new Error(result)
+    } catch (error) {
+      console.error('Connect native failed:', error)
+      throw error
+    }
+  }
+
+  /**
    * Disconnect from printer
    */
   async disconnect() {
+    if (this.isAndroidApp()) {
+      window.AndroidInterface.disconnectPrinter()
+      this.connected = false
+      return
+    }
     if (this.device && this.device.gatt.connected) {
       await this.device.gatt.disconnect()
       this.connected = false
@@ -126,6 +192,13 @@ class ThermalPrinterService {
    */
   async printReceipt(receiptData) {
     try {
+      if (this.isAndroidApp() && this.type === 'native') {
+        const text = this.generateNativeFormattedText(receiptData)
+        const result = window.AndroidInterface.printFormattedText(text)
+        if (result !== 'SUCCESS') throw new Error(result)
+        return true
+      }
+
       const buffer = this.generateReceiptBuffer(receiptData)
       await this.sendData(buffer)
       console.log('Receipt printed successfully')
@@ -137,19 +210,69 @@ class ThermalPrinterService {
   }
 
   /**
+   * Generate Native Formatted Text for ESCPOS-ThermalPrinter-Android library
+   */
+  generateNativeFormattedText(data) {
+    const settingsStore = useSettingsStore()
+    const storeName = data.storeName || settingsStore.storeName || 'DIMSUM SARANG'
+    const storeAddress = data.storeAddress || settingsStore.settings.store_address || ''
+    const storePhone = data.storePhone || settingsStore.settings.store_phone || ''
+
+    const divider = '[C]' + '-'.repeat(this.printerWidth === 58 ? 32 : 48) + '\n'
+    let t = ""
+
+    t += `[C]<b><font size='big'>${storeName.toUpperCase()}</font></b>\n`
+    if (storeAddress) t += `[C]${storeAddress}\n`
+    if (storePhone) t += `[C]Tel: ${storePhone}\n`
+    t += divider
+
+    t += `[L]No: ${data.transactionNumber || '-'}\n`
+    t += `[L]Tanggal: ${data.date || '-'}\n`
+    t += `[L]Kasir: ${data.cashier || '-'}\n`
+    if (data.tableName) t += `[L]Meja: ${data.tableName}\n`
+    if (data.customerName) t += `[L]Customer: ${data.customerName}\n`
+    t += divider
+
+    data.items.forEach(item => {
+      t += `[L]<b>${item.name}</b>\n`
+      const qtyPrice = `  ${item.quantity} x ${this.formatCurrency(item.price)}`
+      const sub = this.formatCurrency(item.subtotal)
+      t += `[L]${qtyPrice}[R]${sub}\n`
+    })
+
+    t += divider
+    t += `[L]Subtotal:[R]${this.formatCurrency(data.subtotal)}\n`
+    if (data.discount > 0) t += `[L]Diskon:[R]-${this.formatCurrency(data.discount)}\n`
+    if (data.tax > 0) t += `[L]Pajak:[R]${this.formatCurrency(data.tax)}\n`
+    t += `[L]<b>TOTAL:[R]${this.formatCurrency(data.total)}</b>\n`
+    t += '\n'
+
+    t += `[L]Bayar:[R]${this.formatCurrency(data.paid)}\n`
+    t += `[L]Kembali:[R]${this.formatCurrency(data.change)}\n`
+    t += `[L]Metode:[R]${data.paymentMethod || 'Cash'}\n`
+
+    t += '\n'
+    t += `[C]Terima Kasih\n`
+    t += `[C]Selamat Menikmati!\n`
+    t += '\n'
+
+    return t
+  }
+
+  /**
    * Generate ESC/POS buffer for receipt
    */
   generateReceiptBuffer(data) {
     const encoder = new TextEncoder()
     const ESC = 0x1B
     const GS = 0x1D
-    
+
     // Get store info from settings
     const settingsStore = useSettingsStore()
     const storeName = data.storeName || settingsStore.storeName || 'DIMSUM SARANG'
     const storeAddress = data.storeAddress || settingsStore.settings.store_address || ''
     const storePhone = data.storePhone || settingsStore.settings.store_phone || ''
-    
+
     const commands = []
 
     // Initialize printer
@@ -189,7 +312,7 @@ class ThermalPrinterService {
     commands.push(0x0A)
     commands.push(...encoder.encode(`Kasir: ${data.cashier || '-'}`))
     commands.push(0x0A)
-    
+
     if (data.tableName) {
       commands.push(...encoder.encode(`Meja: ${data.tableName}`))
       commands.push(0x0A)
@@ -209,7 +332,7 @@ class ThermalPrinterService {
       // Item name
       commands.push(...encoder.encode(item.name))
       commands.push(0x0A)
-      
+
       // Quantity x Price = Subtotal
       const qtyPrice = `  ${item.quantity} x ${this.formatCurrency(item.price)}`
       const subtotal = this.formatCurrency(item.subtotal)
@@ -224,11 +347,11 @@ class ThermalPrinterService {
 
     // Totals
     this.addLine(commands, encoder, 'Subtotal:', this.formatCurrency(data.subtotal))
-    
+
     if (data.discount > 0) {
       this.addLine(commands, encoder, 'Diskon:', `-${this.formatCurrency(data.discount)}`)
     }
-    
+
     if (data.tax > 0) {
       this.addLine(commands, encoder, 'Pajak:', this.formatCurrency(data.tax))
     }
@@ -296,7 +419,7 @@ class ThermalPrinterService {
   async testPrint() {
     // Get store info from settings
     const settingsStore = useSettingsStore()
-    
+
     const testData = {
       storeName: settingsStore.storeName || 'DIMSUM SARANG',
       storeAddress: settingsStore.settings.store_address || 'Jl. Test No. 123',

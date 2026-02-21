@@ -1,7 +1,7 @@
 import axios from 'axios'
 
 // Detect if running in mobile app
-const isCapacitor = window.Capacitor !== undefined
+const isCapacitor = window['Capacitor'] !== undefined
 
 // API Base URL configuration
 const API_BASE_URL = isCapacitor
@@ -17,7 +17,7 @@ console.log('🔧 API Configuration:', {
   API_BASE_URL,
   STORAGE_BASE_URL,
   userAgent: navigator.userAgent,
-  platform: window.Capacitor?.getPlatform?.() || 'web'
+  platform: window['Capacitor']?.getPlatform?.() || 'web'
 })
 
 const api = axios.create({
@@ -195,7 +195,15 @@ export const customerApi = {
   getAll: (params) => api.get('/customers', { params }),
   get: (id) => api.get(`/customers/${id}`),
   create: (data) => api.post('/customers', data),
-  update: (id, data) => api.put(`/customers/${id}`, data),
+  update: (id, data) => {
+    if (data instanceof FormData) {
+      return api.post(`/customers/${id}`, data, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        params: { _method: 'PUT' }
+      })
+    }
+    return api.put(`/customers/${id}`, data)
+  },
   delete: (id) => api.delete(`/customers/${id}`),
   search: (query) => api.get('/customers-search', { params: { q: query } }),
   stats: (id) => api.get(`/customers/${id}/stats`),
@@ -241,7 +249,15 @@ export const transactionApi = {
 export const paymentMethodApi = {
   getAll: (params) => api.get('/payment-methods', { params }),
   create: (data) => api.post('/payment-methods', data),
-  update: (id, data) => api.put(`/payment-methods/${id}`, data),
+  update: (id, data) => {
+    if (data instanceof FormData) {
+      return api.post(`/payment-methods/${id}`, data, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        params: { _method: 'PUT' }
+      })
+    }
+    return api.put(`/payment-methods/${id}`, data)
+  },
   delete: (id) => api.delete(`/payment-methods/${id}`),
 }
 
@@ -297,7 +313,15 @@ export const userApi = {
   getAll: (params) => api.get('/users', { params }),
   get: (id) => api.get(`/users/${id}`),
   create: (data) => api.post('/users', data),
-  update: (id, data) => api.put(`/users/${id}`, data),
+  update: (id, data) => {
+    if (data instanceof FormData) {
+      return api.post(`/users/${id}`, data, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        params: { _method: 'PUT' }
+      })
+    }
+    return api.put(`/users/${id}`, data)
+  },
   delete: (id) => api.delete(`/users/${id}`),
 }
 

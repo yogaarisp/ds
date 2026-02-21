@@ -2,12 +2,14 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { usePosStore } from '../stores/pos'
 import { useSettingsStore } from '../stores/settings'
+import { usePrinter } from '../composables/usePrinter'
 import Swal from 'sweetalert2'
 
 const emit = defineEmits(['close'])
 
 const posStore = usePosStore()
 const settingsStore = useSettingsStore()
+const { printerConnected, thermalPrinter } = usePrinter()
 const paidAmount = ref('')
 const loading = ref(false)
 const error = ref('')
@@ -205,114 +207,105 @@ function formatDate(date) {
   })
 }
 
-function printReceipt(t) {
+/**
+ * Silent print - tries Bluetooth thermal first, then iframe fallback.
+ * If no printer is available, silently skips.
+ */
+async function silentPrint(t) {
   if (!t || !t.items) return
 
-  // Create hidden iframe
-  const iframe = document.createElement('iframe')
-  iframe.style.display = 'none'
-  document.body.appendChild(iframe)
-  
-  const width = 300 // 58mm printer approx width in pixels
-  const doc = iframe.contentWindow.document
+  // Try Bluetooth thermal printer first
+  if (printerConnected.value && thermalPrinter.connected) {
+    try {
+      const receiptData = {
+        queueNumber: t.queue_number || '',
+        transactionNumber: t.invoice_number,
+        date: formatDate(t.created_at),
+        cashier: t.user?.name || 'Kasir',
+        customerName: t.customer?.name || 'Umum',
+        tableName: t.table?.name || '',
+        items: t.items.map(item => ({
+          name: item.product?.name || item.package_combination?.name || item.package?.name || 'Item',
+          quantity: item.quantity,
+          price: item.unit_price || item.subtotal / item.quantity,
+          subtotal: item.subtotal
+        })),
+        subtotal: t.total,
+        discount: 0,
+        tax: 0,
+        total: t.total,
+        paid: t.paid_amount || t.total,
+        change: t.change_amount || 0,
+        paymentMethod: t.payment_method?.name || 'Cash'
+      }
+      await thermalPrinter.printReceipt(receiptData)
+      console.log('✅ Thermal print success')
+      return
+    } catch (err) {
+      console.warn('⚠️ Thermal print failed, trying iframe fallback:', err)
+    }
+  }
 
-  const itemsHtml = t.items.map(item => {
-    const name = item.product?.name || item.package_combination?.name || item.package?.name || 'Item'
-    return `
-      <div style="margin-bottom: 5px;">
-        <div style="display: flex; justify-content: space-between;">
-          <span>${item.quantity}x ${name}</span>
-          <span>${formatPrice(item.subtotal)}</span>
-        </div>
+  // Fallback: iframe silent print (will use system default printer)
+  try {
+    const iframe = document.createElement('iframe')
+    iframe.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:0;height:0;border:none;'
+    document.body.appendChild(iframe)
+    
+    const width = 300
+    const doc = iframe.contentWindow.document
+    const storeName = settingsStore.storeName || 'DIMSUM SARANG'
+    const storeAddress = settingsStore.settings.store_address || ''
+    const customerName = t.customer?.name || 'Umum'
+
+    const itemsHtml = t.items.map(item => {
+      const name = item.product?.name || item.package_combination?.name || item.package?.name || 'Item'
+      return `<div style="display:flex;justify-content:space-between;margin-bottom:3px;"><span>${item.quantity}x ${name}</span><span>${formatPrice(item.subtotal)}</span></div>`
+    }).join('')
+
+    doc.open()
+    doc.write(`<html><head><title>Receipt</title><style>
+      @page{margin:0;size:${width}px auto;}
+      body{font-family:'Courier New',monospace;font-size:12px;width:${width}px;margin:0 auto;padding:10px;}
+      .header{text-align:center;margin-bottom:8px;border-bottom:1px dashed #000;padding-bottom:8px;}
+      .footer{text-align:center;margin-top:8px;border-top:1px dashed #000;padding-top:8px;}
+      .total{margin-top:8px;border-top:1px dashed #000;padding-top:5px;}
+      .row{display:flex;justify-content:space-between;}
+      .bold{font-weight:bold;}
+    </style></head><body>
+      <div class="header"><div class="bold">${storeName}</div>
+        ${storeAddress ? `<div style="font-size:10px;">${storeAddress}</div>` : ''}
+        <div style="border-bottom:1px dashed #000;margin:5px 0;"></div>
+        <div style="text-align:center;font-size:18px;font-weight:bold;margin:5px 0;">NO. ANTRIAN: ${t.queue_number || '-'}</div>
+        <div style="border-bottom:1px dashed #000;margin:5px 0;"></div>
+        <div style="text-align:left;"><div>Inv: ${t.invoice_number}</div><div>Tgl: ${formatDate(t.created_at)}</div><div>Pelanggan: ${customerName}</div></div>
       </div>
-    `
-  }).join('')
+      <div>${itemsHtml}</div>
+      <div class="total">
+        <div class="row"><span>Total</span><span class="bold">Rp ${formatPrice(t.total)}</span></div>
+        ${t.paid_amount > 0 ? `<div class="row"><span>Bayar</span><span>Rp ${formatPrice(t.paid_amount)}</span></div>
+        <div class="row"><span>Kembali</span><span>Rp ${formatPrice(t.change_amount)}</span></div>
+        <div class="row" style="margin-top:5px;font-style:italic;"><span>Metode</span><span>${t.payment_method?.name || 'Cash'}</span></div>` : ''}
+      </div>
+      <div class="footer">Terima Kasih<br>Silakan Datang Kembali</div>
+    </body></html>`)
+    doc.close()
 
-  // Get store details
-  const logoUrl = settingsStore.storeLogo
-  const storeName = settingsStore.storeName || 'DIMSUM SARANG'
-  const storeAddress = settingsStore.settings.store_address || 'Jl. Raya No. 1'
-  const customerName = t.customer?.name || 'Umum'
-
-  doc.open()
-  doc.write(`
-    <html>
-      <head>
-        <title>Print Receipt</title>
-        <style>
-          body {
-            font-family: 'Courier New', monospace;
-            font-size: 12px;
-            width: ${width}px;
-            margin: 0 auto; /* Centering */
-            padding: 10px;
-          }
-          .header { text-align: center; margin-bottom: 10px; border-bottom: 1px dashed #000; padding-bottom: 10px; }
-          .footer { text-align: center; margin-top: 10px; border-top: 1px dashed #000; padding-top: 10px; }
-          .total { margin-top: 10px; border-top: 1px dashed #000; padding-top: 5px; }
-          .row { display: flex; justify-content: space-between; }
-          .bold { font-weight: bold; }
-          .logo { max-width: 50px; height: auto; margin-bottom: 5px; }
-        </style>
-      </head>
-      <body>
-        <div class="header">
-          ${logoUrl ? `<img src="${logoUrl}" class="logo" alt="Logo">` : ''}
-          <div class="bold">${storeName}</div>
-          <div style="font-size: 10px; margin-bottom: 5px;">${storeAddress}</div>
-          <div style="border-bottom: 1px dashed #000; margin-bottom: 5px;"></div>
-          
-          <div style="text-align: left;">
-            <div>Inv: ${t.invoice_number}</div>
-            <div>Tgl: ${formatDate(t.created_at)}</div>
-            <div>Pelanggan : ${customerName}</div>
-          </div>
-        </div>
-        
-        <div class="items">
-          ${itemsHtml}
-        </div>
-        
-        <div class="total">
-          <div class="row">
-            <span>Total</span>
-            <span class="bold">Rp ${formatPrice(t.total)}</span>
-          </div>
-          ${t.paid_amount > 0 ? `
-            <div class="row">
-              <span>Bayar</span>
-              <span>Rp ${formatPrice(t.paid_amount)}</span>
-            </div>
-            <div class="row">
-              <span>Kembali</span>
-              <span>Rp ${formatPrice(t.change_amount)}</span>
-            </div>
-            <div class="row" style="margin-top: 5px; font-style: italic;">
-              <span>Metode Pembayaran</span>
-              <span>${t.payment_method?.name || 'Cash'}</span>
-            </div>
-          ` : ''}
-        </div>
-        
-        <div class="footer">
-          Terima Kasih<br>
-          Silakan Datang Kembali
-        </div>
-      </body>
-    </html>
-  `)
-  doc.close()
-
-  // Use onload to ensure image is loaded before printing
-  iframe.onload = function() {
-    setTimeout(() => {
-      iframe.contentWindow.focus()
-      iframe.contentWindow.print()
-      // Remove iframe after printing
+    iframe.onload = function() {
       setTimeout(() => {
-        document.body.removeChild(iframe)
-      }, 1000)
-    }, 500)
+        try {
+          iframe.contentWindow.focus()
+          iframe.contentWindow.print()
+        } catch (e) {
+          console.warn('⚠️ Iframe print failed:', e)
+        }
+        setTimeout(() => {
+          try { document.body.removeChild(iframe) } catch(e) {}
+        }, 2000)
+      }, 300)
+    }
+  } catch (err) {
+    console.warn('⚠️ Print skipped - no printer available:', err)
   }
 }
 
@@ -389,6 +382,10 @@ async function handleCheckout() {
         title: 'DP Berhasil!',
         html: `
           <div class="text-left text-sm">
+            <div class="mb-3 p-3 bg-emerald-50 rounded-xl border border-emerald-100 text-center">
+              <p class="text-[10px] uppercase tracking-widest text-emerald-600 font-bold mb-1">Nomor Antrian</p>
+              <p class="text-3xl font-black text-emerald-700">${result.queue_number || '-'}</p>
+            </div>
             <p class="mb-2">Order <strong>${result.invoice_number}</strong></p>
             <p class="text-slate-600">DP: <strong>Rp ${formatPrice(result.dp_amount)}</strong></p>
             <p class="text-orange-600">Sisa: <strong>Rp ${formatPrice(result.remaining_amount)}</strong></p>
@@ -402,6 +399,9 @@ async function handleCheckout() {
           title: 'text-lg font-bold text-emerald-600',
         }
       })
+
+      // Auto Print Receipt (silent - skip if no printer)
+      silentPrint(result)
     } else {
       // Full Payment (existing flow)
       result = await posStore.checkout(paidAmountNumber.value, paymentMethodId)
@@ -410,8 +410,16 @@ async function handleCheckout() {
       await Swal.fire({
         icon: 'success',
         title: 'Pembayaran Berhasil!',
-        text: `Order ${result.invoice_number} lunas`,
-        timer: 1500,
+        html: `
+          <div class="text-left text-sm">
+            <div class="mb-3 p-3 bg-emerald-50 rounded-xl border border-emerald-100 text-center">
+              <p class="text-[10px] uppercase tracking-widest text-emerald-600 font-bold mb-1">Nomor Antrian</p>
+              <p class="text-3xl font-black text-emerald-700">${result.queue_number || '-'}</p>
+            </div>
+            <p class="text-center">Order <strong>${result.invoice_number}</strong> lunas</p>
+          </div>
+        `,
+        timer: 3000,
         showConfirmButton: false,
         width: '300px',
         customClass: {
@@ -421,8 +429,8 @@ async function handleCheckout() {
         }
       })
 
-      // Auto Print Receipt
-      printReceipt(result)
+      // Auto Print Receipt (silent - skip if no printer)
+      silentPrint(result)
     }
 
     completedTransaction.value = result
@@ -446,8 +454,16 @@ async function handleCreateOrder() {
     await Swal.fire({
       icon: 'success',
       title: 'Pesanan Diproses',
-      text: `Order ${result.invoice_number} berhasil dibuat!`,
-      timer: 2000,
+      html: `
+        <div class="text-left text-sm">
+          <div class="mb-3 p-3 bg-primary-50 rounded-xl border border-primary-100 text-center">
+            <p class="text-[10px] uppercase tracking-widest text-primary-600 font-bold mb-1">Nomor Antrian</p>
+            <p class="text-3xl font-black text-primary-700">${result.queue_number || '-'}</p>
+          </div>
+          <p class="text-center">Order <strong>${result.invoice_number}</strong> berhasil dibuat!</p>
+        </div>
+      `,
+      timer: 3000,
       showConfirmButton: false,
       width: '300px',
       customClass: {
@@ -715,7 +731,7 @@ const quickAmounts = computed(() => {
         </div>
 
         <!-- Fixed Footer Action Compact -->
-        <div class="p-3 pb-[80px] lg:pb-4 bg-white border-t border-slate-50 z-10 shadow-[0_-10px_30px_rgba(0,0,0,0.03)] shrink-0">
+        <div class="p-3 pb-[80px] sm:pb-4 bg-white border-t border-slate-50 z-10 shadow-[0_-10px_30px_rgba(0,0,0,0.03)] shrink-0">
           <button
             @click="handleCheckout"
             class="w-full py-3 rounded-xl text-white font-bold text-sm shadow-lg hover:opacity-90 transition-all active:scale-[0.98] disabled:opacity-50 disabled:shadow-none flex items-center justify-center gap-2"
@@ -743,8 +759,8 @@ const quickAmounts = computed(() => {
     </div>
 
     <!-- Transfer Bank List Modal -->
-    <div v-if="showTransferModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end justify-center z-[80] animate-fade-in" @click="showTransferModal = false">
-      <div @click.stop class="bg-white rounded-t-2xl w-full max-w-md shadow-2xl overflow-hidden animate-slide-up max-h-[75vh] flex flex-col">
+    <div v-if="showTransferModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end justify-center z-[110] animate-fade-in" @click="showTransferModal = false">
+      <div @click.stop class="bg-white rounded-t-2xl w-full sm:max-w-md shadow-2xl overflow-hidden animate-slide-up max-h-[75vh] flex flex-col">
         <!-- Header -->
         <div class="px-4 py-2.5 border-b border-slate-100 flex items-center justify-between shrink-0">
           <button @click="showTransferModal = false" class="flex items-center gap-1 text-primary-600 hover:text-primary-700 transition-all -ml-1">
@@ -758,7 +774,7 @@ const quickAmounts = computed(() => {
         </div>
 
         <!-- Bank List -->
-        <div class="flex-1 overflow-y-auto p-3 space-y-2">
+        <div class="flex-1 overflow-y-auto p-3 pb-20 lg:pb-3 space-y-2">
           <button
             v-for="bank in transferMethods" 
             :key="bank.id"
@@ -815,7 +831,7 @@ const quickAmounts = computed(() => {
         </div>
 
         <!-- Footer Button -->
-        <div v-if="selectedTransferMethod" class="p-3 border-t border-slate-100 shrink-0">
+        <div v-if="selectedTransferMethod" class="p-3 pb-20 lg:pb-3 border-t border-slate-100 shrink-0">
           <button 
             @click="showTransferModal = false"
             class="w-full bg-primary-500 text-white font-bold py-2 rounded-lg shadow-md shadow-primary-500/25 hover:bg-primary-600 transition-all active:scale-[0.98] text-xs"

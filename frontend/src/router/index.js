@@ -144,12 +144,6 @@ const routes = [
         meta: { requiresAuth: false }
       },
       {
-        path: 'printer-settings',
-        name: 'CustomerPrinterSettings',
-        component: () => import('../views/customer/PrinterSettings.vue'),
-        meta: { requiresAuth: false }
-      },
-      {
         path: 'order',
         name: 'CustomerOrder',
         component: () => import('../views/customer/Order.vue'),
@@ -174,6 +168,13 @@ const routes = [
 const router = createRouter({
   history: createWebHistory(),
   routes,
+  scrollBehavior(to, from, savedPosition) {
+    if (savedPosition) {
+      return savedPosition
+    } else {
+      return { top: 0 }
+    }
+  },
 })
 
 router.beforeEach((to, from, next) => {

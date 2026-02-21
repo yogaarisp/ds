@@ -63,7 +63,10 @@ onUnmounted(() => {
 async function fetchData() {
   loading.value = true
   try {
-    const params = user.value ? { customer_id: user.value.id } : {}
+    const params = { 
+      active: true,
+      ...(user.value ? { customer_id: user.value.id } : {})
+    }
     const [pkgRes, prodRes] = await Promise.all([
       api.get('/packages', { params }),
       api.get('/products', { params })
@@ -326,6 +329,10 @@ function goToCheckout() {
                         class="w-full h-full object-cover"
                       />
                       <div v-else class="w-full h-full flex items-center justify-center text-2xl">📦</div>
+                      <!-- Sold Out Overlay -->
+                      <div v-if="combo.stock <= 0" class="absolute inset-0 bg-white/60 backdrop-blur-[2px] flex items-center justify-center z-10">
+                        <span class="text-[10px] font-black text-slate-400 border border-slate-300 px-2 py-1 rounded-md rotate-[-12deg] tracking-widest uppercase bg-white/80 shadow-sm text-center">SOLD OUT</span>
+                      </div>
                    </div>
 
                    <!-- Details -->
@@ -344,8 +351,9 @@ function goToCheckout() {
                        
                        <!-- Add Button -->
                        <button 
-                          @click.stop="openDetail(combo, section.packageData)"
-                          class="h-8 w-8 flex items-center justify-center bg-primary-50 text-primary-600 text-lg font-bold rounded-lg border border-primary-100 active:scale-95"
+                          @click.stop="combo.stock > 0 ? openDetail(combo, section.packageData) : null"
+                          class="h-8 w-8 flex items-center justify-center bg-primary-50 text-primary-600 text-lg font-bold rounded-lg border border-primary-100 active:scale-95 disabled:opacity-50 disabled:grayscale disabled:pointer-events-none"
+                          :disabled="combo.stock <= 0"
                         >
                           +
                         </button>
@@ -364,13 +372,17 @@ function goToCheckout() {
             <div v-else-if="section.viewType === 'list'" class="grid grid-cols-1 gap-0">
                <div v-for="product in section.items" :key="product._unique_key || product.id" class="flex gap-3 py-2 px-2 rounded-xl border border-transparent bg-white dark:bg-slate-800 transition-all">
                    <!-- Image -->
-                   <div class="w-20 h-20 shrink-0 bg-slate-50 dark:bg-slate-700 rounded-lg overflow-hidden border border-transparent">
+                   <div class="w-20 h-20 shrink-0 bg-slate-50 dark:bg-slate-700 rounded-lg overflow-hidden border border-transparent relative">
                       <LazyImage 
                         v-if="product.image" 
                         :src="`${STORAGE_BASE_URL}/${product.image}`" 
                         class="w-full h-full object-cover"
                       />
                       <div v-else class="w-full h-full flex items-center justify-center text-2xl">🥟</div>
+                      <!-- Sold Out Overlay -->
+                      <div v-if="product.stock <= 0" class="absolute inset-0 bg-white/60 backdrop-blur-[2px] flex items-center justify-center z-10">
+                        <span class="text-[10px] font-black text-slate-400 border border-slate-300 px-2 py-1 rounded-md rotate-[-12deg] tracking-widest uppercase bg-white/80 shadow-sm text-center">SOLD OUT</span>
+                      </div>
                    </div>
 
                    <!-- Details -->
@@ -383,8 +395,9 @@ function goToCheckout() {
                      <div class="flex items-end justify-between mt-2">
                        <div class="font-bold text-primary-600 text-xs">{{ formatCurrency(product.final_price ?? product.base_price) }}</div>
                        <button 
-                          @click="addToCart(product, 'product')"
-                          class="h-8 w-8 flex items-center justify-center bg-primary-50 text-primary-600 text-lg font-bold rounded-lg border border-primary-100 active:scale-95"
+                          @click="product.stock > 0 ? addToCart(product, 'product') : null"
+                          class="h-8 w-8 flex items-center justify-center bg-primary-50 text-primary-600 text-lg font-bold rounded-lg border border-primary-100 active:scale-95 disabled:opacity-50 disabled:grayscale disabled:pointer-events-none"
+                          :disabled="product.stock <= 0"
                         >
                           +
                         </button>

@@ -1,4 +1,0 @@
-#Sun Jan 25 02:38:46 WIB 2026
-base.0=C\:\\laragon\\www\\ds\\android-webview\\app\\build\\intermediates\\dex\\release\\mergeDexRelease\\classes.dex
-renamed.0=classes.dex
-path.0=classes.dex

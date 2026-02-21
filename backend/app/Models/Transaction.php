@@ -34,6 +34,7 @@ class Transaction extends Model
         'status',
         'notes',
         'payment_method_id',
+        'queue_number',
     ];
 
     protected function casts(): array
@@ -146,6 +147,18 @@ class Transaction extends Model
         }
 
         return $prefix;
+    }
+
+    /**
+     * Generate daily resetting queue number
+     */
+    public static function generateQueueNumber(): int
+    {
+        $lastQueueNumber = self::whereDate('created_at', today())
+            ->whereNotNull('queue_number')
+            ->max('queue_number');
+
+        return ($lastQueueNumber ?: 0) + 1;
     }
 
     public function scopeToday($query)

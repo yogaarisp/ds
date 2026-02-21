@@ -43,7 +43,7 @@ watch(selectedTransaction, (newVal) => {
 onMounted(() => {
   isMounted.value = true
   if (route.query.tab) {
-    filter.value = route.query.tab
+    filter.value = String(route.query.tab)
   }
   // Delay data loading to ensure Vue has fully mounted and stabilized
   // This prevents DOM patching errors during initial render
@@ -159,6 +159,12 @@ function performSearch() {
 
 function formatPrice(price) {
   return new Intl.NumberFormat('id-ID').format(price)
+}
+
+function selectAll(event) {
+  if (event.target && typeof event.target.select === 'function') {
+    event.target.select()
+  }
 }
 
 function getCustomerLabel(customer) {
@@ -351,6 +357,9 @@ function printReceipt() {
           <div style="font-size: 10px; margin-bottom: 5px;">${storeAddress}</div>
           <div style="border-bottom: 1px dashed #000; margin-bottom: 5px;"></div>
           
+          <div style="text-align: center; font-size: 16px; font-weight: bold; margin-bottom: 5px;">NO. ANTRIAN: ${t.queue_number || '-'}</div>
+          <div style="border-bottom: 1px dashed #000; margin-bottom: 5px;"></div>
+          
           <div style="text-align: left;">
             <div>Inv: ${t.invoice_number}</div>
             <div>Tgl: ${formatDate(t.created_at)}</div>
@@ -497,7 +506,7 @@ async function deleteTransaction(transaction) {
               type="text"
               placeholder="Cari invoice atau customer..."
                 class="flex-1 outline-none text-xs text-slate-700 placeholder:text-[10px] placeholder:text-slate-300 bg-transparent w-full min-w-0 font-normal"
-              @focus="$event.target.select()"
+              @focus="selectAll"
             />
             <button
               v-if="searchQuery"
@@ -596,8 +605,9 @@ async function deleteTransaction(transaction) {
         >
           <!-- Invoice Tag (Top Left) -->
           <div class="absolute top-0 left-0 z-10">
-            <div class="bg-slate-50 text-slate-500 px-3 py-1.5 rounded-br-2xl border-r border-b border-slate-100 flex items-center shadow-sm">
-              <span class="text-[10px] font-bold tracking-wider">{{ transaction.invoice_number }}</span>
+            <div class="bg-slate-50 text-slate-500 px-3 py-1.5 rounded-br-2xl border-r border-b border-slate-100 flex flex-col shadow-sm">
+              <span class="text-[10px] font-bold tracking-wider leading-none mb-0.5">{{ transaction.invoice_number }}</span>
+              <span v-if="transaction.queue_number" class="text-[11px] font-black text-primary-600">#{{ transaction.queue_number }}</span>
             </div>
           </div>
 
@@ -741,7 +751,12 @@ async function deleteTransaction(transaction) {
               </svg>
             </button>
             <div>
-              <h2 class="text-sm font-medium text-slate-800 tracking-tight">Detail Pesanan</h2>
+              <h2 class="text-sm font-medium text-slate-800 tracking-tight flex items-center gap-2">
+                Detail Pesanan
+                <span v-if="selectedTransaction.queue_number" class="px-2 py-0.5 bg-primary-50 text-primary-600 rounded text-[10px] font-black tracking-widest">
+                  #{{ selectedTransaction.queue_number }}
+                </span>
+              </h2>
               <div class="flex items-center gap-1.5 mt-0.5 text-[9px] text-slate-400 font-medium uppercase tracking-wider">
                 <span class="font-mono">{{ formatInvoiceNumber(selectedTransaction) }}</span>
                 <span class="text-slate-200">|</span> 

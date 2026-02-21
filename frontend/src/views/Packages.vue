@@ -30,10 +30,14 @@ const packageForm = ref({
   type: 'bundle',
   total_quantity: 10,
   variant_count: 2,
-  image: null
+  image: null,
+  is_active: true
 })
 const imageFile = ref(null)
 const imagePreview = ref(null)
+
+const combinationImageFile = ref(null)
+const combinationImagePreview = ref(null)
 
 const combinationForm = ref({
   name: '',
@@ -70,10 +74,10 @@ async function loadData() {
 function openPackageModal(pkg = null) {
   editingPackage.value = pkg
   if (pkg) {
-    packageForm.value = { ...pkg, image: null }
+    packageForm.value = { ...pkg, image: null, is_active: Boolean(pkg.is_active) }
     imagePreview.value = pkg.image ? `${STORAGE_BASE_URL}/${pkg.image}` : null
   } else {
-    packageForm.value = { name: '', code: '', type: 'bundle', total_quantity: 10, variant_count: 2, image: null }
+    packageForm.value = { name: '', code: '', type: 'bundle', total_quantity: 10, variant_count: 2, image: null, is_active: true }
     imagePreview.value = null
   }
   imageFile.value = null
@@ -94,10 +98,11 @@ async function savePackage() {
     formData.append('name', packageForm.value.name)
     formData.append('code', packageForm.value.code)
     formData.append('type', packageForm.value.type)
-    formData.append('total_quantity', packageForm.value.total_quantity)
+    formData.append('total_quantity', String(packageForm.value.total_quantity))
+    formData.append('is_active', packageForm.value.is_active ? '1' : '0')
     
     if (packageForm.value.variant_count) {
-       formData.append('variant_count', packageForm.value.variant_count)
+       formData.append('variant_count', String(packageForm.value.variant_count))
     }
 
     if (imageFile.value) {
@@ -159,11 +164,11 @@ async function saveCombination() {
   try {
     const formData = new FormData()
     formData.append('name', combinationForm.value.name)
-    formData.append('base_price', parseInt(combinationForm.value.base_price))
+    formData.append('base_price', String(parseInt(combinationForm.value.base_price)))
     
     combinationForm.value.items.forEach((item, index) => {
-      formData.append(`items[${index}][product_id]`, parseInt(item.product_id))
-      formData.append(`items[${index}][quantity]`, parseInt(item.quantity))
+      formData.append(`items[${index}][product_id]`, String(parseInt(item.product_id)))
+      formData.append(`items[${index}][quantity]`, String(parseInt(item.quantity)))
     })
 
     if (combinationImageFile.value) {
@@ -192,6 +197,20 @@ async function deleteCombination(combination) {
     loadData()
   } catch (error) {
     alert('Gagal menghapus')
+  }
+}
+
+async function togglePackageStatus(pkg) {
+  try {
+    const newStatus = !pkg.is_active
+    await packageApi.update(pkg.id, {
+      is_active: newStatus
+    })
+    // Update local state directly for instant feedback
+    pkg.is_active = newStatus
+  } catch (error) {
+    console.error('Toggle status error:', error)
+    alert('Gagal mengubah status')
   }
 }
 
@@ -279,8 +298,6 @@ async function savePriceSettings() {
     alert(error.response?.data?.message || 'Gagal menyimpan setting harga')
   }
 }
-const combinationImageFile = ref(null)
-const combinationImagePreview = ref(null)
 
 function handleCombinationFileUpload(event) {
   const file = event.target.files[0]
@@ -294,90 +311,121 @@ function handleCombinationFileUpload(event) {
 <template>
   <div class="h-full overflow-y-auto bg-slate-50/50 custom-scrollbar pb-6">
     <!-- Simple & Cool Header -->
-    <div class="sticky top-0 z-20 bg-slate-50/80 backdrop-blur-md px-4 md:px-6 pt-2.5 pb-1.5 border-b border-slate-100/50">
-      <div class="flex flex-col md:flex-row justify-between md:items-center gap-3">
+    <div class="sticky top-0 z-20 bg-slate-50/80 backdrop-blur-md px-4 sm:px-6 pt-2.5 pb-1.5 border-b border-slate-100/50">
+      <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
         <div class="flex items-center gap-3">
           <div>
-            <h1 class="text-base font-medium text-slate-800 leading-none">Paket & Mix</h1>
-            <p class="text-[9px] font-medium text-slate-400 uppercase tracking-wider mt-1">Manajemen Produk Paket</p>
+            <h1 class="text-base font-bold text-slate-800 leading-none">Paket & Mix</h1>
+            <p class="text-[9px] font-semibold text-slate-400 uppercase tracking-wider mt-1">Manajemen Produk Paket</p>
           </div>
         </div>
 
-        <div class="flex items-center gap-2 w-full md:w-auto">
-          <div class="relative flex-1 md:w-64 group">
+        <div class="flex items-center gap-2 w-full sm:w-auto">
+          <div class="relative flex-1 sm:w-64 group">
             <input
               v-model="searchQuery"
               type="text"
               placeholder="Cari paket..."
-              class="w-full pl-8 pr-4 py-1.5 rounded-xl bg-white border border-slate-200 text-[11px] font-normal placeholder:text-[10px] placeholder:text-slate-300 focus:border-primary-500 focus:ring-4 focus:ring-primary-500/5 transition-all outline-none shadow-sm"
+              class="w-full pl-8 pr-4 py-1.5 rounded-xl bg-white border border-slate-200 text-[11px] font-semibold placeholder:text-[10px] placeholder:text-slate-400 focus:border-primary-500 focus:ring-4 focus:ring-primary-500/5 transition-all outline-none shadow-sm"
             />
             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 group-focus-within:text-primary-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
           </div>
           
-          <button @click="openPackageModal()" class="h-9 w-9 md:h-[38px] md:w-auto bg-primary-500 text-white rounded-xl flex items-center justify-center gap-0 md:gap-1.5 px-0 md:px-4 shadow-lg shadow-primary-500/20 active:scale-95 transition-all shrink-0">
+          <button @click="openPackageModal()" class="h-9 w-9 sm:h-[38px] sm:w-auto bg-primary-500 text-white rounded-xl flex items-center justify-center gap-0 sm:gap-1.5 px-0 sm:px-4 shadow-lg shadow-primary-500/20 hover:bg-primary-600 transition-all active:scale-95 shrink-0">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="w-3 h-3"><line x1="12" x2="12" y1="5" y2="19"/><line x1="5" x2="19" y1="12" y2="12"/></svg>
-            <span class="hidden md:inline text-[10px] font-medium uppercase tracking-wider">Paket Baru</span>
+            <span class="hidden sm:inline text-[10px] font-bold uppercase tracking-wider">Paket Baru</span>
           </button>
         </div>
       </div>
     </div>
 
     <!-- Main Content -->
-    <div class="px-2 md:px-6">
-      <div v-if="loading" class="flex flex-col items-center justify-center py-20 animate-pulse">
-        <div class="w-12 h-12 bg-slate-200 rounded-2xl mb-4"></div>
-        <div class="h-4 w-32 bg-slate-200 rounded-lg"></div>
+    <div class="px-4 sm:px-6">
+      <div v-if="loading" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
+        <div v-for="i in 6" :key="i" class="bg-white rounded-2xl p-4 border border-slate-100 space-y-4">
+          <div class="flex items-start gap-4">
+            <div class="w-16 h-16 bg-slate-50 rounded-xl shrink-0"></div>
+            <div class="flex-1 space-y-2">
+              <div class="h-4 bg-slate-100 rounded w-3/4"></div>
+              <div class="h-3 bg-slate-50 rounded w-1/2"></div>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <div v-else class="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-4 gap-2 md:gap-4">
+      <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 pb-20 md:pb-6">
         <div
           v-for="pkg in filteredPackages"
           :key="pkg.id"
-          class="group bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-xl hover:shadow-slate-200/50 transition-all duration-300 flex flex-col overflow-hidden"
+          class="group bg-white rounded-2xl border border-slate-100 hover:shadow-lg hover:border-primary-100 transition-all duration-300 flex flex-col overflow-hidden h-full"
         >
           <!-- Package Info -->
-          <div class="p-3 md:p-4">
-            <div class="flex gap-3 md:gap-4">
+          <div class="p-4 flex flex-col gap-3">
+            <div class="flex gap-4">
               <!-- Compact Image -->
-              <div class="w-14 h-14 md:w-16 md:h-16 shrink-0 bg-slate-50 rounded-xl overflow-hidden border border-slate-100 relative shadow-inner">
+              <div class="w-16 h-16 shrink-0 bg-slate-50 rounded-xl overflow-hidden border border-slate-100 relative group-hover:scale-105 transition-transform duration-300">
                 <img 
                   v-if="pkg.image" 
                   :src="`${STORAGE_BASE_URL}/${pkg.image}`" 
-                  class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                  class="w-full h-full object-cover"
                   alt="Package"
                 />
                 <div v-else class="w-full h-full flex items-center justify-center text-slate-200">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-7 h-7"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="w-8 h-8"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
                 </div>
-                <div class="absolute inset-0 bg-gradient-to-t from-black/5 to-transparent pointer-events-none"></div>
               </div>
 
               <!-- Details -->
-              <div class="flex-1 min-w-0">
+              <div class="flex-1 min-w-0 flex flex-col">
                 <div class="flex justify-between items-start mb-1">
-                  <span class="text-[9px] font-medium bg-primary-50 text-primary-600 px-2 py-0.5 rounded-full uppercase tracking-tighter">
+                  <span class="text-[10px] font-bold bg-slate-100 text-slate-500 px-2 py-0.5 rounded border border-slate-200 uppercase tracking-wider">
                     {{ pkg.code }}
                   </span>
                   <!-- Quick Actions -->
-                  <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity translate-x-2 group-hover:translate-x-0">
-                    <button @click="openPackageModal(pkg)" class="p-1.5 text-slate-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-all">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="w-3.5 h-3.5"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+                  <div class="flex items-center gap-2">
+                    <button
+                      @click.stop="togglePackageStatus(pkg)"
+                      :class="[
+                        'relative inline-flex h-4 w-7 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ring-0',
+                        pkg.is_active ? 'bg-primary-500' : 'bg-slate-200'
+                      ]"
+                      :title="pkg.is_active ? 'Nonaktifkan' : 'Aktifkan'"
+                    >
+                      <span
+                        :class="[
+                          'pointer-events-none inline-block h-3 w-3 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out',
+                          pkg.is_active ? 'translate-x-3' : 'translate-x-0'
+                        ]"
+                      />
                     </button>
-                    <button @click="deletePackage(pkg)" class="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="w-3.5 h-3.5"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
-                    </button>
+                    <div class="flex gap-1 border-l border-slate-100 pl-2 ml-1">
+                      <button 
+                        @click="openPackageModal(pkg)" 
+                        class="text-slate-300 hover:text-blue-600 transition-colors"
+                        title="Edit Paket"
+                      >
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+                      </button>
+                      <button 
+                        @click="deletePackage(pkg)" 
+                        class="text-slate-300 hover:text-red-500 transition-colors"
+                        title="Hapus Paket"
+                      >
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                      </button>
+                    </div>
                   </div>
                 </div>
-                <h3 class="font-medium text-slate-800 text-sm leading-tight truncate mb-1">{{ pkg.name }}</h3>
-                <div class="flex items-center gap-2">
-                  <span class="text-[10px] font-medium text-slate-400 flex items-center gap-1">
-                    <span class="w-1 h-1 rounded-full bg-slate-300"></span>
+                <h3 class="font-bold text-slate-800 text-sm leading-tight truncate mb-1">{{ pkg.name }}</h3>
+                <div class="flex items-center gap-3 mt-auto">
+                  <span class="text-[10px] font-medium text-slate-500 flex items-center gap-1.5">
+                    <span class="w-1.5 h-1.5 rounded-full bg-slate-300"></span>
                     {{ pkg.total_quantity }} PCS
                   </span>
-                  <span class="text-[10px] font-medium text-slate-400 flex items-center gap-1">
-                    <span class="w-1 h-1 rounded-full bg-slate-300"></span>
+                  <span class="text-[10px] font-medium text-slate-500 flex items-center gap-1.5">
+                     <span class="w-1.5 h-1.5 rounded-full bg-slate-300"></span>
                     {{ pkg.type === 'mix' ? `${pkg.variant_count} VARIAN` : 'BUNDLE' }}
                   </span>
                 </div>
@@ -385,29 +433,41 @@ function handleCombinationFileUpload(event) {
             </div>
 
             <!-- Action Buttons -->
-            <div class="flex gap-2 mt-4">
-              <button @click="openCombinationModal(pkg)" class="flex-1 py-2 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-xl text-[10px] font-medium uppercase tracking-wider transition-all border border-slate-100 flex items-center justify-center gap-1.5 active:scale-95">
-                <span class="text-xs">➕</span> Mix Baru
+            <div class="grid grid-cols-2 gap-2">
+              <button 
+                @click="openCombinationModal(pkg)" 
+                class="py-2 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all border border-slate-100 flex items-center justify-center gap-2 active:scale-95 group/btn"
+              >
+                <div class="w-5 h-5 rounded-full bg-white flex items-center justify-center shadow-sm group-hover/btn:scale-110 transition-transform">
+                    <span class="text-xs">➕</span>
+                </div>
+                Mix Baru
               </button>
-              <button @click="openPriceSettingsModal(pkg)" class="flex-1 py-2 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-xl text-[10px] font-medium uppercase tracking-wider transition-all border border-amber-100 flex items-center justify-center gap-1.5 active:scale-95 shadow-sm shadow-amber-900/5">
-                <span class="text-xs">🏷️</span> Harga
+              <button 
+                @click="openPriceSettingsModal(pkg)" 
+                class="py-2 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all border border-amber-100 flex items-center justify-center gap-2 active:scale-95 shadow-amber-900/5 group/btn"
+              >
+                 <div class="w-5 h-5 rounded-full bg-white flex items-center justify-center shadow-sm group-hover/btn:scale-110 transition-transform text-amber-500">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-3 h-3"><path d="M12 2v20"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                </div>
+                Harga
               </button>
             </div>
           </div>
 
           <!-- Combinations Area -->
-          <div class="flex-1 bg-slate-50/50 p-2 space-y-1.5">
-            <div v-if="pkg.combinations?.length" class="space-y-1.5">
+          <div class="flex-1 bg-slate-50/50 border-t border-slate-100 p-3 overflow-hidden flex flex-col">
+            <div v-if="pkg.combinations?.length" class="space-y-2 overflow-y-auto custom-scrollbar flex-1 pr-1">
               <div
                 v-for="combination in pkg.combinations"
                 :key="combination.id"
-                class="group/item bg-white rounded-2xl p-2.5 flex items-center gap-3 border border-slate-100 hover:border-primary-200 transition-all relative overflow-hidden"
+                class="group/item bg-white rounded-xl p-2 flex items-center gap-3 border border-slate-100 hover:border-primary-200 transition-all relative"
                 :class="isLowStock(combination) ? 'bg-red-50/30' : ''"
               >
                 <!-- Combination Image -->
-                <div class="w-10 h-10 shrink-0 bg-slate-50 rounded-xl overflow-hidden border border-slate-100 group-hover/item:border-primary-100 transition-colors shadow-sm">
+                <div class="w-10 h-10 shrink-0 bg-slate-50 rounded-lg overflow-hidden border border-slate-100 group-hover/item:border-primary-100 transition-colors">
                   <img v-if="combination.image" :src="`${STORAGE_BASE_URL}/${combination.image}`" class="w-full h-full object-cover" />
-                  <div v-else class="w-full h-full flex items-center justify-center text-slate-200">
+                  <div v-else class="w-full h-full flex items-center justify-center text-slate-300">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-5 h-5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
                   </div>
                 </div>
@@ -415,21 +475,22 @@ function handleCombinationFileUpload(event) {
                 <!-- Info -->
                 <div class="flex-1 min-w-0">
                   <div class="flex items-center gap-2 mb-0.5">
-                    <p class="font-medium text-slate-700 text-[11px] truncate">{{ combination.name }}</p>
-                    <span v-if="isLowStock(combination)" class="text-[8px] font-medium bg-red-500 text-white px-1.5 py-0.5 rounded-full animate-pulse">EMPTY</span>
+                    <p class="font-bold text-slate-700 text-[11px] truncate leading-none">{{ combination.name }}</p>
+                    <span v-if="isLowStock(combination)" class="text-[8px] font-bold bg-red-100 text-red-600 px-1.5 py-px rounded-full animate-pulse">EMPTY</span>
                   </div>
                   <div class="flex items-center justify-between">
-                    <p class="text-[10px] font-medium text-primary-600">Rp {{ formatPrice(combination.base_price) }}</p>
-                    <div class="flex items-center gap-1">
+                    <p class="text-[10px] font-bold text-primary-600">Rp {{ formatPrice(combination.base_price) }}</p>
+                    <div class="flex items-center gap-2">
                       <span class="text-[9px] font-medium text-slate-400 capitalize">{{ getAvailablePacks(combination) }} packs</span>
-                      <!-- Item Actions -->
-                      <div class="flex items-center pl-1 ml-1 border-l border-slate-100 opacity-0 group-hover/item:opacity-100 transition-opacity">
-                        <button @click="openCombinationModal(pkg, combination)" class="p-1 text-slate-400 hover:text-blue-500 transition-colors">
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="w-3 h-3"><path d="M17 3l4 4-14 14H3v-4L17 3z"/></svg>
-                        </button>
-                        <button @click="deleteCombination(combination)" class="p-1 text-slate-400 hover:text-red-500 transition-colors">
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="w-3 h-3"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
-                        </button>
+                      
+                      <!-- Item Actions (Hover Only) -->
+                      <div class="flex opacity-0 group-hover/item:opacity-100 transition-opacity gap-1">
+                         <button @click="openCombinationModal(pkg, combination)" class="text-blue-500 hover:bg-blue-50 p-0.5 rounded">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-3 h-3"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+                         </button>
+                         <button @click="deleteCombination(combination)" class="text-red-500 hover:bg-red-50 p-0.5 rounded">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-3 h-3"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                         </button>
                       </div>
                     </div>
                   </div>
@@ -437,9 +498,9 @@ function handleCombinationFileUpload(event) {
               </div>
             </div>
             
-            <div v-else class="h-20 flex flex-col items-center justify-center text-slate-300 border-2 border-dashed border-slate-100 rounded-2xl bg-white/50">
-              <span class="text-xl opacity-20 mb-1">🔍</span>
-              <p class="text-[9px] font-medium uppercase tracking-widest">Belum ada mix</p>
+            <div v-else class="flex-1 flex flex-col items-center justify-center text-slate-300 border-2 border-dashed border-slate-100 rounded-xl bg-slate-50/30 min-h-[100px]">
+              <span class="text-xl opacity-30 mb-2">🔍</span>
+              <p class="text-[9px] font-bold uppercase tracking-widest text-slate-400">Belum ada mix</p>
             </div>
           </div>
         </div>
@@ -499,7 +560,22 @@ function handleCombinationFileUpload(event) {
               <input v-model="packageForm.variant_count" type="number" class="w-full bg-slate-50 border-2 border-slate-50 rounded-xl px-4 py-2.5 text-sm font-medium text-slate-700 focus:bg-white focus:border-primary-500/20 transition-all outline-none" />
             </div>
           </div>
-          
+          <div class="flex items-center justify-between p-3 bg-slate-50/50 rounded-xl border border-slate-100 mb-2">
+            <div class="flex items-center gap-2">
+              <div class="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-sm shadow-sm ring-1 ring-slate-200/50">
+                {{ packageForm.is_active ? '✅' : '❌' }}
+              </div>
+              <div>
+                <p class="text-[11px] font-bold text-slate-700 leading-none">Status Paket</p>
+                <p class="text-[9px] text-slate-400 font-medium mt-1">{{ packageForm.is_active ? 'Paket Aktif & Muncul' : 'Paket Nonaktif / Sembunyi' }}</p>
+              </div>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" v-model="packageForm.is_active" class="sr-only peer">
+              <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none ring-4 ring-primary-500/0 peer-focus:ring-primary-500/10 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500"></div>
+            </label>
+          </div>
+
           <div class="flex items-center gap-4 p-3 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">
             <div class="w-14 h-14 rounded-xl overflow-hidden bg-white shadow-sm flex-shrink-0 border border-slate-100 flex items-center justify-center text-slate-300">
               <img v-if="imagePreview" :src="imagePreview" class="w-full h-full object-cover" />

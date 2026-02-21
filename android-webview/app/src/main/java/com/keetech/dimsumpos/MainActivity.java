@@ -16,6 +16,25 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.ProgressBar;
 import android.widget.Toast;
+import android.Manifest;
+import android.content.pm.PackageManager;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+import java.util.ArrayList;
+import java.util.List;
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+import com.dantsu.escposprinter.EscPosPrinter;
+import com.dantsu.escposprinter.connection.DeviceConnection;
+import com.dantsu.escposprinter.connection.bluetooth.BluetoothConnection;
+import com.dantsu.escposprinter.connection.bluetooth.BluetoothPrintersConnections;
+import com.dantsu.escposprinter.connection.usb.UsbConnection;
+import com.dantsu.escposprinter.connection.usb.UsbPrintersConnections;
+import com.dantsu.escposprinter.exceptions.EscPosBarcodeException;
+import com.dantsu.escposprinter.exceptions.EscPosConnectionException;
+import com.dantsu.escposprinter.exceptions.EscPosParserException;
+import com.dantsu.escposprinter.exceptions.EscPosEncodingException;
 
 public class MainActivity extends Activity {
 
@@ -23,6 +42,12 @@ public class MainActivity extends Activity {
     private ProgressBar progressBar;
     private ValueCallback<Uri[]> filePathCallback;
     private static final int FILE_CHOOSER_REQUEST_CODE = 1;
+    private static final int PERMISSION_ALL = 101;
+
+    private DeviceConnection selectedPrinter = null;
+    private int printerDpi = 203;
+    private float printerWidthMm = 48f;
+    private int printerNbrCharactersPerLine = 32;
 
     @SuppressLint("SetJavaScriptEnabled")
     @Override
@@ -291,6 +316,127 @@ public class MainActivity extends Activity {
         @android.webkit.JavascriptInterface
         public boolean canGoBack() {
             return webView.canGoBack();
+        }
+
+        @android.webkit.JavascriptInterface
+        public String scanPrinters() {
+            JSONArray printerList = new JSONArray();
+            try {
+                // Bluetooth Printers
+                if (checkBluetoothPermissions()) {
+                    BluetoothConnection[] bluetoothDevices = BluetoothPrintersConnections.getPairedBluetoothPrinters();
+                    if (bluetoothDevices != null) {
+                        for (BluetoothConnection device : bluetoothDevices) {
+                            JSONObject obj = new JSONObject();
+                            obj.put("name", device.getDevice().getName());
+                            obj.put("address", device.getDevice().getAddress());
+                            obj.put("type", "bluetooth");
+                            printerList.put(obj);
+                        }
+                    }
+                }
+
+                // USB Printers
+                UsbConnection[] usbDevices = UsbPrintersConnections.getList(MainActivity.this);
+                if (usbDevices != null) {
+                    for (UsbConnection device : usbDevices) {
+                        JSONObject obj = new JSONObject();
+                        obj.put("name", "USB Printer");
+                        obj.put("address", "usb");
+                        obj.put("type", "usb");
+                        printerList.put(obj);
+                    }
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            return printerList.toString();
+        }
+
+        @android.webkit.JavascriptInterface
+        public void setPrinterSettings(int dpi, float widthMm, int charPerLine) {
+            printerDpi = dpi;
+            printerWidthMm = widthMm;
+            printerNbrCharactersPerLine = charPerLine;
+        }
+
+        @android.webkit.JavascriptInterface
+        public String connectBluetoothPrinter(String address) {
+            try {
+                if (!checkBluetoothPermissions()) {
+                    return "ERROR: Permission denied";
+                }
+                BluetoothConnection[] bluetoothDevices = BluetoothPrintersConnections.getPairedBluetoothPrinters();
+                if (bluetoothDevices != null) {
+                    for (BluetoothConnection device : bluetoothDevices) {
+                        if (device.getDevice().getAddress().equals(address)) {
+                            selectedPrinter = device;
+                            return "SUCCESS";
+                        }
+                    }
+                }
+                return "ERROR: Device not found";
+            } catch (Exception e) {
+                return "ERROR: " + e.getMessage();
+            }
+        }
+
+        @android.webkit.JavascriptInterface
+        public String connectUsbPrinter() {
+            try {
+                UsbConnection[] usbDevices = UsbPrintersConnections.getList(MainActivity.this);
+                if (usbDevices != null && usbDevices.length > 0) {
+                    selectedPrinter = usbDevices[0];
+                    return "SUCCESS";
+                }
+                return "ERROR: No USB printer found";
+            } catch (Exception e) {
+                return "ERROR: " + e.getMessage();
+            }
+        }
+
+        @android.webkit.JavascriptInterface
+        public String printFormattedText(String text) {
+            if (selectedPrinter == null) {
+                return "ERROR: No printer connected";
+            }
+            try {
+                EscPosPrinter printer = new EscPosPrinter(selectedPrinter, printerDpi, printerWidthMm,
+                        printerNbrCharactersPerLine);
+                printer.printFormattedTextAndCut(text);
+                return "SUCCESS";
+            } catch (Exception e) {
+                e.printStackTrace();
+                return "ERROR: " + e.getMessage();
+            }
+        }
+
+        @android.webkit.JavascriptInterface
+        public String disconnectPrinter() {
+            selectedPrinter = null;
+            return "SUCCESS";
+        }
+
+        private boolean checkBluetoothPermissions() {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                if (ContextCompat.checkSelfPermission(MainActivity.this,
+                        Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED ||
+                        ContextCompat.checkSelfPermission(MainActivity.this,
+                                Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED) {
+                    ActivityCompat.requestPermissions(MainActivity.this,
+                            new String[] { Manifest.permission.BLUETOOTH_CONNECT, Manifest.permission.BLUETOOTH_SCAN },
+                            PERMISSION_ALL);
+                    return false;
+                }
+            } else {
+                if (ContextCompat.checkSelfPermission(MainActivity.this,
+                        Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                    ActivityCompat.requestPermissions(MainActivity.this,
+                            new String[] { Manifest.permission.ACCESS_FINE_LOCATION }, PERMISSION_ALL);
+                    return false;
+                }
+            }
+            return true;
         }
     }
 }

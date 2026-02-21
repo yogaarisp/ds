@@ -44,6 +44,7 @@ class TransactionService
             // Buat transaksi
             $transaction = Transaction::create([
                 'invoice_number' => Transaction::generateInvoiceNumber(),
+                'queue_number' => Transaction::generateQueueNumber(),
                 'user_id' => $data['user_id'],
                 'customer_id' => $data['customer_id'] ?? null,
                 'customer_name' => $data['customer_name'] ?? null,

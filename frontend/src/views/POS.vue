@@ -435,6 +435,10 @@ const filteredPackagingItems = computed(() => {
                     <LazyImage v-if="product.image" :src="`${STORAGE_BASE_URL}/${product.image}`" :alt="product.name" class="w-full h-full object-cover" />
                     <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5 text-slate-300"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
                     <div v-if="product.discount > 0" class="absolute top-0 left-0 bg-red-500 text-white text-[7px] font-black px-1 py-0.5 rounded-br-lg shadow-sm uppercase">OFF</div>
+                    <!-- Sold Out Overlay Mobile -->
+                    <div v-if="product.stock <= 0" class="absolute inset-0 bg-slate-900/40 backdrop-blur-[1px] flex items-center justify-center">
+                      <span class="text-[8px] font-black text-white border border-white/50 px-1 py-0.5 rounded rotate-[-12deg] tracking-tighter uppercase whitespace-nowrap">SOLD OUT</span>
+                    </div>
                   </div>
 
                   <div class="flex-1 min-w-0 py-0.5">
@@ -512,6 +516,11 @@ const filteredPackagingItems = computed(() => {
                       <div class="absolute bottom-0 inset-x-0 bg-primary-600/90 backdrop-blur-[2px] text-white text-[8px] font-black text-center py-0.5">
                         {{ pkg.total_quantity }} PCS
                       </div>
+
+                      <!-- Sold Out Overlay Mobile -->
+                      <div v-if="pkg.stock <= 0" class="absolute inset-0 bg-slate-900/40 backdrop-blur-[1px] flex items-center justify-center">
+                        <span class="text-[10px] font-black text-white border border-white/50 px-2 py-1 rounded rotate-[-12deg] tracking-widest uppercase">SOLD OUT</span>
+                      </div>
                    </div>
 
                    <div class="flex flex-col flex-1 py-0.5 min-w-0">
@@ -549,6 +558,10 @@ const filteredPackagingItems = computed(() => {
                   <div class="w-16 h-16 shrink-0 bg-slate-50 rounded-xl flex items-center justify-center overflow-hidden border border-slate-50 relative">
                     <LazyImage v-if="item.image" :src="`${STORAGE_BASE_URL}/${item.image}`" :alt="item.name" placeholder="🥡" class="w-full h-full object-cover" />
                     <span v-else class="text-2xl">🥡</span>
+                    <!-- Sold Out Overlay Mobile -->
+                    <div v-if="item.stock <= 0" class="absolute inset-0 bg-slate-900/40 backdrop-blur-[1px] flex items-center justify-center">
+                      <span class="text-[8px] font-black text-white border border-white/50 px-1 py-0.5 rounded rotate-[-12deg] tracking-tighter uppercase whitespace-nowrap">SOLD OUT</span>
+                    </div>
                   </div>
                   
                   <div class="flex-1 min-w-0 py-0.5">
@@ -713,6 +726,10 @@ const filteredPackagingItems = computed(() => {
                     <div class="absolute bottom-1.5 left-1.5 px-1.5 py-0.5 bg-white/95 backdrop-blur-md rounded border border-slate-100 shadow-sm">
                       <span class="text-[8px] text-slate-400 font-bold uppercase tracking-wider">Stok {{ product.stock }}</span>
                     </div>
+                    <!-- Sold Out Overlay Desktop -->
+                    <div v-if="product.stock <= 0" class="absolute inset-0 bg-slate-900/60 backdrop-blur-[2px] flex items-center justify-center z-10 transition-opacity duration-300">
+                      <span class="text-[10px] font-black text-white border-2 border-white/50 px-2 py-1 rounded-md rotate-[-12deg] tracking-widest uppercase">SOLD OUT</span>
+                    </div>
                   </div>
 
                   <div class="flex flex-col flex-1">
@@ -780,6 +797,10 @@ const filteredPackagingItems = computed(() => {
                       <div class="absolute top-1.5 right-1.5 bg-primary-600 text-white text-[8px] font-black px-1.5 py-0.5 rounded shadow-sm uppercase">
                         {{ pkg.total_quantity }} PCS
                       </div>
+                      <!-- Sold Out Overlay Desktop -->
+                      <div v-if="pkg.stock <= 0" class="absolute inset-0 bg-slate-900/60 backdrop-blur-[2px] flex items-center justify-center z-10 transition-opacity duration-300">
+                        <span class="text-[10px] font-black text-white border-2 border-white/50 px-2 py-1 rounded-md rotate-[-12deg] tracking-widest uppercase">SOLD OUT</span>
+                      </div>
                    </div>
                    <h3 class="font-bold text-slate-800 text-[11px] leading-tight mb-0.5 group-hover:text-primary-600 transition-colors line-clamp-1 truncate w-full">{{ pkg.name }}</h3>
                    <div class="flex items-center gap-1">
@@ -809,6 +830,10 @@ const filteredPackagingItems = computed(() => {
                       <span v-else class="text-2xl transform group-hover:scale-110 transition-transform duration-500">🥡</span>
                       <div class="absolute bottom-1.5 left-1.5 px-1.5 py-0.5 bg-white/95 backdrop-blur-md rounded border border-slate-100 shadow-sm">
                         <span class="text-[8px] text-slate-400 font-bold uppercase">Stok {{ item.stock }}</span>
+                      </div>
+                      <!-- Sold Out Overlay Desktop -->
+                      <div v-if="item.stock <= 0" class="absolute inset-0 bg-slate-900/60 backdrop-blur-[2px] flex items-center justify-center z-10 transition-opacity duration-300">
+                        <span class="text-[10px] font-black text-white border-2 border-white/50 px-2 py-1 rounded-md rotate-[-12deg] tracking-widest uppercase">SOLD OUT</span>
                       </div>
                    </div>
 
