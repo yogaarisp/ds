@@ -206,7 +206,7 @@ function clearStorageOnly() {
       ]"
     >
       <!-- Sidebar Header -->
-      <div class="h-20 flex items-center px-6 border-b border-slate-50">
+      <div class="h-16 flex items-center px-6 border-b border-slate-50">
         <div class="flex items-center gap-3 w-full">
            <div class="relative group">
               <img v-if="settingsStore.storeLogo" :src="settingsStore.storeLogo" alt="Logo" class="relative w-8 h-8 object-cover group-hover:scale-105 transition-transform duration-300 rounded-none" />
@@ -222,18 +222,18 @@ function clearStorageOnly() {
       </div>
 
       <!-- Navigation Menu -->
-      <nav class="flex-1 px-4 py-6 space-y-8 overflow-y-auto custom-scrollbar">
+      <nav class="flex-1 px-4 py-4 space-y-5 overflow-y-auto custom-scrollbar">
         <div v-for="group in filteredGroups" :key="group.title" class="space-y-2">
           <!-- Group Title -->
-          <h3 class="px-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">{{ group.title }}</h3>
+          <h3 class="px-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">{{ group.title }}</h3>
           
-          <div class="space-y-1.5">
+          <div class="space-y-1">
             <router-link
               v-for="item in group.items"
               :key="item.path"
               :to="item.path"
               @click="closeSidebar"
-              class="relative flex items-center gap-3.5 px-4 py-3.5 rounded-2xl transition-all duration-200 group overflow-hidden"
+              class="relative flex items-center gap-3.5 px-4 py-2.5 rounded-2xl transition-all duration-200 group overflow-hidden"
               :class="[
                 isActive(item.path) 
                   ? 'bg-gradient-to-r from-primary-500 to-primary-600 text-white shadow-lg shadow-primary-200 translate-x-1' 
