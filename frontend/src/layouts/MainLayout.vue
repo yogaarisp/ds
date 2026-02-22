@@ -201,7 +201,7 @@ function clearStorageOnly() {
     <aside 
       :class="[
         'fixed inset-y-0 left-0 z-50 w-[240px] bg-white flex flex-col transition-all duration-300 cubic-bezier(0.4, 0, 0.2, 1)',
-        'lg:translate-x-0 lg:static lg:shadow-none border-r border-slate-100',
+        'lg:translate-x-0 lg:static lg:shadow-none rounded-r-3xl shadow-[4px_0_24px_-6px_rgba(0,0,0,0.08)]',
         sidebarOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'
       ]"
     >
