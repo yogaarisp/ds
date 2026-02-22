@@ -81,7 +81,7 @@ class TransactionController extends Controller
             'table_code' => 'nullable|string|exists:tables,code',
         ]);
 
-        $validated['user_id'] = $request->user() ? $request->user()->id : null;
+        $validated['user_id'] = auth('sanctum')->id();
 
         // Handle table code
         if (!empty($validated['table_code'])) {
@@ -94,7 +94,7 @@ class TransactionController extends Controller
 
         $transaction = $this->transactionService->createTransaction($validated);
 
-        return response()->json($transaction->load(['items.product', 'items.package', 'items.packageCombination', 'customer']), 201);
+        return response()->json($transaction->load(['items.product', 'items.package', 'items.packageCombination', 'customer', 'user']), 201);
     }
 
     public function update(Request $request, Transaction $transaction)

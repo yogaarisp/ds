@@ -396,6 +396,7 @@ function printReceipt() {
           <div style="text-align: left;">
             <div>Inv: ${t.invoice_number}</div>
             <div>Tgl: ${formatDate(t.created_at)}</div>
+            <div>Kasir: ${t.user?.name || '-'}</div>
             <div>Pelanggan : ${customerName}</div>
           </div>
         </div>
