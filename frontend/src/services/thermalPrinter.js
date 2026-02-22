@@ -434,7 +434,7 @@ class ThermalPrinterService {
   }
 
   /**
-   * Test print
+   * Test Succes
    */
   async testPrint() {
     // Get store info from settings
