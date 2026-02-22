@@ -132,7 +132,7 @@ class ThermalPrinterService {
         window.AndroidInterface.setPrinterSettings(
           203, // DPI
           this.printerWidth === 58 ? 48.0 : 72.0, // Width MM
-          this.printerWidth === 58 ? 32 : 42 // Chars per line (42 is safer for 80mm)
+          this.printerWidth === 58 ? 32 : 48 // Chars per line
         )
         return true
       }
@@ -172,7 +172,7 @@ class ThermalPrinterService {
         window.AndroidInterface.setPrinterSettings(
           203, // DPI
           this.printerWidth === 58 ? 48.0 : 72.0, // Width MM
-          this.printerWidth === 58 ? 32 : 42 // Chars per line (42 is safer for 80mm)
+          this.printerWidth === 58 ? 32 : 48 // Chars per line
         )
       } catch (e) {
         console.error('Failed to sync printer settings:', e)
@@ -234,7 +234,7 @@ class ThermalPrinterService {
     const storeAddress = data.storeAddress || settingsStore.settings.store_address || ''
     const storePhone = data.storePhone || settingsStore.settings.store_phone || ''
 
-    const divider = '[C]' + '-'.repeat(this.printerWidth === 58 ? 32 : 42) + '\n'
+    const divider = '[C]' + '-'.repeat(this.printerWidth === 58 ? 32 : 48) + '\n'
     let t = ""
 
     t += `[C]<b><font size='big'>${storeName.toUpperCase()}</font></b>\n`
@@ -320,7 +320,7 @@ class ThermalPrinterService {
 
     // Separator line
     commands.push(ESC, 0x61, 0x00) // Left align
-    commands.push(...encoder.encode('-'.repeat(this.printerWidth === 58 ? 32 : 42)))
+    commands.push(...encoder.encode('-'.repeat(this.printerWidth === 58 ? 32 : 48)))
     commands.push(0x0A)
 
     // Transaction info
@@ -342,7 +342,7 @@ class ThermalPrinterService {
     }
 
     // Separator
-    commands.push(...encoder.encode('-'.repeat(this.printerWidth === 58 ? 32 : 42)))
+    commands.push(...encoder.encode('-'.repeat(this.printerWidth === 58 ? 32 : 48)))
     commands.push(0x0A)
 
     // Items
@@ -354,13 +354,13 @@ class ThermalPrinterService {
       // Quantity x Price = Subtotal
       const qtyPrice = `  ${item.quantity} x ${this.formatCurrency(item.price)}`
       const subtotal = this.formatCurrency(item.subtotal)
-      const spaces = ' '.repeat(Math.max(1, (this.printerWidth === 58 ? 32 : 42) - qtyPrice.length - subtotal.length))
+      const spaces = ' '.repeat(Math.max(1, (this.printerWidth === 58 ? 32 : 48) - qtyPrice.length - subtotal.length))
       commands.push(...encoder.encode(`${qtyPrice}${spaces}${subtotal}`))
       commands.push(0x0A)
     })
 
     // Separator
-    commands.push(...encoder.encode('-'.repeat(this.printerWidth === 58 ? 32 : 42)))
+    commands.push(...encoder.encode('-'.repeat(this.printerWidth === 58 ? 32 : 48)))
     commands.push(0x0A)
 
     // Totals
@@ -413,7 +413,7 @@ class ThermalPrinterService {
    * Helper: Add line with label and value
    */
   addLine(commands, encoder, label, value) {
-    const spaces = ' '.repeat(Math.max(1, (this.printerWidth === 58 ? 32 : 42) - label.length - value.length))
+    const spaces = ' '.repeat(Math.max(1, (this.printerWidth === 58 ? 32 : 48) - label.length - value.length))
     commands.push(...encoder.encode(`${label}${spaces}${value}`))
     commands.push(0x0A)
   }
