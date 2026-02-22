@@ -231,6 +231,10 @@ class ThermalPrinterService {
     t += `[L]Kasir: ${data.cashier || '-'}\n`
     if (data.tableName) t += `[L]Meja: ${data.tableName}\n`
     if (data.customerName) t += `[L]Customer: ${data.customerName}\n`
+    if (data.queueNumber) {
+      t += divider
+      t += `[C]<font size='big'>NO. ANTRIAN: ${data.queueNumber}</font>\n`
+    }
     t += divider
 
     data.items.forEach(item => {
@@ -242,7 +246,7 @@ class ThermalPrinterService {
 
     t += divider
     t += `[L]Subtotal:[R]${this.formatCurrency(data.subtotal)}\n`
-    if (data.discount > 0) t += `[L]Diskon:[R]-${this.formatCurrency(data.discount)}\n`
+    if (data.discount > 0) t += `[L]Diskon:[R]- ${this.formatCurrency(data.discount)}\n`
     if (data.tax > 0) t += `[L]Pajak:[R]${this.formatCurrency(data.tax)}\n`
     t += `[L]<b>TOTAL:[R]${this.formatCurrency(data.total)}</b>\n`
     t += '\n'

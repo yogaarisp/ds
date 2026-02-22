@@ -222,7 +222,7 @@ async function silentPrint(t) {
         transactionNumber: t.invoice_number,
         date: formatDate(t.created_at),
         cashier: t.user?.name || 'Kasir',
-        customerName: t.customer?.name || 'Umum',
+        customerName: t.customer?.name || t.customer_name || 'Umum',
         tableName: t.table?.name || '',
         items: t.items.map(item => ({
           name: item.product?.name || item.package_combination?.name || item.package?.name || 'Item',
@@ -230,8 +230,8 @@ async function silentPrint(t) {
           price: item.unit_price || item.subtotal / item.quantity,
           subtotal: item.subtotal
         })),
-        subtotal: t.total,
-        discount: 0,
+        subtotal: t.total + (t.discount || 0),
+        discount: t.discount || 0,
         tax: 0,
         total: t.total,
         paid: t.paid_amount || t.total,

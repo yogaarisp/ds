@@ -1,0 +1,24 @@
+========================================
+CARA BUILD APK - QUICK GUIDE
+========================================
+
+PALING MUDAH - Double Click Script:
+------------------------------------
+
+Untuk Testing:
+  → build-debug.bat
+
+Untuk Production:
+  → build-release.bat
+
+APK akan otomatis:
+✓ Di-build
+✓ Di-sign
+✓ Di-copy ke ..\ds.apk
+✓ Siap install!
+
+========================================
+
+Baca BATCH-SCRIPTS-GUIDE.txt untuk detail lengkap.
+
+========================================

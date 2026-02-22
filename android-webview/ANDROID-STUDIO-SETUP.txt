@@ -1,0 +1,137 @@
+========================================
+SETUP ANDROID STUDIO - DIMSUM SARANG POS
+========================================
+
+LANGKAH 1: BUKA PROJECT
+------------------------
+1. Buka Android Studio
+2. File → Open
+3. Pilih folder: C:\laragon\www\ds\android-webview
+4. Klik OK
+
+LANGKAH 2: SET SDK LOCATION
+----------------------------
+1. File → Project Structure (Ctrl+Alt+Shift+S)
+2. Klik "SDK Location" di sidebar kiri
+3. Android SDK location: C:\Users\Kee\AppData\Local\Android\Sdk
+4. Klik Apply → OK
+
+LANGKAH 3: SET GRADLE JDK
+--------------------------
+1. File → Settings (Ctrl+Alt+S)
+2. Build, Execution, Deployment → Build Tools → Gradle
+3. Gradle JDK: Pilih "jbr-17" atau "17" (JANGAN pilih 21!)
+4. Klik Apply → OK
+
+LANGKAH 4: INVALIDATE CACHES
+-----------------------------
+1. File → Invalidate Caches...
+2. Centang semua opsi
+3. Klik "Invalidate and Restart"
+
+LANGKAH 5: SYNC PROJECT
+------------------------
+1. Setelah restart, tunggu beberapa detik
+2. File → Sync Project with Gradle Files
+3. Atau klik icon Sync (🔄) di toolbar
+4. Tunggu sampai sync selesai (lihat progress bar di bawah)
+
+LANGKAH 6: BUILD APK
+---------------------
+Pilih salah satu:
+
+A. Via Android Studio:
+   1. Build → Select Build Variant
+   2. Pilih "release"
+   3. Build → Build Bundle(s) / APK(s) → Build APK(s)
+   4. Tunggu sampai selesai
+   5. APK ada di: app/build/outputs/apk/release/
+
+B. Via Terminal di Android Studio:
+   1. View → Tool Windows → Terminal
+   2. Ketik: gradlew assembleRelease
+   3. Enter
+
+========================================
+TROUBLESHOOTING
+========================================
+
+ERROR: "SDK location not found"
+--------------------------------
+Solusi:
+1. Pastikan file local.properties ada dengan isi:
+   sdk.dir=C:\\Users\\Kee\\AppData\\Local\\Android\\Sdk
+
+2. Atau set di Project Structure (Langkah 2 di atas)
+
+3. Atau buat file di: C:\Users\Kee\.gradle\gradle.properties
+   Isi: sdk.dir=C:\\Users\\Kee\\AppData\\Local\\Android\\Sdk
+
+ERROR: "Incompatible Java 21"
+------------------------------
+Solusi:
+- Pastikan Gradle JDK set ke Java 17 (Langkah 3 di atas)
+- JANGAN pilih Java 21!
+
+ERROR: "Gradle sync failed"
+----------------------------
+Solusi:
+1. File → Invalidate Caches → Invalidate and Restart
+2. Setelah restart, sync ulang
+
+ERROR: Build masih gagal
+-------------------------
+Solusi:
+1. Close project
+2. Delete folder .idea di android-webview
+3. Buka project lagi
+4. Ulangi Langkah 2-5
+
+========================================
+BUILD VIA COMMAND LINE (ALTERNATIF)
+========================================
+
+Jika Android Studio masih bermasalah, build via Command Line:
+
+1. Buka PowerShell
+2. Jalankan:
+
+cd C:\laragon\www\ds\android-webview
+$env:ANDROID_HOME="C:\Users\Kee\AppData\Local\Android\Sdk"
+$env:JAVA_HOME="C:\Program Files\Microsoft\jdk-17.0.9.8-hotspot"
+.\gradlew.bat assembleRelease
+
+3. APK ada di: app\build\outputs\apk\release\app-release-unsigned.apk
+
+ATAU double-click file: build-release.bat
+
+========================================
+INSTALL APK KE TABLET
+========================================
+
+1. Copy file ds.apk ke tablet (via USB atau cloud)
+2. Buka file manager di tablet
+3. Tap file ds.apk
+4. Klik Install
+5. Buka aplikasi
+
+========================================
+INFO PROJECT
+========================================
+
+- Package: com.keetech.dimsumpos
+- Version: 1.0.6
+- Min SDK: 21 (Android 5.0)
+- Target SDK: 33 (Android 13)
+- WebView URL: https://ds.keetech.my.id
+
+========================================
+SUPPORT
+========================================
+
+Jika masih ada masalah:
+1. Baca file README-SETUP.md
+2. Atau build via command line (lebih mudah)
+3. Atau hubungi developer
+
+========================================

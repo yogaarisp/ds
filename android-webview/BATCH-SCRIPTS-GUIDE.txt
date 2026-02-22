@@ -1,0 +1,113 @@
+========================================
+PANDUAN BATCH SCRIPTS
+========================================
+
+Ada 5 script batch yang bisa digunakan:
+
+1. build-debug.bat ⭐ (RECOMMENDED untuk testing)
+   - Build APK debug via Gradle
+   - Signed otomatis dengan debug keystore
+   - Copy ke ..\ds.apk
+   - Hasil sama seperti build di Android Studio (Debug)
+
+2. build-release.bat ⭐ (RECOMMENDED untuk production)
+   - Build APK release via Gradle
+   - Signed otomatis dengan release keystore
+   - Copy ke ..\ds.apk
+   - Hasil sama seperti build di Android Studio (Release)
+
+3. copy-debug-apk.bat
+   - Copy app-debug.apk yang sudah ada
+   - Rename jadi ds.apk di folder depan
+   - Gunakan jika sudah build di Android Studio
+
+4. copy-release-apk.bat
+   - Copy app-release.apk yang sudah ada
+   - Rename jadi ds.apk di folder depan
+   - Gunakan jika sudah build di Android Studio
+
+5. sign-apk.bat (di folder parent)
+   - Sign APK yang unsigned (jarang dipakai)
+   - Zipalign + jarsigner
+
+========================================
+WORKFLOW RECOMMENDED
+========================================
+
+CARA 1: Build via Batch Script (PALING MUDAH!) ⭐
+-------------------------------------------------
+Untuk Testing:
+1. Double-click: build-debug.bat
+2. Tunggu sampai selesai
+3. APK siap di ..\ds.apk (signed, bisa install!)
+
+Untuk Production:
+1. Double-click: build-release.bat
+2. Tunggu sampai selesai
+3. APK siap di ..\ds.apk (signed, bisa install!)
+
+CARA 2: Build di Android Studio
+--------------------------------
+1. Buka project di Android Studio
+2. Build → Build Bundle(s) / APK(s) → Build APK(s)
+3. Tunggu selesai
+4. Double-click: copy-debug-apk.bat atau copy-release-apk.bat
+5. APK siap di ..\ds.apk
+
+========================================
+LOKASI APK SETELAH BUILD
+========================================
+
+Debug build:
+- app\build\outputs\apk\debug\app-debug.apk (signed)
+
+Release build:
+- app\build\outputs\apk\release\app-release.apk (signed)
+
+Root folder:
+- ..\ds.apk (hasil copy dari script)
+
+========================================
+PERBEDAAN DEBUG vs RELEASE
+========================================
+
+DEBUG:
+- Build lebih cepat
+- APK lebih besar
+- Signed dengan debug keystore
+- Untuk testing saja
+- Bisa install langsung
+
+RELEASE:
+- Build lebih lama
+- APK lebih kecil (optimized)
+- Signed dengan release keystore
+- Untuk production/distribusi
+- Bisa install langsung
+
+========================================
+TIPS
+========================================
+
+1. ⭐ Gunakan build-debug.bat untuk testing cepat
+2. ⭐ Gunakan build-release.bat untuk APK final
+3. APK sudah signed otomatis, langsung bisa install!
+4. Tidak perlu sign-apk.bat lagi
+5. Hasil sama persis dengan build di Android Studio
+
+========================================
+KEYSTORE INFO
+========================================
+
+Debug Keystore:
+- Location: ~/.android/debug.keystore (auto-generated)
+- Password: android
+- Alias: androiddebugkey
+
+Release Keystore:
+- Location: keystore/dimsum.keystore
+- Password: dimsum123
+- Alias: dimsumkey
+- Valid until: 2053-06-28
+
+========================================

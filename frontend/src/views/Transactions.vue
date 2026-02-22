@@ -4,6 +4,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { transactionApi } from '../api'
 import { usePosStore } from '../stores/pos'
 import { useSettingsStore } from '../stores/settings'
+import { usePrinter } from '../composables/usePrinter'
 import CheckoutModal from '../components/CheckoutModal.vue'
 import Swal from 'sweetalert2'
 
@@ -11,6 +12,7 @@ const router = useRouter()
 const route = useRoute()
 const posStore = usePosStore()
 const settingsStore = useSettingsStore()
+const { printerConnected, thermalPrinter } = usePrinter()
 
 const transactions = ref([])
 const allTransactions = ref([]) // Store all transactions for search
@@ -303,7 +305,38 @@ function printReceipt() {
 
   const t = selectedTransaction.value
 
-  // Create hidden iframe
+  // Try Bluetooth thermal printer first if connected
+  if (printerConnected.value && thermalPrinter.connected) {
+    try {
+      const receiptData = {
+        queueNumber: t.queue_number || '',
+        transactionNumber: t.invoice_number,
+        date: formatDate(t.created_at),
+        cashier: t.user?.name || 'Kasir',
+        customerName: t.customer?.name || t.customer_name || 'Umum',
+        tableName: t.table?.name || '',
+        items: t.items.map(item => ({
+          name: item.product?.name || item.package_combination?.name || item.package?.name || 'Item',
+          quantity: item.quantity,
+          price: item.unit_price || item.subtotal / item.quantity,
+          subtotal: item.subtotal
+        })),
+        subtotal: t.total,
+        discount: t.discount || 0,
+        tax: 0,
+        total: t.total,
+        paid: t.paid_amount || t.total,
+        change: t.change_amount || 0,
+        paymentMethod: t.payment_method?.name || 'Cash'
+      }
+      thermalPrinter.printReceipt(receiptData)
+      return
+    } catch (err) {
+      console.warn('Thermal print failed, falling back to iframe:', err)
+    }
+  }
+
+  // Fallback: iframe print
   const iframe = document.createElement('iframe')
   iframe.style.display = 'none'
   document.body.appendChild(iframe)

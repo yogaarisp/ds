@@ -31,10 +31,6 @@ import com.dantsu.escposprinter.connection.bluetooth.BluetoothConnection;
 import com.dantsu.escposprinter.connection.bluetooth.BluetoothPrintersConnections;
 import com.dantsu.escposprinter.connection.usb.UsbConnection;
 import com.dantsu.escposprinter.connection.usb.UsbPrintersConnections;
-import com.dantsu.escposprinter.exceptions.EscPosBarcodeException;
-import com.dantsu.escposprinter.exceptions.EscPosConnectionException;
-import com.dantsu.escposprinter.exceptions.EscPosParserException;
-import com.dantsu.escposprinter.exceptions.EscPosEncodingException;
 
 public class MainActivity extends Activity {
 
@@ -42,7 +38,7 @@ public class MainActivity extends Activity {
     private ProgressBar progressBar;
     private ValueCallback<Uri[]> filePathCallback;
     private static final int FILE_CHOOSER_REQUEST_CODE = 1;
-    private static final int PERMISSION_ALL = 101;
+    private static final int PERMISSION_ALL = 1;
 
     private DeviceConnection selectedPrinter = null;
     private int printerDpi = 203;
@@ -203,6 +199,7 @@ public class MainActivity extends Activity {
     }
 
     @Override
+    @SuppressWarnings("deprecation")
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
 
@@ -324,7 +321,7 @@ public class MainActivity extends Activity {
             try {
                 // Bluetooth Printers
                 if (checkBluetoothPermissions()) {
-                    BluetoothConnection[] bluetoothDevices = BluetoothPrintersConnections.getPairedBluetoothPrinters();
+                    BluetoothConnection[] bluetoothDevices = (new BluetoothPrintersConnections()).getList();
                     if (bluetoothDevices != null) {
                         for (BluetoothConnection device : bluetoothDevices) {
                             JSONObject obj = new JSONObject();
@@ -337,7 +334,7 @@ public class MainActivity extends Activity {
                 }
 
                 // USB Printers
-                UsbConnection[] usbDevices = UsbPrintersConnections.getList(MainActivity.this);
+                UsbConnection[] usbDevices = (new UsbPrintersConnections(MainActivity.this)).getList();
                 if (usbDevices != null) {
                     for (UsbConnection device : usbDevices) {
                         JSONObject obj = new JSONObject();
@@ -366,7 +363,7 @@ public class MainActivity extends Activity {
                 if (!checkBluetoothPermissions()) {
                     return "ERROR: Permission denied";
                 }
-                BluetoothConnection[] bluetoothDevices = BluetoothPrintersConnections.getPairedBluetoothPrinters();
+                BluetoothConnection[] bluetoothDevices = (new BluetoothPrintersConnections()).getList();
                 if (bluetoothDevices != null) {
                     for (BluetoothConnection device : bluetoothDevices) {
                         if (device.getDevice().getAddress().equals(address)) {
@@ -384,7 +381,7 @@ public class MainActivity extends Activity {
         @android.webkit.JavascriptInterface
         public String connectUsbPrinter() {
             try {
-                UsbConnection[] usbDevices = UsbPrintersConnections.getList(MainActivity.this);
+                UsbConnection[] usbDevices = (new UsbPrintersConnections(MainActivity.this)).getList();
                 if (usbDevices != null && usbDevices.length > 0) {
                     selectedPrinter = usbDevices[0];
                     return "SUCCESS";
