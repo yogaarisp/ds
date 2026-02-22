@@ -406,12 +406,15 @@ class ThermalPrinterService {
    * Format currency
    */
   formatCurrency(value) {
-    return new Intl.NumberFormat('id-ID', {
+    const formatted = new Intl.NumberFormat('id-ID', {
       style: 'currency',
       currency: 'IDR',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0
     }).format(value)
+
+    // Replace non-breaking space (NBSP) with regular space to avoid printer encoding issues
+    return formatted.replace(/\s/g, ' ')
   }
 
   /**
