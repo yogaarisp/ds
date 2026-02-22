@@ -638,9 +638,9 @@ async function deleteTransaction(transaction) {
         >
           <!-- Invoice Tag (Top Left) -->
           <div class="absolute top-0 left-0 z-10">
-            <div class="bg-slate-50 text-slate-500 px-3 py-1.5 rounded-br-2xl border-r border-b border-slate-100 flex flex-col shadow-sm">
-              <span class="text-[10px] font-bold tracking-wider leading-none mb-0.5">{{ transaction.invoice_number }}</span>
-              <span v-if="transaction.queue_number" class="text-[11px] font-black text-primary-600">#{{ transaction.queue_number }}</span>
+            <div class="bg-slate-50 text-slate-500 px-3 py-1.5 rounded-br-2xl border-r border-b border-slate-100 flex items-center gap-2 shadow-sm">
+              <span class="text-[10px] font-bold tracking-wider leading-none">{{ transaction.invoice_number }}</span>
+              <span v-if="transaction.queue_number" class="text-[11px] font-black text-primary-600 leading-none">#{{ transaction.queue_number }}</span>
             </div>
           </div>
 
