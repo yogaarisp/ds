@@ -434,31 +434,28 @@ class ThermalPrinterService {
   }
 
   /**
-   * Test Succes
+   * Test print
    */
   async testPrint() {
-    // Get store info from settings
-    const settingsStore = useSettingsStore()
-
     const testData = {
-      storeName: settingsStore.storeName || 'DIMSUM SARANG',
-      storeAddress: settingsStore.settings.store_address || 'Jl. Test No. 123',
-      storePhone: settingsStore.settings.store_phone || '0812-3456-7890',
-      transactionNumber: 'TEST-001',
+      storeName: 'TEST SUCCESS',
+      storeAddress: 'Printer terhubung dengan baik',
+      storePhone: '',
+      transactionNumber: 'CONFIRMED',
       date: new Date().toLocaleString('id-ID'),
-      cashier: 'Admin',
-      tableName: 'Meja 1',
+      cashier: 'System',
+      tableName: 'Native-Bridge',
       items: [
-        { name: 'Dimsum Ayam', quantity: 2, price: 15000, subtotal: 30000 },
-        { name: 'Dimsum Udang', quantity: 1, price: 18000, subtotal: 18000 }
+        { name: 'Connection Test', quantity: 1, price: 0, subtotal: 0 },
+        { name: 'Print Status: OK', quantity: 1, price: 0, subtotal: 0 }
       ],
-      subtotal: 48000,
+      subtotal: 0,
       discount: 0,
       tax: 0,
-      total: 48000,
-      paid: 50000,
-      change: 2000,
-      paymentMethod: 'Cash'
+      total: 0,
+      paid: 0,
+      change: 0,
+      paymentMethod: 'Test'
     }
 
     await this.printReceipt(testData)
