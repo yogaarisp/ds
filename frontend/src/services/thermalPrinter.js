@@ -255,10 +255,8 @@ class ThermalPrinterService {
     t += `[L]Kembali:[R]${this.formatCurrency(data.change)}\n`
     t += `[L]Metode:[R]${data.paymentMethod || 'Cash'}\n`
 
-    t += '\n'
     t += `[C]Terima Kasih\n`
     t += `[C]Selamat Menikmati!\n`
-    t += '\n'
 
     return t
   }
@@ -382,7 +380,6 @@ class ThermalPrinterService {
     commands.push(0x0A)
     commands.push(...encoder.encode('Selamat Menikmati!'))
     commands.push(0x0A)
-    commands.push(0x0A)
 
     // QR Code (optional - if transaction has QR)
     if (data.qrCode) {
@@ -390,7 +387,7 @@ class ThermalPrinterService {
     }
 
     // Cut paper
-    commands.push(0x0A, 0x0A, 0x0A)
+    commands.push(0x0A, 0x0A)
     commands.push(GS, 0x56, 0x00) // Full cut
 
     return new Uint8Array(commands)
