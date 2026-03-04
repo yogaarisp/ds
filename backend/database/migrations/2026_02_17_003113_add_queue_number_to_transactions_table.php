@@ -15,7 +15,7 @@ return new class extends Migration
             $table->integer('queue_number')->nullable()->after('invoice_number');
         });
     }
-
+ 
     /**
      * Reverse the migrations.
      */

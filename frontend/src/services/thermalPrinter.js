@@ -48,47 +48,119 @@ class ThermalPrinterService {
   }
 
   /**
-   * Request and connect to Bluetooth printer
+   * Universal Scan: Handles both Native (Android) and Web (Browser)
    */
-  async connect() {
+  async scan() {
+    if (this.isAndroidApp()) {
+      try {
+        const data = window.AndroidInterface.scanPrinters()
+        return JSON.parse(data || '[]')
+      } catch (error) {
+        console.error('Scan native failed:', error)
+        return []
+      }
+    } else {
+      // Browser doesn't really have a "scan and return list" for Bluetooth
+      // but we can return previously permited devices
+      if ('bluetooth' in navigator && navigator.bluetooth.getDevices) {
+        try {
+          const devices = await navigator.bluetooth.getDevices()
+          return devices.map(d => ({
+            name: d.name || 'Unknown Device',
+            address: d.id,
+            type: 'bluetooth',
+            isWebDevice: true,
+            raw: d
+          }))
+        } catch (e) {
+          return []
+        }
+      }
+      return []
+    }
+  }
+
+  /**
+   * Universal Connect
+   * @param {Object|null} printer - Printer object for Native or null for Web Bluetooth Picker
+   */
+  async connect(printer = null) {
     try {
+      // PATH 1: Android APK (Native Bridge)
       if (this.isAndroidApp()) {
-        // Native scan/connect logic is usually handled via scanNative()
-        // but we'll leave this for compatibility
-        return true
+        if (!printer) throw new Error('Printer object is required for Native connection')
+
+        let result = ''
+        if (printer.type === 'bluetooth') {
+          result = window.AndroidInterface.connectBluetoothPrinter(printer.address)
+        } else {
+          result = window.AndroidInterface.connectUsbPrinter()
+        }
+
+        if (result === 'SUCCESS') {
+          this.connected = true
+          this.type = 'native'
+          this.syncNativeSettings()
+          return true
+        }
+        throw new Error(result)
       }
 
+      // PATH 2: Web Browser (Web Bluetooth API)
       if (!this.isBluetoothSupported()) {
         throw new Error('Web Bluetooth tidak didukung di browser ini')
       }
 
-      // Request Bluetooth device
-      this.device = await navigator.bluetooth.requestDevice({
-        filters: [
-          { services: ['000018f0-0000-1000-8000-00805f9b34fb'] }, // Generic printer service
-          { namePrefix: 'RPN' }, // RPN series
-          { namePrefix: 'BlueTooth Printer' }
-        ],
-        optionalServices: [
-          '000018f0-0000-1000-8000-00805f9b34fb',
-          '49535343-fe7d-4ae5-8fa9-9fafd205e455' // Common printer service
-        ]
-      })
+      // If we have a specific web printer object (from getDevices)
+      if (printer && printer.isWebDevice && printer.raw) {
+        this.device = printer.raw
+      } else {
+        // Show browser's device picker
+        this.device = await navigator.bluetooth.requestDevice({
+          filters: [
+            { services: ['000018f0-0000-1000-8000-00805f9b34fb'] },
+            { namePrefix: 'RPN' },
+            { namePrefix: 'BlueTooth Printer' },
+            { namePrefix: 'MPT' }
+          ],
+          optionalServices: [
+            '000018f0-0000-1000-8000-00805f9b34fb',
+            '49535343-fe7d-4ae5-8fa9-9fafd205e455',
+            '00001101-0000-1000-8000-00805f9b34fb'
+          ]
+        })
+      }
 
       console.log('Connecting to:', this.device.name)
-
-      // Connect to GATT server
       const server = await this.device.gatt.connect()
 
-      // Get service
-      const service = await server.getPrimaryService('000018f0-0000-1000-8000-00805f9b34fb')
+      // Try common service UUIDs
+      const serviceUUIDs = ['000018f0-0000-1000-8000-00805f9b34fb', '49535343-fe7d-4ae5-8fa9-9fafd205e455']
+      let service = null
 
-      // Get characteristic
-      this.characteristic = await service.getCharacteristic('00002af1-0000-1000-8000-00805f9b34fb')
+      for (const uuid of serviceUUIDs) {
+        try {
+          service = await server.getPrimaryService(uuid)
+          if (service) break
+        } catch (e) { continue }
+      }
+
+      if (!service) throw new Error('Service printer tidak ditemukan')
+
+      // Get characteristic (auto-detect write characteristic)
+      const characteristics = await service.getCharacteristics()
+      this.characteristic = characteristics.find(c => c.properties.write || c.properties.writeWithoutResponse)
+
+      if (!this.characteristic) throw new Error('Write characteristic tidak ditemukan')
 
       this.connected = true
       this.type = 'web'
-      console.log('Printer connected successfully')
+
+      // Listen for disconnection
+      this.device.addEventListener('gattserverdisconnected', () => {
+        this.connected = false
+        console.warn('Printer disconnected')
+      })
 
       return true
     } catch (error) {
@@ -98,50 +170,21 @@ class ThermalPrinterService {
   }
 
   /**
-   * Scan native printers (Bluetooth paired & USB)
+   * Helper to sync settings to Android Native
    */
-  async scanNative() {
-    if (!this.isAndroidApp()) return []
-    try {
-      const data = window.AndroidInterface.scanPrinters()
-      return JSON.parse(data || '[]')
-    } catch (error) {
-      console.error('Scan native failed:', error)
-      return []
+  syncNativeSettings() {
+    if (this.isAndroidApp() && window.AndroidInterface.setPrinterSettings) {
+      window.AndroidInterface.setPrinterSettings(
+        203, // DPI
+        this.printerWidth === 58 ? 48.0 : 72.0, // Width MM
+        this.printerWidth === 58 ? 32 : 48 // Chars per line
+      )
     }
   }
 
-  /**
-   * Connect to native printer
-   */
-  async connectNative(printer) {
-    if (!this.isAndroidApp()) return false
-    try {
-      let result = ''
-      if (printer.type === 'bluetooth') {
-        result = window.AndroidInterface.connectBluetoothPrinter(printer.address)
-      } else {
-        result = window.AndroidInterface.connectUsbPrinter()
-      }
-
-      if (result === 'SUCCESS') {
-        this.connected = true
-        this.type = 'native'
-
-        // Sync settings
-        window.AndroidInterface.setPrinterSettings(
-          203, // DPI
-          this.printerWidth === 58 ? 48.0 : 72.0, // Width MM
-          this.printerWidth === 58 ? 32 : 48 // Chars per line
-        )
-        return true
-      }
-      throw new Error(result)
-    } catch (error) {
-      console.error('Connect native failed:', error)
-      throw error
-    }
-  }
+  // ALIASES FOR BACKWARD COMPATIBILITY
+  async scanNative() { return this.scan() }
+  async connectNative(printer) { return this.connect(printer) }
 
   /**
    * Disconnect from printer

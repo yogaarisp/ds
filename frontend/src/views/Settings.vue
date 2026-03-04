@@ -1083,58 +1083,27 @@ async function sendTestEmail() {
 
 // Printer Functions
 async function handleConnect() {
-  if (thermalPrinter.isAndroidApp()) {
-    connecting.value = true
-    try {
-      const printers = await thermalPrinter.scanNative()
-      discoveredPrinters.value = printers
-      showNativeScanResult.value = true
-    } catch (error) {
-      console.error('Native scan error:', error)
-      Swal.fire({
-        icon: 'error',
-        title: 'Gagal Scan',
-        text: 'Gagal memindai printer paired Bluetooth/USB',
-        width: '300px',
-        customClass: { popup: 'rounded-xl text-sm' }
-      })
-    } finally {
-      connecting.value = false
-    }
-    return
-  }
-
   connecting.value = true
   try {
-    const success = await connectPrinter()
-    if (success) {
-      await Swal.fire({
-        icon: 'success',
-        title: 'Terhubung!',
-        text: 'Printer berhasil disambungkan',
-        timer: 1500,
-        showConfirmButton: false,
-        width: '300px',
-        customClass: {
-          popup: 'rounded-xl text-sm',
-          title: 'text-lg font-bold',
-          htmlContainer: 'text-xs'
-        }
-      })
+    const printers = await thermalPrinter.scan()
+    discoveredPrinters.value = printers
+    
+    if (printers && printers.length > 0) {
+      showNativeScanResult.value = true
+    } else if (!thermalPrinter.isAndroidApp()) {
+      // Browser: No permitted devices yet, launch browser picker
+      await connectToNativePrinter(null)
+    } else {
+      throw new Error('Tidak ada printer Bluetooth/USB ditemukan. Pastikan printer sudah dipairing di pengaturan Android.')
     }
   } catch (error) {
-    console.error('Error connecting printer:', error)
     if (error.name !== 'NotFoundError' && error.name !== 'AbortError') {
       Swal.fire({
         icon: 'error',
-        title: 'Gagal',
-        text: error.message || 'Gagal menghubungkan printer',
+        title: 'Gagal Konek',
+        text: error.message,
         width: '300px',
-        customClass: {
-          popup: 'rounded-xl text-sm',
-          title: 'text-lg font-bold',
-          htmlContainer: 'text-xs'
-        }
+        customClass: { popup: 'rounded-xl text-sm' }
       })
     }
   } finally {
@@ -1145,26 +1114,28 @@ async function handleConnect() {
 async function connectToNativePrinter(printer) {
   loading.value = true
   try {
-    await thermalPrinter.connectNative(printer)
+    await thermalPrinter.connect(printer)
     printerConnected.value = true
     showNativeScanResult.value = false
     Swal.fire({
       icon: 'success',
       title: 'Terhubung!',
-      text: `Tersambung ke ${printer.name}`,
+      text: printer ? `Tersambung ke ${printer.name}` : 'Printer berhasil disambungkan',
       timer: 1500,
       showConfirmButton: false,
       width: '300px',
       customClass: { popup: 'rounded-xl text-sm' }
     })
   } catch (error) {
-    Swal.fire({
-      icon: 'error',
-      title: 'Gagal',
-      text: error.message || 'Gagal menghubungkan printer',
-      width: '300px',
-      customClass: { popup: 'rounded-xl text-sm' }
-    })
+    if (error.name !== 'NotFoundError' && error.name !== 'AbortError') {
+      Swal.fire({
+        icon: 'error',
+        title: 'Gagal Konek',
+        text: error.message,
+        width: '300px',
+        customClass: { popup: 'rounded-xl text-sm' }
+      })
+    }
   } finally {
     loading.value = false
   }
