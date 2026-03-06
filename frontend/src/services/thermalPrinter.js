@@ -538,8 +538,14 @@ class ThermalPrinterService extends EventTarget {
     t += `[L]Bayar:[R]${this.formatCurrency(data.paid)}\n`
     t += `[L]Kembali:[R]${this.formatCurrency(data.change)}\n`
 
-    t += `[C]Terima Kasih\n`
-    t += `[C]Selamat Menikmati!\n`
+    if (isSmall) {
+      const pad = (txt) => ' '.repeat(Math.max(0, Math.floor((32 - txt.length) / 2)))
+      t += `[L]${pad('Terima Kasih')}Terima Kasih\n`
+      t += `[L]${pad('Selamat Menikmati!')}Selamat Menikmati!\n`
+    } else {
+      t += `[C]Terima Kasih\n`
+      t += `[C]Selamat Menikmati!\n`
+    }
 
     return t
   }
@@ -663,11 +669,16 @@ class ThermalPrinterService extends EventTarget {
 
     // Footer
     commands.push(0x0A)
-    commands.push(ESC, 0x61, 0x01) // Center align
-    commands.push(...encoder.encode('Terima Kasih'))
-    commands.push(0x0A)
-    commands.push(...encoder.encode('Selamat Menikmati!'))
-    commands.push(0x0A)
+    if (this.printerWidth === 58) {
+      commands.push(ESC, 0x61, 0x00) // Left align for manual padding
+      const pad = (txt) => ' '.repeat(Math.max(0, Math.floor((32 - txt.length) / 2)))
+      commands.push(...encoder.encode(pad('Terima Kasih') + 'Terima Kasih\n'))
+      commands.push(...encoder.encode(pad('Selamat Menikmati!') + 'Selamat Menikmati!\n'))
+    } else {
+      commands.push(ESC, 0x61, 0x01) // Center align
+      commands.push(...encoder.encode('Terima Kasih\n'))
+      commands.push(...encoder.encode('Selamat Menikmati!\n'))
+    }
 
     // QR Code (optional - if transaction has QR)
     if (data.qrCode) {
