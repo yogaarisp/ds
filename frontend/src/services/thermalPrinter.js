@@ -7,8 +7,9 @@
 
 import { useSettingsStore } from '@/stores/settings'
 
-class ThermalPrinterService {
+class ThermalPrinterService extends EventTarget {
   constructor() {
+    super()
     this.device = null
     this.characteristic = null
     this.connected = false
@@ -16,6 +17,14 @@ class ThermalPrinterService {
     const savedWidth = localStorage.getItem('printer_width')
     this.printerWidth = savedWidth ? parseInt(savedWidth) : 58
     this.type = 'web' // 'web' or 'native'
+
+    // Try to auto-connect if we're in a browser and not an Android app
+    // Only if user hasn't manually disconnected previously
+    // Added 500ms delay to let printer settle after a page refresh
+    const shouldAutoConnect = localStorage.getItem('printer_auto_reconnect') !== 'false'
+    if (!this.isAndroidApp() && this.isBluetoothSupported() && shouldAutoConnect) {
+      setTimeout(() => this.autoConnect(), 500)
+    }
   }
 
   /**
@@ -101,6 +110,7 @@ class ThermalPrinterService {
           this.connected = true
           this.type = 'native'
           this.syncNativeSettings()
+          this.dispatchEvent(new CustomEvent('connection-changed', { detail: true }))
           return true
         }
         throw new Error(result)
@@ -132,7 +142,25 @@ class ThermalPrinterService {
       }
 
       console.log('Connecting to:', this.device.name)
-      const server = await this.device.gatt.connect()
+
+      let server = null
+      let retryCount = 0
+      const maxRetries = 3
+
+      while (retryCount < maxRetries) {
+        try {
+          server = await this.device.gatt.connect()
+          break // Success!
+        } catch (err) {
+          retryCount++
+          if (err.name === 'NetworkError' && retryCount < maxRetries) {
+            console.warn(`[Connect] Stale connection detected, retrying (${retryCount}/${maxRetries})...`)
+            await new Promise(r => setTimeout(r, 1000)) // Wait 1s before retry
+            continue
+          }
+          throw err // Rethrow if it's not a NetworkError or we've run out of retries
+        }
+      }
 
       // Try common service UUIDs
       const serviceUUIDs = ['000018f0-0000-1000-8000-00805f9b34fb', '49535343-fe7d-4ae5-8fa9-9fafd205e455']
@@ -155,11 +183,22 @@ class ThermalPrinterService {
 
       this.connected = true
       this.type = 'web'
+      localStorage.setItem('printer_auto_reconnect', 'true') // Enable auto-reconnect on success
+      this.dispatchEvent(new CustomEvent('connection-changed', { detail: true }))
 
-      // Listen for disconnection
+      // Listen for disconnection — auto-reconnect
       this.device.addEventListener('gattserverdisconnected', () => {
         this.connected = false
-        console.warn('Printer disconnected')
+        this.characteristic = null
+        this.dispatchEvent(new CustomEvent('connection-changed', { detail: false }))
+
+        // Auto-reconnect after UNEXPECTED disconnect (not manual)
+        if (localStorage.getItem('printer_auto_reconnect') !== 'false') {
+          console.warn('Printer disconnected unexpectedly, attempting auto-reconnect...')
+          this._reconnectWithRetry(this.device, 5, 1000)
+        } else {
+          console.log('Printer disconnected manually, skipping auto-reconnect')
+        }
       })
 
       return true
@@ -167,6 +206,154 @@ class ThermalPrinterService {
       console.error('Failed to connect printer:', error)
       throw error
     }
+  }
+
+  /**
+   * Auto-reconnect to the last used printer on page load.
+   * Uses watchAdvertisements() if available, falls back to retry loop.
+   */
+  async autoConnect() {
+    if (this.isAndroidApp() || !this.isBluetoothSupported()) return false
+
+    // Check if auto-reconnect is globally enabled by user
+    if (localStorage.getItem('printer_auto_reconnect') === 'false') {
+      console.log('[AutoConnect] Auto-reconnect is disabled by user')
+      return false
+    }
+
+    try {
+      if (!navigator.bluetooth.getDevices) {
+        console.warn('getDevices() not supported, auto-reconnect unavailable')
+        return false
+      }
+
+      const devices = await navigator.bluetooth.getDevices()
+      if (devices.length === 0) return false
+
+      const device = devices[0]
+      console.log('[AutoConnect] Found remembered device:', device.name)
+
+      // Strategy 1: Use watchAdvertisements (most reliable)
+      if (device.watchAdvertisements) {
+        return await this._connectViaAdvertisement(device)
+      }
+
+      // Strategy 2: Direct connect with retry (fallback)
+      return await this._reconnectWithRetry(device, 5, 1500)
+    } catch (error) {
+      console.warn('[AutoConnect] Failed:', error.message)
+    }
+    return false
+  }
+
+  /**
+   * Wait for BLE advertisement from device, then connect.
+   * This is the most reliable method for reconnecting.
+   */
+  _connectViaAdvertisement(device) {
+    return new Promise((resolve) => {
+      const timeout = setTimeout(() => {
+        console.warn('[AutoConnect] Advertisement timeout, trying direct connect...')
+        // Fallback: try direct connect
+        this._reconnectWithRetry(device, 3, 1500).then(resolve).catch(() => resolve(false))
+      }, 2000) // Reduced from 5s to 2s for better UX
+
+      const onAdReceived = async () => {
+        clearTimeout(timeout)
+        device.removeEventListener('advertisementreceived', onAdReceived)
+        try {
+          if (device.watchAdvertisements) {
+            // Stop watching to save battery
+            const controller = new AbortController()
+            controller.abort()
+          }
+        } catch (e) { /* ignore */ }
+
+        console.log('[AutoConnect] Advertisement received from:', device.name)
+        try {
+          await this._connectToDevice(device)
+          resolve(true)
+        } catch (err) {
+          console.warn('[AutoConnect] Connect after ad failed:', err.message)
+          resolve(false)
+        }
+      }
+
+      device.addEventListener('advertisementreceived', onAdReceived)
+
+      device.watchAdvertisements({ signal: undefined }).catch((err) => {
+        clearTimeout(timeout)
+        console.warn('[AutoConnect] watchAdvertisements failed:', err.message)
+        // Fallback to direct retry
+        this._reconnectWithRetry(device, 3, 1500).then(resolve).catch(() => resolve(false))
+      })
+    })
+  }
+
+  /**
+   * Retry connecting to a device multiple times with delay.
+   */
+  async _reconnectWithRetry(device, maxRetries = 5, delayMs = 1500) {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`[Reconnect] Attempt ${attempt}/${maxRetries}...`)
+        await this._connectToDevice(device)
+        console.log('[Reconnect] Success!')
+        return true
+      } catch (error) {
+        console.warn(`[Reconnect] Attempt ${attempt} failed:`, error.message)
+        if (attempt < maxRetries) {
+          await new Promise(r => setTimeout(r, delayMs))
+        }
+      }
+    }
+    console.warn('[Reconnect] All attempts failed')
+    return false
+  }
+
+  /**
+   * Low-level: connect to a BLE device, discover services & characteristics.
+   */
+  async _connectToDevice(device) {
+    this.device = device
+    const server = await device.gatt.connect()
+
+    const serviceUUIDs = ['000018f0-0000-1000-8000-00805f9b34fb', '49535343-fe7d-4ae5-8fa9-9fafd205e455']
+    let service = null
+
+    for (const uuid of serviceUUIDs) {
+      try {
+        service = await server.getPrimaryService(uuid)
+        if (service) break
+      } catch (e) { continue }
+    }
+
+    if (!service) throw new Error('Service printer tidak ditemukan')
+
+    const characteristics = await service.getCharacteristics()
+    this.characteristic = characteristics.find(c => c.properties.write || c.properties.writeWithoutResponse)
+
+    if (!this.characteristic) throw new Error('Write characteristic tidak ditemukan')
+
+    this.connected = true
+    this.type = 'web'
+    localStorage.setItem('printer_auto_reconnect', 'true') // Enable auto-reconnect on success
+    this.dispatchEvent(new CustomEvent('connection-changed', { detail: true }))
+
+    // Listen for disconnection — auto-reconnect
+    this.device.addEventListener('gattserverdisconnected', () => {
+      this.connected = false
+      this.characteristic = null
+      this.dispatchEvent(new CustomEvent('connection-changed', { detail: false }))
+
+      // Auto-reconnect after UNEXPECTED disconnect (not manual)
+      if (localStorage.getItem('printer_auto_reconnect') !== 'false') {
+        console.warn('Printer disconnected unexpectedly, attempting auto-reconnect...')
+        this._reconnectWithRetry(this.device, 5, 1000)
+      } else {
+        console.log('Printer disconnected manually, skipping auto-reconnect')
+      }
+    })
   }
 
   /**
@@ -190,15 +377,40 @@ class ThermalPrinterService {
    * Disconnect from printer
    */
   async disconnect() {
+    // 1. Mark as manual disconnect FIRST to prevent auto-reconnect loop
+    localStorage.setItem('printer_auto_reconnect', 'false')
+
     if (this.isAndroidApp()) {
-      window.AndroidInterface.disconnectPrinter()
+      if (window.AndroidInterface && window.AndroidInterface.disconnectPrinter) {
+        window.AndroidInterface.disconnectPrinter()
+      }
       this.connected = false
+      this.dispatchEvent(new CustomEvent('connection-changed', { detail: false }))
       return
     }
-    if (this.device && this.device.gatt.connected) {
-      await this.device.gatt.disconnect()
+
+    if (this.device) {
+      try {
+        if (this.device.gatt && this.device.gatt.connected) {
+          await this.device.gatt.disconnect()
+        }
+
+        // Use forget() to clear the browser permission for this device
+        // This prevents the device from being "stuck" in a half-connected state
+        if (typeof this.device.forget === 'function') {
+          console.log('[Disconnect] Clearing device permission via forget()...')
+          await this.device.forget()
+        }
+      } catch (err) {
+        console.warn('[Disconnect] Error during cleanup:', err)
+      }
+
+      // Hard reset all internal states
+      this.device = null
+      this.characteristic = null
       this.connected = false
-      console.log('Printer disconnected')
+      this.dispatchEvent(new CustomEvent('connection-changed', { detail: false }))
+      console.log('[Disconnect] Printer state cleared successfully')
     }
   }
 
@@ -280,9 +492,22 @@ class ThermalPrinterService {
     const divider = '[C]' + '-'.repeat(this.printerWidth === 58 ? 32 : 48) + '\n'
     let t = ""
 
-    t += `[C]<b><font size='big'>${storeName.toUpperCase()}</font></b>\n`
-    if (storeAddress) t += `[C]${storeAddress}\n`
-    if (storePhone) t += `[C]Tel: ${storePhone}\n`
+    const isSmall = this.printerWidth === 58
+
+    if (isSmall) {
+      // Manual padding for 32 characters (58mm) to ensure perfect center
+      const pad = (txt) => ' '.repeat(Math.max(0, Math.floor((32 - txt.length) / 2)))
+      t += `[L]<b>${pad(storeName)}${storeName}</b>\n`
+      if (storeAddress) t += `[L]<font size='small'>${pad(storeAddress)}${storeAddress}</font>\n`
+      if (storePhone) {
+        const waText = `WA: ${storePhone}`
+        t += `[L]<font size='small'>${pad(waText)}${waText}</font>\n`
+      }
+    } else {
+      t += `[C]<b><font size='big'>${storeName.toUpperCase()}</font></b>\n`
+      if (storeAddress) t += `[C]${storeAddress}\n`
+      if (storePhone) t += `[C]WA: ${storePhone}\n`
+    }
     t += divider
 
     t += `[L]No: ${data.transactionNumber || '-'}\n`
@@ -308,11 +533,10 @@ class ThermalPrinterService {
     if (data.discount > 0) t += `[L]Diskon:[R]- ${this.formatCurrency(data.discount)}\n`
     if (data.tax > 0) t += `[L]Pajak:[R]${this.formatCurrency(data.tax)}\n`
     t += `[L]<b>TOTAL:[R]${this.formatCurrency(data.total)}</b>\n`
+    t += `[L]Metode:[R]${data.paymentMethod || 'Cash'}\n`
     t += '\n'
-
     t += `[L]Bayar:[R]${this.formatCurrency(data.paid)}\n`
     t += `[L]Kembali:[R]${this.formatCurrency(data.change)}\n`
-    t += `[L]Metode:[R]${data.paymentMethod || 'Cash'}\n`
 
     t += `[C]Terima Kasih\n`
     t += `[C]Selamat Menikmati!\n`
@@ -342,23 +566,31 @@ class ThermalPrinterService {
     // Set character code table (Indonesia/International)
     commands.push(ESC, 0x74, 0x00)
 
-    // Store name - Center, Bold, Double height
-    commands.push(ESC, 0x61, 0x01) // Center align
-    commands.push(ESC, 0x45, 0x01) // Bold on
-    commands.push(GS, 0x21, 0x11) // Double height & width
-    commands.push(...encoder.encode(storeName))
-    commands.push(0x0A) // Line feed
-    commands.push(GS, 0x21, 0x00) // Normal size
-    commands.push(ESC, 0x45, 0x00) // Bold off
+    // Center everything in header
+    if (this.printerWidth === 58) {
+      commands.push(ESC, 0x61, 0x00) // Left align for manual padding
 
-    // Store info
-    if (storeAddress) {
-      commands.push(...encoder.encode(storeAddress))
-      commands.push(0x0A)
-    }
-    if (storePhone) {
-      commands.push(...encoder.encode(`Tel: ${storePhone}`))
-      commands.push(0x0A)
+      const pad = (txt) => ' '.repeat(Math.max(0, Math.floor((32 - txt.length) / 2)))
+
+      // Store name
+      commands.push(ESC, 0x45, 0x01, GS, 0x21, 0x01) // Bold + Double Height
+      commands.push(...encoder.encode(pad(storeName) + storeName + '\n'))
+      commands.push(GS, 0x21, 0x00, ESC, 0x45, 0x00) // Reset
+
+      // Address & WA
+      if (storeAddress) commands.push(...encoder.encode(pad(storeAddress) + storeAddress + '\n'))
+      if (storePhone) {
+        const waText = `WA: ${storePhone}`
+        commands.push(...encoder.encode(pad(waText) + waText + '\n'))
+      }
+    } else {
+      commands.push(ESC, 0x61, 0x01) // Center align
+      commands.push(ESC, 0x45, 0x01, GS, 0x21, 0x11) // Bold + Double Size
+      commands.push(...encoder.encode(storeName + '\n'))
+      commands.push(GS, 0x21, 0x00, ESC, 0x45, 0x00)
+
+      if (storeAddress) commands.push(...encoder.encode(storeAddress + '\n'))
+      if (storePhone) commands.push(...encoder.encode(`WA: ${storePhone}\n`))
     }
 
     // Separator line
@@ -422,15 +654,12 @@ class ThermalPrinterService {
     this.addLine(commands, encoder, 'TOTAL:', this.formatCurrency(data.total))
     commands.push(ESC, 0x45, 0x00) // Bold off
 
+    this.addLine(commands, encoder, 'Metode:', data.paymentMethod || 'Cash')
+
     // Payment info
     commands.push(0x0A)
     this.addLine(commands, encoder, 'Bayar:', this.formatCurrency(data.paid))
     this.addLine(commands, encoder, 'Kembali:', this.formatCurrency(data.change))
-
-    // Payment method
-    commands.push(0x0A)
-    commands.push(...encoder.encode(`Metode: ${data.paymentMethod || 'Cash'}`))
-    commands.push(0x0A)
 
     // Footer
     commands.push(0x0A)
@@ -446,7 +675,7 @@ class ThermalPrinterService {
     }
 
     // Cut paper
-    commands.push(0x0A, 0x0A)
+    commands.push(0x0A) // Reduced from 0x0A, 0x0A
     commands.push(GS, 0x56, 0x00) // Full cut
 
     return new Uint8Array(commands)

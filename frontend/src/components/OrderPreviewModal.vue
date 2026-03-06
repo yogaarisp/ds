@@ -178,7 +178,7 @@ onUnmounted(() => {
       </div>
       
       <!-- Sticky Footer: Summary + Actions -->
-      <div class="bg-white border-t border-slate-100 sticky bottom-0 z-20 shadow-[0_-10px_40px_rgba(0,0,0,0.04)] p-2.5 pb-[72px] sm:pb-2.5 space-y-1">
+      <div class="bg-white border-t border-slate-100 sticky bottom-0 z-20 shadow-[0_-10px_40px_rgba(0,0,0,0.04)] p-2.5 pb-3 sm:pb-2.5 space-y-1">
         <!-- Payment Summary Box -->
         <div class="bg-slate-50/50 rounded-2xl p-2.5 border border-slate-100/50 space-y-1.5">
           <div class="flex justify-between items-center">

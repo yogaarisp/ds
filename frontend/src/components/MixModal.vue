@@ -69,7 +69,7 @@ onUnmounted(() => {
 
 <template>
   <div class="fixed inset-0 bg-slate-900/60 flex items-center justify-center z-50 sm:p-4 backdrop-blur-sm transition-all duration-300 overflow-hidden">
-    <div class="bg-white w-full h-full sm:h-auto sm:max-w-md sm:max-h-[90vh] flex flex-col sm:rounded-2xl shadow-2xl overflow-hidden animate-fade-in-up">
+    <div class="bg-white w-full h-full sm:h-auto sm:max-w-4xl sm:max-h-[90vh] flex flex-col sm:rounded-2xl shadow-2xl overflow-hidden animate-fade-in-up">
       
       <!-- Simplified Modern Header -->
       <div class="px-6 pt-5 pb-1 sticky top-0 bg-white border-b border-slate-50 z-10">
@@ -95,7 +95,7 @@ onUnmounted(() => {
           </div>
 
           <!-- Minimal Segmented Toggle -->
-          <div class="w-full flex p-1 bg-slate-50 rounded-2xl relative overflow-hidden border border-slate-100">
+          <div class="w-full sm:max-w-xs flex p-1 bg-slate-50 rounded-2xl relative overflow-hidden border border-slate-100">
             <div 
               class="absolute top-1 bottom-1 w-[calc(50%-4px)] rounded-xl transition-all duration-500 cubic-bezier(0.4, 0, 0.2, 1) shadow-sm"
               :class="[
@@ -127,7 +127,7 @@ onUnmounted(() => {
       </div>
 
       <!-- Polished Combinations List -->
-      <div class="flex-1 overflow-auto px-6 py-2 space-y-1.5 custom-scrollbar bg-white">
+      <div class="flex-1 overflow-auto px-6 py-4 custom-scrollbar bg-white grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         <div
           v-for="combination in displayedCombinations"
           :key="combination.id"

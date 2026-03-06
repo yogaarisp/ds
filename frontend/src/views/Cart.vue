@@ -425,7 +425,7 @@ function handleCheckoutClose() {
 
     <!-- Symmetric Compact Footer reaching bottom -->
     <div class="fixed bottom-0 left-0 right-0 lg:hidden z-30">
-      <div class="bg-white/95 backdrop-blur-xl rounded-t-3xl shadow-[0_-10px_35px_rgba(0,0,0,0.06)] border-t border-slate-100 px-5 pt-3 pb-[72px] flex items-center justify-between gap-3">
+      <div class="bg-white/95 backdrop-blur-xl rounded-t-3xl shadow-[0_-10px_35px_rgba(0,0,0,0.06)] border-t border-slate-100 px-5 pt-3 pb-3 flex items-center justify-between gap-3">
         <div class="flex-1 min-w-0 flex flex-col justify-center">
           <div class="flex items-center gap-1.5 mb-0.5">
             <p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-none">Total Tagihan</p>

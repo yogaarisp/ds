@@ -310,7 +310,7 @@ function clearStorageOnly() {
     </main>
 
     <!-- Mobile Bottom Navigation (Floating Island V2) -->
-    <nav class="lg:hidden fixed bottom-0 left-0 right-0 z-[100]">
+    <nav class="lg:hidden fixed bottom-0 left-0 right-0 z-10">
        <div class="bg-white/95 backdrop-blur-xl border-t border-orange-200 rounded-t-3xl px-1.5 py-2 flex items-center justify-between">
           <template v-for="item in filteredMenu.slice(0, 4)" :key="item.path">
           <!-- Special POS Button -->

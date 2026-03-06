@@ -132,7 +132,7 @@ export const useAuthStore = defineStore('auth', () => {
   async function logout() {
     // Remember if user is staff/admin before clearing
     const isStaff = user.value && ['owner', 'kasir', 'gudang'].includes(user.value.role)
-    
+
     try {
       await authApi.logout()
     } catch (error) {
@@ -142,7 +142,7 @@ export const useAuthStore = defineStore('auth', () => {
       user.value = null
       localStorage.removeItem('token')
       localStorage.removeItem('user')
-      
+
       // Redirect based on user type
       // Staff/Admin -> login page
       // Customer -> customer home

@@ -1,4 +1,4 @@
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import thermalPrinter from '@/services/thermalPrinter'
 
 const printerConnected = ref(false)
@@ -6,6 +6,18 @@ const printerWidth = ref(localStorage.getItem('printer_width') || '58')
 const autoPrint = ref(localStorage.getItem('auto_print') === 'true')
 
 export function usePrinter() {
+  onMounted(() => {
+    // Sync connection status on mount
+    printerConnected.value = thermalPrinter.connected
+
+    // Listen for changes from the service
+    const handleStatusChange = (e) => {
+      printerConnected.value = e.detail
+    }
+
+    thermalPrinter.addEventListener('connection-changed', handleStatusChange)
+  })
+
   const setPrinterWidth = (width) => {
     printerWidth.value = width
     localStorage.setItem('printer_width', width)

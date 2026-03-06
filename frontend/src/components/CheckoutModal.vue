@@ -252,10 +252,12 @@ async function silentPrint(t) {
     iframe.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:0;height:0;border:none;'
     document.body.appendChild(iframe)
     
-    const width = 300
+    // Calculate width: 58mm ≈ 300px, 80mm ≈ 420px
+    const width = printerWidth.value === '80' ? 420 : 300
     const doc = iframe.contentWindow.document
     const storeName = settingsStore.storeName || 'DIMSUM SARANG'
     const storeAddress = settingsStore.settings.store_address || ''
+    const storePhone = settingsStore.settings.store_phone || ''
     const customerName = t.customer?.name || 'Umum'
 
     const itemsHtml = t.items.map(item => {
@@ -266,15 +268,19 @@ async function silentPrint(t) {
     doc.open()
     doc.write(`<html><head><title>Receipt</title><style>
       @page{margin:0;size:${width}px auto;}
-      body{font-family:'Courier New',monospace;font-size:12px;width:${width}px;margin:0 auto;padding:10px;}
+      body{font-family:'Courier New',monospace;font-size:${width === 420 ? '14px' : '12px'};width:${width}px;margin:0 auto;padding:10px;}
       .header{text-align:center;margin-bottom:8px;border-bottom:1px dashed #000;padding-bottom:8px;}
       .footer{text-align:center;margin-top:8px;border-top:1px dashed #000;padding-top:8px;}
       .total{margin-top:8px;border-top:1px dashed #000;padding-top:5px;}
       .row{display:flex;justify-content:space-between;}
       .bold{font-weight:bold;}
+      .store-name{font-size:${width === 420 ? '22px' : '18px'};font-weight:bold;margin-bottom:2px;}
+      .store-info{font-size:${width === 420 ? '12px' : '10px'};margin-bottom:2px;}
     </style></head><body>
-      <div class="header"><div class="bold">${storeName}</div>
-        ${storeAddress ? `<div style="font-size:10px;">${storeAddress}</div>` : ''}
+      <div class="header">
+        <div class="store-name">${storeName}</div>
+        <div class="store-info">${storeAddress}</div>
+        ${storePhone ? `<div class="store-info">WA: ${storePhone}</div>` : ''}
         <div style="border-bottom:1px dashed #000;margin:5px 0;"></div>
         <div style="text-align:center;font-size:18px;font-weight:bold;margin:5px 0;">NO. ANTRIAN: ${t.queue_number || '-'}</div>
         <div style="border-bottom:1px dashed #000;margin:5px 0;"></div>
@@ -283,9 +289,9 @@ async function silentPrint(t) {
       <div>${itemsHtml}</div>
       <div class="total">
         <div class="row"><span>Total</span><span class="bold">Rp ${formatPrice(t.total)}</span></div>
+        <div class="row" style="margin-top:5px;font-style:italic;"><span>Metode</span><span>${t.payment_method?.name || 'Cash'}</span></div>
         ${t.paid_amount > 0 ? `<div class="row"><span>Bayar</span><span>Rp ${formatPrice(t.paid_amount)}</span></div>
-        <div class="row"><span>Kembali</span><span>Rp ${formatPrice(t.change_amount)}</span></div>
-        <div class="row" style="margin-top:5px;font-style:italic;"><span>Metode</span><span>${t.payment_method?.name || 'Cash'}</span></div>` : ''}
+        <div class="row"><span>Kembali</span><span>Rp ${formatPrice(t.change_amount)}</span></div>` : ''}
       </div>
       <div class="footer">Terima Kasih<br>Silakan Datang Kembali</div>
     </body></html>`)
@@ -731,7 +737,7 @@ const quickAmounts = computed(() => {
         </div>
 
         <!-- Fixed Footer Action Compact -->
-        <div class="p-3 pb-[80px] sm:pb-4 bg-white border-t border-slate-50 z-10 shadow-[0_-10px_30px_rgba(0,0,0,0.03)] shrink-0">
+        <div class="p-3 pb-4 sm:pb-4 bg-white border-t border-slate-50 z-10 shadow-[0_-10px_30px_rgba(0,0,0,0.03)] shrink-0">
           <button
             @click="handleCheckout"
             class="w-full py-3 rounded-xl text-white font-bold text-sm shadow-lg hover:opacity-90 transition-all active:scale-[0.98] disabled:opacity-50 disabled:shadow-none flex items-center justify-center gap-2"

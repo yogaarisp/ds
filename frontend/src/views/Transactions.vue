@@ -341,7 +341,8 @@ function printReceipt() {
   iframe.style.display = 'none'
   document.body.appendChild(iframe)
   
-  const width = 300 // 58mm printer approx width in pixels
+  // Calculate width: 58mm ≈ 300px, 80mm ≈ 420px
+  const width = printerWidth.value === '80' ? 420 : 300
   const doc = iframe.contentWindow.document
 
   const itemsHtml = t.items.map(item => {
@@ -360,6 +361,7 @@ function printReceipt() {
   const logoUrl = settingsStore.storeLogo
   const storeName = settingsStore.storeName || 'DIMSUM SARANG'
   const storeAddress = settingsStore.settings.store_address || ''
+  const storePhone = settingsStore.settings.store_phone || ''
   const customerName = t.customer?.name || t.customer_name || 'Umum'
 
   doc.open()
@@ -370,7 +372,7 @@ function printReceipt() {
         <style>
           body {
             font-family: 'Courier New', monospace;
-            font-size: 12px;
+            font-size: ${width === 420 ? '14px' : '12px'};
             width: ${width}px;
             margin: 0 auto;
             padding: 10px;
@@ -380,15 +382,18 @@ function printReceipt() {
           .total { margin-top: 10px; border-top: 1px dashed #000; padding-top: 5px; }
           .row { display: flex; justify-content: space-between; }
           .bold { font-weight: bold; }
-          .logo { max-width: 50px; height: auto; margin-bottom: 5px; }
+          .store-name { font-size: ${width === 420 ? '22px' : '18px'}; font-weight: bold; margin-bottom: 2px; }
+          .store-info { font-size: ${width === 420 ? '12px' : '10px'}; margin-bottom: 2px; }
+          .logo { max-width: ${width === 420 ? '80px' : '60px'}; height: auto; margin-bottom: 5px; }
         </style>
       </head>
       <body>
         <div class="header">
           ${logoUrl ? `<img src="${logoUrl}" class="logo" alt="Logo">` : ''}
-          <div class="bold">${storeName}</div>
-          <div style="font-size: 10px; margin-bottom: 5px;">${storeAddress}</div>
-          <div style="border-bottom: 1px dashed #000; margin-bottom: 5px;"></div>
+          <div class="store-name">${storeName}</div>
+          <div class="store-info">${storeAddress}</div>
+          ${storePhone ? `<div class="store-info">WA: ${storePhone}</div>` : ''}
+          <div style="border-bottom: 1px dashed #000; margin: 8px 0;"></div>
           
           <div style="text-align: center; font-size: 16px; font-weight: bold; margin-bottom: 5px;">NO. ANTRIAN: ${t.queue_number || '-'}</div>
           <div style="border-bottom: 1px dashed #000; margin-bottom: 5px;"></div>
@@ -410,6 +415,10 @@ function printReceipt() {
             <span>Total</span>
             <span class="bold">Rp ${formatPrice(t.total)}</span>
           </div>
+          <div class="row" style="margin-top: 5px; font-style: italic;">
+            <span>Metode</span>
+            <span>${t.payment_method?.name || 'Cash'}</span>
+          </div>
           ${t.paid_amount > 0 ? `
             <div class="row">
               <span>Bayar</span>
@@ -418,10 +427,6 @@ function printReceipt() {
             <div class="row">
               <span>Kembali</span>
               <span>Rp ${formatPrice(t.change_amount)}</span>
-            </div>
-            <div class="row" style="margin-top: 5px; font-style: italic;">
-              <span>Metode</span>
-              <span>${t.payment_method?.name || 'Cash'}</span>
             </div>
           ` : ''}
         </div>
@@ -725,9 +730,14 @@ async function deleteTransaction(transaction) {
 
              <!-- Bottom: Status and Total -->
              <div class="flex items-center justify-between pt-2 border-t border-dashed border-slate-100">
-                <span :class="['px-2 py-1 rounded-full text-[9px] font-medium capitalize', getStatusColor(transaction.status)]">
-                   {{ getStatusLabel(transaction.status) }}
-                </span>
+                <div class="flex items-center gap-2">
+                   <span :class="['px-2 py-1 rounded-full text-[9px] font-medium capitalize', getStatusColor(transaction.status)]">
+                      {{ getStatusLabel(transaction.status) }}
+                   </span>
+                   <span v-if="transaction.status === 'completed'" class="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">
+                      • {{ transaction.payment_method?.name || 'Cash' }}
+                   </span>
+                </div>
                 <p class="font-medium text-slate-800 text-sm">
                    Rp {{ formatPrice(transaction.total) }}
                 </p>
@@ -916,7 +926,7 @@ async function deleteTransaction(transaction) {
           </div>
           
           <!-- Sticky Footer: Payment Summary & Actions -->
-          <div class="bg-white border-t border-slate-100 sticky bottom-0 z-20 shadow-[0_-10px_40px_rgba(0,0,0,0.04)] p-2.5 pb-[80px] lg:pb-2.5 space-y-1 shrink-0">
+          <div class="bg-white border-t border-slate-100 sticky bottom-0 z-20 shadow-[0_-10px_40px_rgba(0,0,0,0.04)] p-2.5 pb-4 lg:pb-2.5 space-y-1 shrink-0">
             <!-- Summary Box -->
             <div class="bg-slate-50/50 rounded-2xl p-2.5 border border-slate-100/50 space-y-1.5">
               <div class="space-y-1">
@@ -943,10 +953,15 @@ async function deleteTransaction(transaction) {
                     <p class="text-[9px] text-slate-400 uppercase tracking-widest font-medium leading-none mb-1">Dibayar</p>
                     <p class="font-bold text-slate-800 text-sm leading-none">Rp {{ formatPrice(selectedTransaction.paid_amount) }}</p>
                  </div>
-                 <div v-if="selectedTransaction.change_amount > 0" class="text-right">
-                    <p class="text-[9px] text-slate-400 uppercase tracking-widest font-medium leading-none mb-1">Kembalian</p>
-                    <p class="font-bold text-emerald-600 text-sm leading-none">Rp {{ formatPrice(selectedTransaction.change_amount) }}</p>
+                 <div class="text-right">
+                    <p class="text-[9px] text-slate-400 uppercase tracking-widest font-medium leading-none mb-1">Metode</p>
+                    <p class="font-bold text-primary-600 text-sm leading-none">{{ selectedTransaction.payment_method?.name || 'Cash' }}</p>
                  </div>
+              </div>
+              
+              <div v-if="selectedTransaction.change_amount > 0" class="mt-2 pt-2 border-t border-slate-100/50 flex justify-between items-center">
+                 <p class="text-[9px] text-slate-400 uppercase tracking-widest font-medium leading-none">Kembalian</p>
+                 <p class="font-bold text-emerald-600 text-sm leading-none">Rp {{ formatPrice(selectedTransaction.change_amount) }}</p>
               </div>
             </div>
 
