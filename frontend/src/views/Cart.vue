@@ -264,7 +264,7 @@ function handleCheckoutClose() {
                   <p class="text-[11px] text-slate-400 font-medium">{{ customer.phone }}</p>
                 </div>
                 <span class="px-1.5 py-0.5 bg-primary-50 text-primary-600 text-[9px] font-bold rounded uppercase">
-                   {{ getCustomerLevelLabel(customer.level) }}
+                   {{ getCustomerLevelLabel(customer.customer_type?.name?.toLowerCase() || 'reguler') }}
                 </span>
               </button>
               
@@ -292,7 +292,7 @@ function handleCheckoutClose() {
                 <p class="text-[13px] font-bold text-slate-800 leading-none mb-1">{{ posStore.selectedCustomer.name }}</p>
                 <div class="flex items-center gap-2">
                   <span class="px-1.5 py-0.5 bg-primary-50 text-primary-600 text-[7px] font-semibold rounded uppercase tracking-widest">
-                    {{ getCustomerLevelLabel(posStore.selectedCustomer.level) }}
+                    {{ getCustomerLevelLabel(posStore.selectedCustomer.customer_type?.name?.toLowerCase() || 'reguler') }}
                   </span>
                   <span class="text-[10px] text-slate-400 font-medium tabular-nums">{{ posStore.selectedCustomer.phone }}</span>
                 </div>
