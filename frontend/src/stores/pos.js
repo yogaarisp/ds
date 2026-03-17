@@ -211,7 +211,11 @@ export const usePosStore = defineStore('pos', () => {
         } else {
           cartItem.package_id = item.package_id
           cartItem.package_combination_id = item.package_combination_id
-          cartItem.name = item.package_combination?.name || item.package?.name || 'Unknown Package'
+          cartItem.is_frozen = item.notes === 'Frozen'
+          cartItem.name = (item.package_combination?.name || item.package?.name || 'Unknown Package')
+          if (cartItem.is_frozen && !cartItem.name.includes('(Frozen)')) {
+            cartItem.name += ' (Frozen)'
+          }
           cartItem.image = item.package_combination?.image || item.package?.image
         }
 
@@ -288,7 +292,11 @@ export const usePosStore = defineStore('pos', () => {
       } else {
         cartItem.package_id = item.package_id
         cartItem.package_combination_id = item.package_combination_id
-        cartItem.name = item.package_combination?.name || item.package?.name || 'Unknown Package'
+        cartItem.is_frozen = item.notes === 'Frozen'
+        cartItem.name = (item.package_combination?.name || item.package?.name || 'Unknown Package')
+        if (cartItem.is_frozen && !cartItem.name.includes('(Frozen)')) {
+          cartItem.name += ' (Frozen)'
+        }
         cartItem.image = item.package_combination?.image || item.package?.image
       }
 
@@ -642,14 +650,21 @@ export const usePosStore = defineStore('pos', () => {
     const items = cart.value.map(item => ({
       type: item.type,
       product_id: item.product_id,
+      package_id: item.package_id,
       package_combination_id: item.package_combination_id,
+      inventory_id: item.type === 'inventory' ? item.inventory_id : null,
       quantity: item.quantity,
+      is_frozen: item.is_frozen || false,
+      unit_price: item.unit_price,
+      subtotal: item.subtotal
     }))
 
     const data = {
       customer_id: selectedCustomer.value?.id,
       order_type: orderType.value,
       items,
+      subtotal: cartSubtotal.value,
+      total: cartTotal.value,
       table_id: selectedTable.value?.id || null,
     }
 

@@ -18,6 +18,7 @@ class TransactionItem extends Model
         'quantity',
         'unit_price',
         'subtotal',
+        'notes',
     ];
 
     public function transaction()

@@ -215,7 +215,7 @@ class DatabaseController extends Controller
             // Execute mysql import
             $output = [];
             $returnVar = 0;
-            exec($command, $output, $returnVar);
+            \exec($command, $output, $returnVar);
 
             if ($returnVar !== 0) {
                 // Fallback to PHP-based import if mysql command fails

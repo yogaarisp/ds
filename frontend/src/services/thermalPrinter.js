@@ -622,6 +622,17 @@ class ThermalPrinterService extends EventTarget {
       commands.push(0x0A)
     }
 
+    // Queue Number
+    if (data.queueNumber) {
+      commands.push(...encoder.encode('-'.repeat(this.printerWidth === 58 ? 32 : 48)))
+      commands.push(0x0A)
+      commands.push(ESC, 0x61, 0x01) // Center
+      commands.push(GS, 0x21, 0x11) // Big font
+      commands.push(...encoder.encode(`NO. ANTRIAN: ${data.queueNumber}\n`))
+      commands.push(GS, 0x21, 0x00) // Reset font
+      commands.push(ESC, 0x61, 0x00) // Left align
+    }
+
     // Separator
     commands.push(...encoder.encode('-'.repeat(this.printerWidth === 58 ? 32 : 48)))
     commands.push(0x0A)

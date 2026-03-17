@@ -912,6 +912,7 @@ async function deleteTransaction(transaction) {
                         <p class="font-medium text-slate-700 text-[12px] truncate leading-tight">
                           {{ item.product?.name || item.package_combination?.name || item.package?.name }}
                         </p>
+                        <span v-if="item.notes === 'Frozen'" class="text-[8px] font-bold text-blue-500 bg-blue-50 px-1 py-0.5 rounded border border-blue-100/30">FROZEN</span>
                         <span class="text-[8px] font-medium text-primary-500 bg-primary-50 px-1 py-0.5 rounded border border-primary-100/30">x{{ item.quantity }}</span>
                       </div>
                       <p class="text-[10px] text-slate-400 font-medium uppercase tracking-wider">@ Rp {{ formatPrice(item.unit_price || (item.subtotal / item.quantity)) }}</p>
