@@ -17,12 +17,14 @@ class TransactionObserver
     {
         $this->updateTableStatus($transaction);
 
-        // Send notification to n8n webhook (fire-and-forget)
-        try {
-            TelegramNotificationService::sendNewOrderNotification($transaction);
-        } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error('Notification dispatch error: ' . $e->getMessage());
-        }
+        // Send notification to n8n webhook (dijalankan setelah response selesai agar items sudah tersimpan)
+        dispatch(function () use ($transaction) {
+            try {
+                TelegramNotificationService::sendNewOrderNotification($transaction);
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error('Notification dispatch error: ' . $e->getMessage());
+            }
+        })->afterResponse();
     }
 
     /**
