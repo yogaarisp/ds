@@ -149,5 +149,8 @@ Route::post('/payment/callback/xendit', [\App\Http\Controllers\Api\PaymentContro
 // Public route untuk customer scan QR
 Route::get('/tables/code/{code}', [\App\Http\Controllers\Api\TableController::class, 'findByCode']);
 
+// Telegram Bot search order
+Route::post('/telegram/search-order', [\App\Http\Controllers\Api\TelegramController::class, 'searchOrder']);
+
 // Guest orders by phone
 Route::get('/transactions/guest/by-phone', [TransactionController::class, 'getGuestOrders']);
