@@ -28,6 +28,18 @@ class SettingController extends Controller
             'mail_encryption' => 'nullable|string|max:20',
             'mail_from_address' => 'nullable|string|max:255',
             'mail_from_name' => 'nullable|string|max:255',
+            // Midtrans Settings
+            'midtrans_enabled' => 'nullable|boolean',
+            'midtrans_client_key' => 'nullable|string|max:255',
+            'midtrans_server_key' => 'nullable|string|max:255',
+            'midtrans_mode' => 'nullable|in:sandbox,production',
+            // Xendit Settings
+            'xendit_enabled' => 'nullable|boolean',
+            'xendit_secret_key' => 'nullable|string|max:255',
+            'xendit_callback_token' => 'nullable|string|max:255',
+            // n8n Notification Settings
+            'n8n_notification_enabled' => 'nullable|boolean',
+            'n8n_webhook_url' => 'nullable|string|max:500',
         ]);
 
         foreach ($validated as $key => $value) {
@@ -97,6 +109,17 @@ class SettingController extends Controller
             'path' => $path,
             'url' => Storage::url($path)
         ]);
+    }
+
+    public function testNotification(Request $request)
+    {
+        $result = \App\Services\TelegramNotificationService::sendTestNotification($request->n8n_webhook_url);
+        
+        if ($result['success']) {
+            return response()->json(['message' => $result['message']]);
+        }
+        
+        return response()->json(['message' => $result['message']], 422);
     }
 
 }

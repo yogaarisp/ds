@@ -120,6 +120,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/settings/favicon', [SettingController::class, 'uploadFavicon']);
     Route::delete('/settings/logo', [SettingController::class, 'deleteLogo']);
     Route::post('/settings/test-email', [PasswordResetController::class, 'testEmail']);
+    Route::post('/settings/test-notification', [SettingController::class, 'testNotification']);
 
     // Tables (Meja Resto)
     Route::apiResource('tables', \App\Http\Controllers\Api\TableController::class);
@@ -135,7 +136,15 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/database/info', [DatabaseController::class, 'info']);
     Route::get('/database/export', [DatabaseController::class, 'export']);
     Route::post('/database/import', [DatabaseController::class, 'import']);
+
+    // Automated Payment Routes
+    Route::get('/payment/midtrans/token/{transaction}', [\App\Http\Controllers\Api\PaymentController::class, 'getMidtransSnapToken']);
+    Route::get('/payment/xendit/invoice/{transaction}', [\App\Http\Controllers\Api\PaymentController::class, 'getXenditInvoice']);
 });
+
+// Callback routes (No authentication needed)
+Route::post('/payment/callback/midtrans', [\App\Http\Controllers\Api\PaymentController::class, 'handleMidtransCallback']);
+Route::post('/payment/callback/xendit', [\App\Http\Controllers\Api\PaymentController::class, 'handleXenditCallback']);
 
 // Public route untuk customer scan QR
 Route::get('/tables/code/{code}', [\App\Http\Controllers\Api\TableController::class, 'findByCode']);

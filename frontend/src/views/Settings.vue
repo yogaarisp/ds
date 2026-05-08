@@ -45,6 +45,17 @@ const settings = ref({
   mail_encryption: 'tls',
   mail_from_address: '',
   mail_from_name: '',
+  // Automated Payment Settings
+  midtrans_enabled: false,
+  midtrans_client_key: '',
+  midtrans_server_key: '',
+  midtrans_mode: 'sandbox',
+  xendit_enabled: false,
+  xendit_secret_key: '',
+  xendit_callback_token: '',
+  // n8n Notification Settings
+  n8n_notification_enabled: false,
+  n8n_webhook_url: '',
 })
 const logoPreview = ref(null)
 const logoFile = ref(null)
@@ -142,6 +153,11 @@ async function loadSettings() {
     if (settings.value.store_favicon) {
       faviconPreview.value = `${STORAGE_BASE_URL}/${settings.value.store_favicon}`
     }
+    
+    // Cast enabled flags to boolean
+    settings.value.midtrans_enabled = !!parseInt(settings.value.midtrans_enabled)
+    settings.value.xendit_enabled = !!parseInt(settings.value.xendit_enabled)
+    settings.value.n8n_notification_enabled = !!parseInt(settings.value.n8n_notification_enabled)
   } catch (error) {
     console.error('Error loading settings:', error)
   } finally {
@@ -190,6 +206,15 @@ async function saveSettings() {
       mail_encryption: settings.value.mail_encryption,
       mail_from_address: settings.value.mail_from_address,
       mail_from_name: settings.value.mail_from_name,
+      midtrans_enabled: settings.value.midtrans_enabled,
+      midtrans_client_key: settings.value.midtrans_client_key,
+      midtrans_server_key: settings.value.midtrans_server_key,
+      midtrans_mode: settings.value.midtrans_mode,
+      xendit_enabled: settings.value.xendit_enabled,
+      xendit_secret_key: settings.value.xendit_secret_key,
+      xendit_callback_token: settings.value.xendit_callback_token,
+      n8n_notification_enabled: settings.value.n8n_notification_enabled,
+      n8n_webhook_url: settings.value.n8n_webhook_url,
     })
 
     await Swal.fire({
@@ -1081,6 +1106,57 @@ async function sendTestEmail() {
   }
 }
 
+// n8n Notification Test
+const testingNotification = ref(false)
+
+async function sendTestNotification() {
+  if (!settings.value.n8n_webhook_url) {
+    Swal.fire({
+      icon: 'warning',
+      title: 'URL Diperlukan',
+      text: 'Masukkan URL webhook n8n untuk mengetes',
+      width: '300px',
+      customClass: {
+        popup: 'rounded-xl text-sm',
+        title: 'text-lg font-bold',
+        htmlContainer: 'text-xs'
+      }
+    })
+    return
+  }
+
+  testingNotification.value = true
+  try {
+    const response = await settingApi.testNotification(settings.value.n8n_webhook_url)
+    
+    Swal.fire({
+      icon: 'success',
+      title: 'Berhasil!',
+      text: response.data.message,
+      width: '300px',
+      customClass: {
+        popup: 'rounded-xl text-sm',
+        title: 'text-lg font-bold',
+        htmlContainer: 'text-xs'
+      }
+    })
+  } catch (error) {
+    Swal.fire({
+      icon: 'error',
+      title: 'Gagal',
+      text: error.response?.data?.message || 'Gagal mengirim test notifikasi',
+      width: '300px',
+      customClass: {
+        popup: 'rounded-xl text-sm',
+        title: 'text-lg font-bold',
+        htmlContainer: 'text-xs'
+      }
+    })
+  } finally {
+    testingNotification.value = false
+  }
+}
+
 // Printer Functions
 async function handleConnect() {
   connecting.value = true
@@ -1258,8 +1334,10 @@ function handleAutoPrintChange(enabled) {
             { id: 'users', label: 'User', icon: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z' },
             { id: 'customer_types', label: 'Tipe', icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z' },
             { id: 'payments', label: 'Bayar', icon: 'M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z' },
+            { id: 'automated_payment', label: 'Gateways', icon: 'M13 10V3L4 14h7v7l9-11h-7z' },
             { id: 'printer', label: 'Printer', icon: 'M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0110.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0l.229 2.523a1.125 1.125 0 01-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0021 15.75V9.456c0-1.081-.768-2.015-1.837-2.175a48.055 48.055 0 00-1.913-.247M6.34 18H5.25A2.25 2.25 0 013 15.75V9.456c0-1.081.768-2.015 1.837-2.175a48.041 48.041 0 011.913-.247m10.5 0a48.536 48.536 0 00-10.5 0m10.5 0V3.375c0-.621-.504-1.125-1.125-1.125h-8.25c-.621 0-1.125.504-1.125 1.125v3.659M18 10.5h.008v.008H18V10.5zm-3 0h.008v.008H15V10.5z' },
             { id: 'email', label: 'Email', icon: 'M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z' },
+            { id: 'notification', label: 'Notifikasi', icon: 'M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9' },
             ...(authStore.user?.role === 'owner' ? [{ id: 'database', label: 'Database', icon: 'M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4' }] : [])
           ]"
           :key="tab.id"
@@ -1892,6 +1970,83 @@ function handleAutoPrintChange(enabled) {
       </div>
     </div>
 
+    <!-- Automated Payment Gateways -->
+    <div v-if="activeTab === 'automated_payment'" class="animate-fade-in-up space-y-6 pb-20">
+      <div class="bg-white rounded-xl p-6 shadow-xl shadow-slate-200/50 border border-slate-100">
+        <h2 class="text-lg font-bold text-slate-800 mb-6 flex items-center gap-3">
+          <div class="w-9 h-9 rounded-xl bg-primary-100 flex items-center justify-center text-primary-600 shadow-sm">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+          </div>
+          Payment Gateways
+        </h2>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <!-- Midtrans -->
+          <div class="space-y-6 p-6 rounded-2xl bg-slate-50 border border-slate-100">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <span class="text-sm font-bold text-slate-700">Midtrans</span>
+              </div>
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" v-model="settings.midtrans_enabled" class="sr-only peer">
+                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
+              </label>
+            </div>
+
+            <div class="space-y-4" v-if="settings.midtrans_enabled">
+              <div class="space-y-1.5">
+                <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Mode</label>
+                <select v-model="settings.midtrans_mode" class="w-full bg-white border-none rounded-xl px-4 py-3 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-primary-500/10 appearance-none">
+                  <option value="sandbox">Sandbox (Testing)</option>
+                  <option value="production">Production (Live)</option>
+                </select>
+              </div>
+              <div class="space-y-1.5">
+                <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Client Key</label>
+                <input v-model="settings.midtrans_client_key" type="text" class="w-full bg-white border-none rounded-xl px-4 py-3 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-primary-500/10" placeholder="SB-Mid-client-..." />
+              </div>
+              <div class="space-y-1.5">
+                <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Server Key</label>
+                <input v-model="settings.midtrans_server_key" type="password" class="w-full bg-white border-none rounded-xl px-4 py-3 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-primary-500/10" placeholder="SB-Mid-server-..." />
+              </div>
+            </div>
+          </div>
+
+          <!-- Xendit -->
+          <div class="space-y-6 p-6 rounded-2xl bg-slate-50 border border-slate-100">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <span class="text-sm font-bold text-slate-700">Xendit</span>
+              </div>
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" v-model="settings.xendit_enabled" class="sr-only peer">
+                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
+              </label>
+            </div>
+
+            <div class="space-y-4" v-if="settings.xendit_enabled">
+              <div class="space-y-1.5">
+                <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Secret Key</label>
+                <input v-model="settings.xendit_secret_key" type="password" class="w-full bg-white border-none rounded-xl px-4 py-3 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-primary-500/10" placeholder="xnd_development_..." />
+              </div>
+              <div class="space-y-1.5">
+                <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Callback Token</label>
+                <input v-model="settings.xendit_callback_token" type="password" class="w-full bg-white border-none rounded-xl px-4 py-3 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-primary-500/10" placeholder="Token from Xendit dashboard..." />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-8 pt-6 border-t border-slate-100">
+          <button @click="saveSettings" :disabled="saving" class="w-full max-w-xs mx-auto block bg-primary-500 py-4 rounded-2xl text-white font-bold text-xs tracking-widest uppercase shadow-lg shadow-primary-500/20 hover:bg-primary-600 transition-all active:scale-[0.98]">
+            {{ saving ? 'Menyimpan...' : 'Simpan Pengaturan Gateway' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- Printer Settings -->
     <div v-if="activeTab === 'printer'" class="w-full animate-fade-in-up">
       <div class="bg-white rounded-xl p-6 shadow-xl shadow-slate-200/50 border border-slate-100 space-y-6">
@@ -2192,6 +2347,105 @@ function handleAutoPrintChange(enabled) {
                 </svg>
                 <p class="leading-relaxed">{{ testEmailResult.message }}</p>
               </div>
+            </div>
+          </div>
+        </div>
+    </div>
+    </div>
+    
+    <!-- Notification Settings -->
+    <div v-if="activeTab === 'notification'" class="w-full animate-fade-in-up pb-20">
+      <div class="bg-white rounded-xl p-6 shadow-xl shadow-slate-200/50 border border-slate-100">
+        <h2 class="text-lg font-bold text-slate-800 mb-2 flex items-center gap-3">
+          <div class="w-9 h-9 rounded-xl bg-orange-100 flex items-center justify-center text-orange-600 shadow-sm shadow-orange-500/10">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+            </svg>
+          </div>
+          Notifikasi Pesanan
+        </h2>
+        <p class="text-xs text-slate-400 mb-8 ml-12">Kirim notifikasi otomatis ke Telegram setiap ada pesanan masuk melalui n8n</p>
+
+        <div class="space-y-6">
+          <!-- Notification Status -->
+          <div class="flex items-center justify-between bg-slate-50 p-4 rounded-2xl border border-slate-100">
+            <div>
+              <p class="text-sm font-bold text-slate-700 tracking-tight">Status Notifikasi</p>
+              <p class="text-[10px] text-slate-400">Aktifkan untuk mulai mengirim data ke n8n</p>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" v-model="settings.n8n_notification_enabled" class="sr-only peer">
+              <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500"></div>
+            </label>
+          </div>
+
+          <!-- n8n Webhook URL -->
+          <div class="space-y-1.5">
+            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">n8n Webhook URL</label>
+            <div class="relative">
+              <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                </svg>
+              </div>
+              <input 
+                v-model="settings.n8n_webhook_url" 
+                type="text" 
+                class="w-full bg-slate-50 border-none rounded-xl pl-11 pr-5 py-3.5 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-orange-500/10" 
+                placeholder="https://n8n.keetech.my.id/webhook/your-id" 
+              />
+            </div>
+            <p class="text-[9px] text-slate-400 ml-1">Gunakan <strong>Production Webhook URL</strong> dari n8n untuk menerima data pesanan.</p>
+          </div>
+
+          <!-- Save Button -->
+          <button @click="saveSettings" :disabled="saving" class="w-full bg-slate-800 py-3.5 rounded-xl text-white font-bold text-[11px] tracking-widest uppercase shadow-lg shadow-slate-800/20 hover:bg-slate-900 transition-all active:scale-[0.98] disabled:opacity-70">
+            {{ saving ? 'Menyimpan...' : 'Simpan Pengaturan Notifikasi' }}
+          </button>
+
+          <!-- Test Section -->
+          <div v-if="settings.n8n_webhook_url" class="mt-8 pt-8 border-t border-slate-100 space-y-4">
+            <div class="bg-orange-50 rounded-2xl p-4 border border-orange-100">
+              <div class="flex gap-3">
+                <div class="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center text-orange-600 shrink-0">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a2 2 0 00-1.96 1.414l-.711 2.133a2 2 0 01-1.185 1.185l-2.133.711a2 2 0 00-1.414 1.96l.477 2.387a2 2 0 00.547 1.022l1.428 1.428a2 2 0 001.022.547l2.387.477a2 2 0 001.96-1.414l.711-2.133a2 2 0 011.185-1.185l2.133-.711a2 2 0 001.414-1.96l-.477-2.387a2 2 0 00-.547-1.022l-1.428-1.428z" />
+                  </svg>
+                </div>
+                <div>
+                  <h4 class="text-xs font-bold text-orange-900">Test Webhook</h4>
+                  <p class="text-[10px] text-orange-700/70">Kirim data pesanan contoh ke n8n untuk memastikan alur kerja Anda berjalan.</p>
+                </div>
+              </div>
+              <button 
+                @click="sendTestNotification" 
+                :disabled="testingNotification"
+                class="mt-4 w-full bg-white/50 py-2.5 rounded-xl text-orange-600 font-bold text-[10px] tracking-widest uppercase border border-orange-200 hover:bg-white transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                <svg v-if="testingNotification" class="animate-spin h-3.5 w-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                {{ testingNotification ? 'Mengirim...' : 'Kirim Test Notifikasi' }}
+              </button>
+            </div>
+            
+            <div class="bg-blue-50 rounded-2xl p-5 border border-blue-100">
+               <h4 class="text-[10px] font-bold text-blue-900 uppercase tracking-widest mb-3">Langkah Setup</h4>
+               <ul class="space-y-2.5">
+                 <li class="flex gap-3 items-start">
+                   <span class="w-4 h-4 rounded-full bg-blue-200 text-blue-700 text-[9px] font-bold flex items-center justify-center shrink-0 mt-0.5">1</span>
+                   <p class="text-[10px] text-blue-800/80 leading-relaxed">Buat workflow baru di <strong>n8n.keetech.my.id</strong> dan tambahkan node <strong>Webhook</strong>.</p>
+                 </li>
+                 <li class="flex gap-3 items-start">
+                   <span class="w-4 h-4 rounded-full bg-blue-200 text-blue-700 text-[9px] font-bold flex items-center justify-center shrink-0 mt-0.5">2</span>
+                   <p class="text-[10px] text-blue-800/80 leading-relaxed">Set HTTP Method ke <strong>POST</strong> dan copy URL Webhook tersebut ke kolom di atas.</p>
+                 </li>
+                 <li class="flex gap-3 items-start">
+                   <span class="w-4 h-4 rounded-full bg-blue-200 text-blue-700 text-[9px] font-bold flex items-center justify-center shrink-0 mt-0.5">3</span>
+                   <p class="text-[10px] text-blue-800/80 leading-relaxed">Tambahkan node <strong>Telegram</strong> (Send Message) untuk mengirim data pesanan ke bot Anda.</p>
+                 </li>
+               </ul>
             </div>
           </div>
         </div>

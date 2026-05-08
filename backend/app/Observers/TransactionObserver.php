@@ -4,16 +4,25 @@ namespace App\Observers;
 
 use App\Models\Transaction;
 use App\Models\Table;
+use App\Services\TelegramNotificationService;
 
 class TransactionObserver
 {
     /**
      * Handle the Transaction "created" event.
      * When a new order is created with a table_id, mark the table as occupied.
+     * Also sends notification to n8n webhook (Telegram).
      */
     public function created(Transaction $transaction): void
     {
         $this->updateTableStatus($transaction);
+
+        // Send notification to n8n webhook (fire-and-forget)
+        try {
+            TelegramNotificationService::sendNewOrderNotification($transaction);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Notification dispatch error: ' . $e->getMessage());
+        }
     }
 
     /**

@@ -305,7 +305,14 @@ export const settingApi = {
     })
   },
   deleteLogo: () => api.delete('/settings/logo'),
-  testEmail: (email) => api.post('/settings/test-email', { test_email: email })
+  testEmail: (email) => api.post('/settings/test-email', { test_email: email }),
+  testNotification: (webhookUrl) => api.post('/settings/test-notification', { n8n_webhook_url: webhookUrl })
+}
+
+// Automated Payment
+export const paymentApi = {
+  getMidtransToken: (transactionId) => api.get(`/payment/midtrans/token/${transactionId}`),
+  getXenditInvoice: (transactionId) => api.get(`/payment/xendit/invoice/${transactionId}`),
 }
 
 // Users
