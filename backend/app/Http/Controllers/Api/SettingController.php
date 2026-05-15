@@ -11,7 +11,18 @@ class SettingController extends Controller
 {
     public function index()
     {
-        return response()->json(Setting::getAll());
+        $settings = Setting::getAll();
+        
+        // Add full URLs for assets
+        if (!empty($settings['store_logo'])) {
+            $settings['store_logo_url'] = asset('storage/' . $settings['store_logo']);
+        }
+        
+        if (!empty($settings['store_favicon'])) {
+            $settings['store_favicon_url'] = asset('storage/' . $settings['store_favicon']);
+        }
+        
+        return response()->json($settings);
     }
 
     public function update(Request $request)

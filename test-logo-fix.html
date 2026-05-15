@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Logo Fix</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .success { background: #d4edda; border-color: #c3e6cb; }
+        .error { background: #f8d7da; border-color: #f5c6cb; }
+        img { max-width: 100px; max-height: 100px; border: 1px solid #ccc; }
+        .url { font-family: monospace; background: #f8f9fa; padding: 5px; border-radius: 3px; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Test Logo Fix - Dimsum Sarang</h1>
+    
+    <div class="test-section">
+        <h3>1. Direct Logo URL Test</h3>
+        <p>URL: <span class="url">https://ds.keetech.my.id/logo.png</span></p>
+        <img id="directLogo" src="https://ds.keetech.my.id/logo.png" alt="Direct Logo" onload="showSuccess('directTest')" onerror="showError('directTest')">
+        <div id="directTest"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>2. API Settings Test</h3>
+        <p>Testing API response...</p>
+        <div id="apiTest">Loading...</div>
+        <img id="apiLogo" alt="API Logo" style="display:none;">
+    </div>
+
+    <div class="test-section">
+        <h3>3. Storage URL Test (Original)</h3>
+        <p>URL: <span class="url">https://ds.keetech.my.id/storage/logos/tmNAETpu3MqFPBwzcedety7CPTePSx2MbiWHp52W.png</span></p>
+        <img id="storageLogo" src="https://ds.keetech.my.id/storage/logos/tmNAETpu3MqFPBwzcedety7CPTePSx2MbiWHp52W.png" alt="Storage Logo" onload="showSuccess('storageTest')" onerror="showError('storageTest')">
+        <div id="storageTest"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>4. Frontend Settings Store Test</h3>
+        <p>Simulating frontend logic...</p>
+        <div id="frontendTest">
+            <p>Settings object: <code id="settingsObj">Loading...</code></p>
+            <p>Computed logo URL: <code id="computedUrl">Loading...</code></p>
+            <img id="frontendLogo" alt="Frontend Logo" style="display:none;">
+        </div>
+    </div>
+
+    <script>
+        function showSuccess(testId) {
+            const div = document.getElementById(testId);
+            div.className = 'test-section success';
+            div.innerHTML = '✅ Logo loaded successfully!';
+        }
+
+        function showError(testId) {
+            const div = document.getElementById(testId);
+            div.className = 'test-section error';
+            div.innerHTML = '❌ Logo failed to load';
+        }
+
+        // Test API
+        fetch('https://ds.keetech.my.id/api/settings')
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('apiTest').innerHTML = `
+                    <p>✅ API Response received</p>
+                    <p>store_logo: <code>${data.store_logo || 'null'}</code></p>
+                    <p>store_logo_url: <code>${data.store_logo_url || 'null'}</code></p>
+                `;
+                
+                if (data.store_logo_url) {
+                    const img = document.getElementById('apiLogo');
+                    img.src = data.store_logo_url;
+                    img.style.display = 'block';
+                    img.onload = () => showSuccess('apiTest');
+                    img.onerror = () => showError('apiTest');
+                }
+            })
+            .catch(error => {
+                document.getElementById('apiTest').innerHTML = `❌ API Error: ${error.message}`;
+            });
+
+        // Test Frontend Logic
+        const mockSettings = {
+            store_logo: 'logos/tmNAETpu3MqFPBwzcedety7CPTePSx2MbiWHp52W.png',
+            store_logo_url: null // Simulate API not returning URL yet
+        };
+
+        document.getElementById('settingsObj').textContent = JSON.stringify(mockSettings, null, 2);
+
+        // Simulate frontend computed logic
+        function computeStoreLogo(settings) {
+            if (settings.store_logo_url) {
+                return settings.store_logo_url;
+            }
+            
+            const baseUrl = window.location.origin;
+            return `${baseUrl}/logo.png`;
+        }
+
+        const computedUrl = computeStoreLogo(mockSettings);
+        document.getElementById('computedUrl').textContent = computedUrl;
+
+        const frontendImg = document.getElementById('frontendLogo');
+        frontendImg.src = computedUrl;
+        frontendImg.style.display = 'block';
+        frontendImg.onload = () => {
+            document.getElementById('frontendTest').className = 'test-section success';
+        };
+        frontendImg.onerror = () => {
+            document.getElementById('frontendTest').className = 'test-section error';
+        };
+    </script>
+</body>
+</html>

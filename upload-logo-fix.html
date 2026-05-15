@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Fix Logo Upload</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .container { max-width: 600px; margin: 0 auto; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input, button { padding: 10px; border: 1px solid #ddd; border-radius: 5px; }
+        button { background: #007cba; color: white; cursor: pointer; }
+        button:hover { background: #005a87; }
+        .result { margin-top: 20px; padding: 15px; border-radius: 5px; }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Fix Logo Upload - Dimsum Sarang</h1>
+        
+        <div class="info">
+            <h3>Current Issue:</h3>
+            <p>Logo tidak muncul di <strong>ds.keetech.my.id</strong> karena masalah storage link.</p>
+            <p>Gunakan form ini untuk upload ulang logo dan fix masalah.</p>
+        </div>
+
+        <form id="logoForm">
+            <div class="form-group">
+                <label for="logo">Pilih Logo Baru:</label>
+                <input type="file" id="logo" name="logo" accept="image/*" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="token">Admin Token:</label>
+                <input type="password" id="token" name="token" placeholder="Masukkan token admin" required>
+                <small>Login ke admin panel dulu, lalu ambil token dari localStorage</small>
+            </div>
+            
+            <button type="submit">Upload & Fix Logo</button>
+        </form>
+
+        <div id="result"></div>
+
+        <div class="info" style="margin-top: 30px;">
+            <h3>Cara Mendapatkan Token:</h3>
+            <ol>
+                <li>Buka <a href="https://ds.keetech.my.id/login" target="_blank">ds.keetech.my.id/login</a></li>
+                <li>Login sebagai admin</li>
+                <li>Tekan F12 → Console</li>
+                <li>Ketik: <code>localStorage.getItem('token')</code></li>
+                <li>Copy token yang muncul</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('logoForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData();
+            const logoFile = document.getElementById('logo').files[0];
+            const token = document.getElementById('token').value;
+            
+            if (!logoFile || !token) {
+                showResult('error', 'Pilih file logo dan masukkan token!');
+                return;
+            }
+            
+            formData.append('logo', logoFile);
+            
+            showResult('info', 'Uploading logo...');
+            
+            try {
+                const response = await fetch('https://ds.keetech.my.id/api/settings/logo', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Accept': 'application/json'
+                    },
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showResult('success', `✅ Logo berhasil diupload!<br>
+                        Path: ${result.path}<br>
+                        URL: ${result.url}<br>
+                        <br>Refresh halaman login untuk melihat logo baru.`);
+                } else {
+                    showResult('error', `❌ Upload gagal: ${result.message || 'Unknown error'}`);
+                }
+            } catch (error) {
+                showResult('error', `❌ Error: ${error.message}`);
+            }
+        });
+        
+        function showResult(type, message) {
+            const resultDiv = document.getElementById('result');
+            resultDiv.className = `result ${type}`;
+            resultDiv.innerHTML = message;
+        }
+    </script>
+</body>
+</html>

@@ -13,6 +13,12 @@ export const useSettingsStore = defineStore('settings', () => {
 
   const storeName = computed(() => settings.value.store_name || 'Dimsum Sarang')
   const storeLogo = computed(() => {
+    // If API returns full URL, use it directly
+    if (settings.value.store_logo_url) {
+      return settings.value.store_logo_url
+    }
+    
+    // Fallback to manual construction
     if (settings.value.store_logo) {
       return `${STORAGE_BASE_URL}/${settings.value.store_logo}`
     }
@@ -20,6 +26,12 @@ export const useSettingsStore = defineStore('settings', () => {
   })
 
   const storeFavicon = computed(() => {
+    // If API returns full URL, use it directly
+    if (settings.value.store_favicon_url) {
+      return settings.value.store_favicon_url
+    }
+    
+    // Fallback to old method
     if (settings.value.store_favicon) {
       return `${STORAGE_BASE_URL}/${settings.value.store_favicon}`
     }
