@@ -68,18 +68,30 @@ class SettingController extends Controller
     public function uploadLogo(Request $request)
     {
         $request->validate([
-            'logo' => 'required|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+            'logo' => 'required|mimes:jpeg,png,jpg,gif,svg|max:2048',
         ]);
 
         // Delete old logo if exists
         $oldLogo = Setting::get('store_logo');
         if ($oldLogo && Storage::disk('public')->exists($oldLogo)) {
             Storage::disk('public')->delete($oldLogo);
+            // Also delete from public path if exists
+            if (file_exists(public_path($oldLogo))) {
+                @unlink(public_path($oldLogo));
+            }
         }
 
         // Store new logo
         $path = $request->file('logo')->store('logos', 'public');
         Setting::set('store_logo', $path);
+
+        // Copy directly to public path for aaPanel compatibility
+        $storagePath = storage_path('app/public/' . $path);
+        $publicPath = public_path($path);
+        if (!file_exists(dirname($publicPath))) {
+            mkdir(dirname($publicPath), 0755, true);
+        }
+        @copy($storagePath, $publicPath);
 
         return response()->json([
             'message' => 'Logo uploaded successfully',
@@ -102,18 +114,30 @@ class SettingController extends Controller
     public function uploadFavicon(Request $request)
     {
         $request->validate([
-            'favicon' => 'required|image|mimes:jpeg,png,gif,ico|max:1024',
+            'favicon' => 'required|mimes:jpeg,png,gif,ico,svg|max:1024',
         ]);
 
         // Delete old favicon if exists
         $oldFavicon = Setting::get('store_favicon');
         if ($oldFavicon && Storage::disk('public')->exists($oldFavicon)) {
             Storage::disk('public')->delete($oldFavicon);
+            // Also delete from public path if exists
+            if (file_exists(public_path($oldFavicon))) {
+                @unlink(public_path($oldFavicon));
+            }
         }
 
         // Store new favicon
         $path = $request->file('favicon')->store('favicons', 'public');
         Setting::set('store_favicon', $path);
+
+        // Copy directly to public path for aaPanel compatibility
+        $storagePath = storage_path('app/public/' . $path);
+        $publicPath = public_path($path);
+        if (!file_exists(dirname($publicPath))) {
+            mkdir(dirname($publicPath), 0755, true);
+        }
+        @copy($storagePath, $publicPath);
 
         return response()->json([
             'message' => 'Favicon uploaded successfully',
