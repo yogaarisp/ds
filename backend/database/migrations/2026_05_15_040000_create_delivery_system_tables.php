@@ -54,8 +54,8 @@ return new class extends Migration
             $table->timestamp('expires_at');
             $table->timestamps();
             
-            // Index for quick lookup
-            $table->index(['provider_code', 'origin_lat', 'origin_lng', 'dest_lat', 'dest_lng']);
+            // Index for quick lookup (with custom name to avoid length limit)
+            $table->index(['provider_code', 'origin_lat', 'origin_lng', 'dest_lat', 'dest_lng'], 'delivery_quotes_location_idx');
         });
 
         // 4. Add delivery fields to transactions table

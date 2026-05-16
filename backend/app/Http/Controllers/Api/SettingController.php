@@ -32,6 +32,8 @@ class SettingController extends Controller
             'store_address' => 'nullable|string|max:500',
             'store_phone' => 'nullable|string|max:20',
             'store_instagram' => 'nullable|string|max:255',
+            'store_latitude' => 'nullable|numeric|between:-90,90',
+            'store_longitude' => 'nullable|numeric|between:-180,180',
             'mail_host' => 'nullable|string|max:255',
             'mail_port' => 'nullable|string|max:10',
             'mail_username' => 'nullable|string|max:255',

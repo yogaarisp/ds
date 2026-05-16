@@ -5,6 +5,7 @@ import { useSettingsStore } from '../stores/settings'
 import { useAuthStore } from '../stores/auth'
 import { usePrinter } from '@/composables/usePrinter'
 import SettingsCustomerTypes from './SettingsCustomerTypes.vue'
+import MapPicker from '../components/MapPicker.vue'
 import Swal from 'sweetalert2'
 
 const settingsStore = useSettingsStore()
@@ -38,6 +39,8 @@ const settings = ref({
   store_address: '',
   store_phone: '',
   store_instagram: '',
+  store_latitude: -6.2088, // Default Jakarta
+  store_longitude: 106.8456,
   mail_host: 'smtp.gmail.com',
   mail_port: '587',
   mail_username: '',
@@ -62,6 +65,9 @@ const logoFile = ref(null)
 
 const faviconPreview = ref(null)
 const faviconFile = ref(null)
+
+// Map picker
+const showMapPicker = ref(false)
 
 // Email test
 const testEmail = ref('')
@@ -199,6 +205,8 @@ async function saveSettings() {
       store_address: settings.value.store_address,
       store_phone: settings.value.store_phone,
       store_instagram: settings.value.store_instagram,
+      store_latitude: settings.value.store_latitude,
+      store_longitude: settings.value.store_longitude,
       mail_host: settings.value.mail_host,
       mail_port: settings.value.mail_port,
       mail_username: settings.value.mail_username,
@@ -268,6 +276,32 @@ function handleFaviconChange(event) {
     faviconFile.value = file
     faviconPreview.value = URL.createObjectURL(file)
   }
+}
+
+// Map picker functions
+function openMapPicker() {
+  showMapPicker.value = true
+}
+
+function handleLocationSelected(location) {
+  settings.value.store_latitude = location.lat
+  settings.value.store_longitude = location.lng
+  settings.value.store_address = location.address
+  showMapPicker.value = false
+  
+  Swal.fire({
+    icon: 'success',
+    title: 'Lokasi Dipilih!',
+    text: 'Lokasi toko berhasil diperbarui',
+    timer: 1500,
+    showConfirmButton: false,
+    width: '300px',
+    customClass: {
+      popup: 'rounded-xl text-sm',
+      title: 'text-lg font-bold',
+      htmlContainer: 'text-xs'
+    }
+  })
 }
 
 async function deleteLogo() {
@@ -1427,7 +1461,27 @@ function handleAutoPrintChange(enabled) {
             <!-- Address -->
             <div class="space-y-1.5">
               <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Alamat Toko</label>
-              <textarea v-model="settings.store_address" class="w-full bg-slate-50 border-none rounded-xl px-5 py-3.5 text-sm text-slate-700 min-h-[100px] focus:ring-2 focus:ring-primary-500/10" placeholder="Alamat lengkap..."></textarea>
+              <div class="space-y-3">
+                <textarea v-model="settings.store_address" class="w-full bg-slate-50 border-none rounded-xl px-5 py-3.5 text-sm text-slate-700 min-h-[100px] focus:ring-2 focus:ring-primary-500/10" placeholder="Alamat lengkap..."></textarea>
+                
+                <!-- Map Picker Button -->
+                <button
+                  @click="openMapPicker"
+                  type="button"
+                  class="w-full bg-primary-50 text-primary-600 py-2.5 rounded-xl font-medium text-sm hover:bg-primary-100 transition-colors flex items-center justify-center gap-2 border border-primary-200"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                  Pilih di Peta
+                </button>
+                
+                <!-- Coordinates Display -->
+                <div v-if="settings.store_latitude && settings.store_longitude" class="text-xs text-slate-500 bg-slate-50 p-2 rounded-lg">
+                  📍 Koordinat: {{ settings.store_latitude.toFixed(6) }}, {{ settings.store_longitude.toFixed(6) }}
+                </div>
+              </div>
             </div>
 
             <div class="space-y-6">
@@ -2699,6 +2753,40 @@ function handleAutoPrintChange(enabled) {
       </div>
     </div>
   </div>
+
+  <!-- Map Picker Modal -->
+  <Teleport to="body">
+    <div v-if="showMapPicker" class="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 overflow-hidden h-[100dvh]">
+      <div class="bg-white w-full max-w-2xl h-[90vh] rounded-[2rem] shadow-2xl overflow-hidden flex flex-col">
+        <!-- Header -->
+        <div class="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-white sticky top-0 z-10">
+          <div>
+            <h2 class="text-xl font-medium text-slate-800 tracking-tight">Pilih Lokasi Toko</h2>
+            <p class="text-sm text-slate-500 font-medium mt-0.5">Drag marker atau cari alamat untuk menentukan lokasi</p>
+          </div>
+          
+          <button 
+            @click="showMapPicker = false" 
+            class="w-10 h-10 flex items-center justify-center rounded-2xl bg-slate-50 text-slate-400 hover:bg-red-50 hover:text-red-500 transition-all border border-slate-100 shadow-sm"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <!-- Map Picker Content -->
+        <div class="flex-1 overflow-auto bg-slate-50/50 p-6 custom-scrollbar">
+          <MapPicker
+            :initial-lat="settings.store_latitude || -6.2088"
+            :initial-lng="settings.store_longitude || 106.8456"
+            :initial-address="settings.store_address || ''"
+            @location-selected="handleLocationSelected"
+          />
+        </div>
+      </div>
+    </div>
+  </Teleport>
 </div>
 </template>
 
