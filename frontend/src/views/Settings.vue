@@ -1479,7 +1479,7 @@ function handleAutoPrintChange(enabled) {
                 
                 <!-- Coordinates Display -->
                 <div v-if="settings.store_latitude && settings.store_longitude" class="text-xs text-slate-500 bg-slate-50 p-2 rounded-lg">
-                  📍 Koordinat: {{ settings.store_latitude.toFixed(6) }}, {{ settings.store_longitude.toFixed(6) }}
+                  📍 Koordinat: {{ parseFloat(settings.store_latitude || 0).toFixed(6) }}, {{ parseFloat(settings.store_longitude || 0).toFixed(6) }}
                 </div>
               </div>
             </div>
