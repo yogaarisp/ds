@@ -22,6 +22,14 @@ class SettingController extends Controller
             $settings['store_favicon_url'] = asset('storage/' . $settings['store_favicon']);
         }
         
+        // Cast coordinates to float to prevent frontend .toFixed() errors
+        if (isset($settings['store_latitude'])) {
+            $settings['store_latitude'] = (float) $settings['store_latitude'];
+        }
+        if (isset($settings['store_longitude'])) {
+            $settings['store_longitude'] = (float) $settings['store_longitude'];
+        }
+        
         return response()->json($settings);
     }
 
