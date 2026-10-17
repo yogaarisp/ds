@@ -29,40 +29,58 @@ class PricingService
     }
 
     /**
-     * Hitung harga kombinasi paket dengan customer level dan frozen discount
+     * Hitung harga kombinasi paket dengan customer level dan frozen discount.
+     *
+     * Urutan prioritas diskon:
+     * 1. Cek combination_discounts (per-kombinasi, override) → jika ada, pakai ini
+     * 2. Fallback ke package_discounts (level paket, berlaku semua kombinasi)
+     * 3. Jika masih belum ada, cek discount_percentage pada customer (persentase individual)
+     * 4. Jika isFrozen → kurangi 1000 lagi
      */
     public function calculateCombinationPrice(PackageCombination $combination, ?Customer $customer = null, bool $isFrozen = false): int
     {
         $basePrice = $combination->base_price;
-        
+
         if ($customer) {
-            // Cek diskon spesifik paket untuk level customer ini
-            if ($combination->package) {
-                // Ensure discounts are loaded or load them
+            $discountApplied = false;
+
+            // ── Prioritas 1: Combination-level discount override ──────────────
+            $combination->loadMissing('discounts');
+            $combinationDiscount = $combination->discounts
+                ->where('customer_type_id', $customer->customer_type_id)
+                ->first();
+
+            if ($combinationDiscount) {
+                $basePrice = max(0, $basePrice - $combinationDiscount->discount_amount);
+                $discountApplied = true;
+            }
+
+            // ── Prioritas 2: Package-level discount (fallback) ─────────────────
+            if (!$discountApplied && $combination->package) {
                 $combination->package->loadMissing('discounts');
-                
-                // Fix: Use customer_type_id instead of legacy 'level' string
-                $typeDiscount = $combination->package->discounts
+
+                $packageDiscount = $combination->package->discounts
                     ->where('customer_type_id', $customer->customer_type_id)
                     ->first();
 
-                if ($typeDiscount) {
-                    $basePrice = max(0, $basePrice - $typeDiscount->discount_amount);
+                if ($packageDiscount) {
+                    $basePrice = max(0, $basePrice - $packageDiscount->discount_amount);
+                    $discountApplied = true;
                 }
             }
-            
-            // Jika tidak ada diskon khusus paket, cek custom discount percentage customer
+
+            // ── Prioritas 3: Persentase diskon individual customer ─────────────
             if ($customer->discount_percentage > 0) {
                 $discount = (int) ($basePrice * $customer->discount_percentage / 100);
                 $basePrice = max(0, $basePrice - $discount);
             }
         }
-        
-        // Apply frozen discount
+
+        // ── Apply frozen discount ──────────────────────────────────────────────
         if ($isFrozen) {
             $basePrice = max(0, $basePrice - 1000);
         }
-        
+
         return $basePrice;
     }
 

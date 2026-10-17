@@ -188,6 +188,7 @@ export const packageApi = {
   },
   deleteCombination: (id) => api.delete(`/combinations/${id}`),
   updateDiscounts: (id, data) => api.put(`/packages/${id}/discounts`, data),
+  updateCombinationDiscounts: (combinationId, data) => api.put(`/combinations/${combinationId}/discounts`, data),
 }
 
 // Customers

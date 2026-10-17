@@ -15,7 +15,7 @@ class PackageController extends Controller
 
     public function index(Request $request)
     {
-        $query = Package::with(['combinations.items.product', 'discounts']);
+        $query = Package::with(['combinations.items.product', 'combinations.discounts', 'discounts']);
 
         if ($request->has('type')) {
             $query->where('type', $request->type);
@@ -220,6 +220,37 @@ class PackageController extends Controller
         }
 
         return response()->json($package->load('discounts'));
+    }
+
+    /**
+     * Update combination-level discount overrides.
+     * Jika semua amount = 0, hapus semua override (kembali ke package discount).
+     * PUT /combinations/{combination}/discounts
+     */
+    public function updateCombinationDiscounts(Request $request, PackageCombination $combination)
+    {
+        $validated = $request->validate([
+            'discounts' => 'array',
+            'discounts.*.customer_type_id' => 'required|exists:customer_types,id',
+            'discounts.*.amount' => 'required|integer|min:0',
+        ]);
+
+        // Hapus semua override lama untuk kombinasi ini
+        $combination->discounts()->delete();
+
+        if (!empty($validated['discounts'])) {
+            foreach ($validated['discounts'] as $discount) {
+                // Hanya simpan jika amount > 0 (0 = tidak ada override, pakai package default)
+                if ($discount['amount'] > 0) {
+                    $combination->discounts()->create([
+                        'customer_type_id' => $discount['customer_type_id'],
+                        'discount_amount'  => $discount['amount'],
+                    ]);
+                }
+            }
+        }
+
+        return response()->json($combination->load('discounts'));
     }
 
     public function popular(Request $request)

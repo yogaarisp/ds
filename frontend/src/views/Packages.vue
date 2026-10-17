@@ -49,6 +49,13 @@ const priceSettingsForm = ref({
   discounts: {} // format: { customer_type_id: amount }
 })
 
+// ── Combination-level discount override ──────────────────────────────────────
+const showCombinationPriceModal = ref(false)
+const selectedCombination = ref(null)
+const combinationPriceForm = ref({
+  discounts: {} // format: { customer_type_id: amount }
+})
+
 onMounted(() => {
   loadData()
 })
@@ -306,6 +313,54 @@ function handleCombinationFileUpload(event) {
     combinationImagePreview.value = URL.createObjectURL(file)
   }
 }
+
+// ── Combination-level discount override ──────────────────────────────────────
+
+function openCombinationPriceModal(pkg, combination) {
+  selectedPackage.value = pkg
+  selectedCombination.value = combination
+
+  // Init semua type ke 0
+  const discountsMap = {}
+  customerTypes.value.forEach(type => {
+    discountsMap[type.id] = 0
+  })
+
+  // Isi dari override yang sudah ada di kombinasi ini
+  if (combination.discounts && combination.discounts.length > 0) {
+    combination.discounts.forEach(d => {
+      const typeId = d.customer_type_id ?? d.customer_type?.id
+      if (typeId && discountsMap.hasOwnProperty(typeId)) {
+        discountsMap[typeId] = d.discount_amount
+      }
+    })
+  }
+
+  combinationPriceForm.value = { discounts: discountsMap }
+  showCombinationPriceModal.value = true
+}
+
+async function saveCombinationPriceSettings() {
+  try {
+    const discounts = Object.entries(combinationPriceForm.value.discounts).map(([typeId, amount]) => ({
+      customer_type_id: parseInt(typeId),
+      amount: parseInt(amount) || 0
+    }))
+
+    await packageApi.updateCombinationDiscounts(selectedCombination.value.id, { discounts })
+    showCombinationPriceModal.value = false
+    loadData()
+  } catch (error) {
+    alert(error.response?.data?.message || 'Gagal menyimpan setting harga kombinasi')
+  }
+}
+
+/**
+ * Cek apakah sebuah kombinasi punya override harga (vs ikut package default)
+ */
+function hasOverrideDiscount(combination) {
+  return combination.discounts && combination.discounts.length > 0
+}
 </script>
 
 <template>
@@ -477,6 +532,7 @@ function handleCombinationFileUpload(event) {
                   <div class="flex items-center gap-2 mb-0.5">
                     <p class="font-bold text-slate-700 text-[11px] truncate leading-none">{{ combination.name }}</p>
                     <span v-if="isLowStock(combination)" class="text-[8px] font-bold bg-red-100 text-red-600 px-1.5 py-px rounded-full animate-pulse">EMPTY</span>
+                    <span v-if="hasOverrideDiscount(combination)" class="text-[8px] font-bold bg-amber-100 text-amber-600 px-1.5 py-px rounded-full">CUSTOM</span>
                   </div>
                   <div class="flex items-center justify-between">
                     <p class="text-[10px] font-bold text-primary-600">Rp {{ formatPrice(combination.base_price) }}</p>
@@ -485,6 +541,12 @@ function handleCombinationFileUpload(event) {
                       
                       <!-- Item Actions (Hover Only) -->
                       <div class="flex opacity-0 group-hover/item:opacity-100 transition-opacity gap-1">
+                         <button @click="openCombinationPriceModal(pkg, combination)" 
+                           :class="['p-0.5 rounded transition-colors', hasOverrideDiscount(combination) ? 'text-amber-500 hover:bg-amber-50' : 'text-slate-400 hover:bg-slate-50']"
+                           :title="hasOverrideDiscount(combination) ? 'Edit Harga Override' : 'Set Harga Override'"
+                         >
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-3 h-3"><path d="M12 2v20"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                         </button>
                          <button @click="openCombinationModal(pkg, combination)" class="text-blue-500 hover:bg-blue-50 p-0.5 rounded">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-3 h-3"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
                          </button>
@@ -775,6 +837,86 @@ function handleCombinationFileUpload(event) {
               class="flex-1 py-3 px-4 rounded-2xl bg-slate-900 text-white font-medium text-[11px] uppercase tracking-wider shadow-lg shadow-slate-900/10 hover:bg-slate-800 transition-all active:scale-95 flex items-center justify-center gap-2"
             >
               <span>Simpan</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" class="w-3.5 h-3.5"><path d="M5 13l4 4L19 7"/></svg>
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+    <!-- Combination Price Override Modal -->
+    <div v-if="showCombinationPriceModal" class="fixed inset-0 bg-slate-900/60 flex items-center justify-center z-50 md:p-4 backdrop-blur-sm">
+      <div class="bg-white md:rounded-[2.5rem] w-full h-full md:h-auto md:max-w-sm shadow-2xl overflow-hidden flex flex-col animate-fade-in-up">
+        <!-- Header -->
+        <div class="px-6 pt-8 md:pt-6 pb-2 flex justify-between items-center bg-slate-50/50 border-b border-slate-100/50">
+          <div class="flex items-center gap-2">
+            <div class="w-8 h-8 bg-white rounded-xl shadow-sm flex items-center justify-center text-sm">🎯</div>
+            <div>
+              <h2 class="text-base font-semibold text-slate-800 tracking-tight leading-none">Harga Override</h2>
+              <p class="text-[10px] text-slate-400 font-medium mt-0.5 truncate max-w-[180px]">{{ selectedCombination?.name }}</p>
+            </div>
+          </div>
+          <button @click="showCombinationPriceModal = false" class="w-8 h-8 flex items-center justify-center rounded-xl bg-white text-slate-400 hover:text-red-500 shadow-sm transition-all active:scale-90">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <!-- Form Content -->
+        <div class="flex-1 p-6 space-y-4 overflow-y-auto">
+          <!-- Info box -->
+          <div class="bg-amber-50 p-4 rounded-2xl text-[10px] text-amber-700 font-bold leading-relaxed border border-amber-100 flex gap-3">
+            <div class="w-5 h-5 bg-white rounded-lg flex items-center justify-center shrink-0 shadow-sm">🎯</div>
+            <span>Override potongan harga khusus untuk menu <strong>{{ selectedCombination?.name }}</strong> ini saja. 
+            Isi 0 untuk ikuti setting harga paket (default). Hanya nilai &gt; 0 yang disimpan sebagai override.</span>
+          </div>
+
+          <!-- Package default reference -->
+          <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
+            <p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-2">Default Paket ({{ selectedPackage?.name }})</p>
+            <div class="flex flex-wrap gap-2">
+              <div v-for="type in customerTypes" :key="type.id" class="flex items-center gap-1.5">
+                <span class="text-[9px] font-medium text-slate-500">{{ type.name }}:</span>
+                <span class="text-[9px] font-bold text-slate-700">
+                  Rp {{ formatPrice(selectedPackage?.discounts?.find(d => d.customer_type_id === type.id)?.discount_amount ?? 0) }}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Override inputs -->
+          <div class="grid grid-cols-2 gap-3 max-h-[40vh] overflow-y-auto px-1 custom-scrollbar pb-2">
+            <div v-for="type in customerTypes" :key="type.id" class="space-y-1.5 p-3 bg-slate-50 rounded-2xl border border-slate-50 hover:bg-white hover:border-amber-100 transition-all">
+              <label class="text-[9px] font-medium text-slate-400 uppercase tracking-[0.2em] ml-0.5 truncate block">{{ type.name }}</label>
+              <div class="relative group">
+                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-medium text-slate-400 group-focus-within:text-amber-500 transition-colors">Rp</span>
+                <input 
+                  v-model="combinationPriceForm.discounts[type.id]" 
+                  type="number" 
+                  class="w-full bg-white border border-slate-100 rounded-xl pl-8 pr-3 py-2 text-xs font-medium text-slate-700 focus:border-amber-400/50 focus:ring-4 focus:ring-amber-400/10 transition-all outline-none" 
+                  placeholder="0 = paket default" 
+                  min="0" 
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Action Footer -->
+        <div class="p-6 pt-2 bg-white">
+          <form @submit.prevent="saveCombinationPriceSettings" class="flex gap-3">
+            <button 
+              type="button" 
+              @click="showCombinationPriceModal = false" 
+              class="flex-1 py-3 px-4 rounded-2xl bg-slate-100 text-slate-600 font-medium text-[11px] uppercase tracking-wider hover:bg-slate-200 transition-all active:scale-95"
+            >
+              Batal
+            </button>
+            <button 
+              type="submit" 
+              class="flex-1 py-3 px-4 rounded-2xl bg-amber-500 text-white font-medium text-[11px] uppercase tracking-wider shadow-lg shadow-amber-500/20 hover:bg-amber-600 transition-all active:scale-95 flex items-center justify-center gap-2"
+            >
+              <span>Simpan Override</span>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" class="w-3.5 h-3.5"><path d="M5 13l4 4L19 7"/></svg>
             </button>
           </form>

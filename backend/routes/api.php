@@ -69,6 +69,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/combinations/{combination}', [PackageController::class, 'updateCombination']);
     Route::delete('/combinations/{combination}', [PackageController::class, 'destroyCombination']);
     Route::put('/packages/{package}/discounts', [PackageController::class, 'updateDiscounts']);
+    Route::put('/combinations/{combination}/discounts', [PackageController::class, 'updateCombinationDiscounts']);
 
 
 
@@ -154,3 +155,4 @@ Route::post('/telegram/search-order', [\App\Http\Controllers\Api\TelegramControl
 
 // Guest orders by phone
 Route::get('/transactions/guest/by-phone', [TransactionController::class, 'getGuestOrders']);
+require __DIR__.'/api-test.php';

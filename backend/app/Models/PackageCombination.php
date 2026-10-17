@@ -34,6 +34,15 @@ class PackageCombination extends Model
         return $this->hasMany(PackageCombinationItem::class);
     }
 
+    /**
+     * Diskon override per-kombinasi per tipe customer.
+     * Jika ada, ini mengoverride package-level discount untuk kombinasi ini.
+     */
+    public function discounts()
+    {
+        return $this->hasMany(CombinationDiscount::class);
+    }
+
     public function scopeActive($query)
     {
         return $query->where('is_active', true);
