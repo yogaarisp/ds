@@ -13,568 +13,807 @@ const route = useRoute()
 const settingsStore = useSettingsStore()
 const authStore = useAuthStore()
 const cartStore = useCartStore()
+
 const user = ref({})
 const popularPackages = ref([])
+const loadingPopular = ref(true)
 
-// Carousel
+// Carousel State
 const currentSlide = ref(0)
 const carouselSlides = ref([])
-const defaultSlides = []
-const slides = computed(() => carouselSlides.value.length > 0 ? carouselSlides.value : defaultSlides)
-let slideInterval
 
-// Modal states
-const showVoucherModal = ref(false)
-const showReferralModal = ref(false)
-const referralCopied = ref(false)
+// Fallback slides
+const defaultSlides = [
+  {
+    id: 'default-1',
+    title: 'Kelezatan Dimsum Hangat Pilihan',
+    period_text: 'Promo Hari Ini',
+    badge_label: 'Pilihan',
+    badge_value: 'Best Seller',
+    image: 'https://images.unsplash.com/photo-1541696432-82c6da8ce7bf?auto=format&fit=crop&w=900&q=80'
+  }
+]
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
-
-function formatCurrency(value) {
-  return new Intl.NumberFormat('id-ID', {
-    style: 'currency', currency: 'IDR',
-    minimumFractionDigits: 0, maximumFractionDigits: 0
-  }).format(value)
-}
-
-function formatNumber(num) {
-  return new Intl.NumberFormat('id-ID').format(num)
-}
-
-// ── Carousel ──────────────────────────────────────────────────────────────────
-
-function startCarousel() {
-  if (slides.value.length < 2) return
-  slideInterval = setInterval(() => {
-    currentSlide.value = (currentSlide.value + 1) % slides.value.length
-  }, 5000)
-}
-function stopCarousel() { clearInterval(slideInterval) }
-
-// ── Referral ──────────────────────────────────────────────────────────────────
-
-const referralCode = computed(() => {
-  if (!user.value?.name) return '—'
-  const base = user.value.name.replace(/\s+/g, '').toUpperCase().slice(0, 5)
-  const id = user.value.id ? String(user.value.id).padStart(3, '0') : '000'
-  return `DS-${base}${id}`
+const slides = computed(() => {
+  return carouselSlides.value.length > 0 ? carouselSlides.value : defaultSlides
 })
 
-async function copyReferral() {
-  try {
-    await navigator.clipboard.writeText(referralCode.value)
-  } catch {
-    const el = document.createElement('textarea')
-    el.value = referralCode.value
-    document.body.appendChild(el)
-    el.select()
-    document.execCommand('copy')
-    document.body.removeChild(el)
+let slideInterval
+
+// Friendly first name for greeting
+const userFirstName = computed(() => {
+  if (user.value?.name) {
+    return user.value.name.trim().split(' ')[0]
   }
-  referralCopied.value = true
-  setTimeout(() => { referralCopied.value = false }, 2000)
-}
-
-async function shareReferral() {
-  const text = `Hei! Coba Dimsum Sarang yang enak ini 🥟\nGunakan kode referral aku *${referralCode.value}* buat dapat diskon!\n\nOrder di: ${window.location.origin}/customer/home`
-  if (navigator.share) {
-    try { await navigator.share({ title: 'Dimsum Sarang', text }) } catch {}
-  } else {
-    await navigator.clipboard.writeText(text)
-    Swal.fire({ icon: 'success', title: 'Link disalin!', timer: 1500, showConfirmButton: false, width: '280px', customClass: { popup: 'rounded-2xl' } })
+  if (authStore.user?.name) {
+    return authStore.user.name.trim().split(' ')[0]
   }
-}
+  return ''
+})
 
-function openReferral() {
-  if (!authStore.isAuthenticated) { authStore.promptAuthChoice(); return }
-  showReferralModal.value = true
-}
-
-function openVoucher() {
-  if (!authStore.isAuthenticated) { authStore.promptAuthChoice(); return }
-  showVoucherModal.value = true
-}
-
-// ── Change table ──────────────────────────────────────────────────────────────
-
-function changeTable() {
-  if (cartStore.cart.length > 0) {
-    Swal.fire({
-      title: 'Ganti Meja?',
-      html: `<p class="text-sm text-slate-600">Anda memiliki <strong>${cartStore.cart.length} item</strong> di keranjang. Keranjang akan tetap tersimpan.</p>`,
-      icon: 'question', showCancelButton: true,
-      confirmButtonText: 'Ya, Ganti', cancelButtonText: 'Batal',
-      confirmButtonColor: '#0f172a', cancelButtonColor: '#94a3b8',
-      width: '300px', customClass: { popup: 'rounded-2xl', title: 'text-sm font-bold' }
-    }).then(r => { if (r.isConfirmed) cartStore.clearTable() })
-  } else {
-    cartStore.clearTable()
-  }
-}
-
-// ── Help ──────────────────────────────────────────────────────────────────────
-
+// Help Modal (WhatsApp & Instagram) - Clean & Minimalist
 function openHelpModal() {
   const phone = settingsStore.settings?.store_phone
   const instagram = settingsStore.settings?.store_instagram?.replace('@', '')
+
   Swal.fire({
-    title: 'Butuh Bantuan?',
+    title: 'Bantuan & Kontak',
     html: `
-      <div class="flex flex-col gap-3 mt-2">
-        ${phone ? `<a href="https://wa.me/${phone.replace(/^0/, '62')}" target="_blank" class="flex items-center gap-3 bg-slate-50 p-3 rounded-xl border border-slate-100">
-          <div class="w-9 h-9 bg-slate-800 rounded-full flex items-center justify-center text-white shrink-0">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/></svg>
-          </div>
-          <div class="text-left"><span class="block text-xs font-bold text-slate-800">WhatsApp</span><span class="block text-[10px] text-slate-400">${phone}</span></div>
-        </a>` : ''}
-        ${instagram ? `<a href="https://instagram.com/${instagram}" target="_blank" class="flex items-center gap-3 bg-slate-50 p-3 rounded-xl border border-slate-100">
-          <div class="w-9 h-9 bg-slate-800 rounded-full flex items-center justify-center text-white shrink-0">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
-          </div>
-          <div class="text-left"><span class="block text-xs font-bold text-slate-800">Instagram</span><span class="block text-[10px] text-slate-400">@${instagram}</span></div>
-        </a>` : ''}
-        ${!phone && !instagram ? '<p class="text-sm text-slate-400 italic py-4 text-center">Belum ada kontak tersedia.</p>' : ''}
-      </div>`,
-    showConfirmButton: false, showCloseButton: true, width: '300px',
-    customClass: { popup: 'rounded-2xl p-0 overflow-hidden', title: 'text-sm font-bold text-slate-800 pt-5', htmlContainer: 'px-5 pb-5 pt-0 m-0' }
+      <div class="flex flex-col gap-2.5 mt-3 text-left">
+        ${phone ? `
+          <a href="https://wa.me/${phone.replace(/^0/, '62')}" target="_blank" class="flex items-center gap-3 bg-slate-50 hover:bg-slate-100 p-3 rounded-xl border border-slate-200/80 transition-colors">
+            <div class="w-9 h-9 bg-slate-900 text-white rounded-lg flex items-center justify-center shrink-0">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/></svg>
+            </div>
+            <div>
+              <span class="block text-xs font-bold text-slate-800">WhatsApp Kasir</span>
+              <span class="block text-[11px] text-slate-500">${phone}</span>
+            </div>
+          </a>
+        ` : ''}
+
+        ${instagram ? `
+          <a href="https://instagram.com/${instagram}" target="_blank" class="flex items-center gap-3 bg-slate-50 hover:bg-slate-100 p-3 rounded-xl border border-slate-200/80 transition-colors">
+            <div class="w-9 h-9 bg-slate-900 text-white rounded-lg flex items-center justify-center shrink-0">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
+            </div>
+            <div>
+               <span class="block text-xs font-bold text-slate-800">Instagram Resmi</span>
+               <span class="block text-[11px] text-slate-500">@${instagram}</span>
+            </div>
+          </a>
+        ` : ''}
+
+        ${!phone && !instagram ? '<p class="text-xs text-slate-400 italic py-3 text-center">Kontak outlet belum tersedia.</p>' : ''}
+      </div>
+    `,
+    showConfirmButton: false,
+    showCloseButton: true,
+    width: '320px',
+    customClass: {
+      popup: 'rounded-2xl p-0 overflow-hidden',
+      title: 'text-sm font-bold text-slate-800 pt-5',
+      htmlContainer: 'px-5 pb-5 pt-0 m-0',
+      closeButton: 'focus:outline-none'
+    }
   })
 }
 
-// ── Lifecycle ─────────────────────────────────────────────────────────────────
+// Voucher Modal - Clean & Focused
+function openVoucherModal() {
+  if (authStore.isAuthenticated) {
+    const count = user.value?.coupons_count || 0
+    Swal.fire({
+      title: 'Voucher Promo',
+      html: `
+        <div class="text-center py-2">
+          <p class="text-xs text-slate-600 mb-3">Tersedia <strong class="text-orange-600 font-bold">${count} voucher</strong> yang dapat digunakan pada pesananmu.</p>
+          <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-3 text-xs text-slate-600 text-left leading-relaxed">
+            💡 <strong>Info Penggunaan:</strong> Pilih menu favorit, lalu pilih voucher saat ringkasan pembayaran di keranjang.
+          </div>
+        </div>
+      `,
+      confirmButtonText: 'Buka Daftar Menu',
+      confirmButtonColor: '#F97316',
+      width: '310px',
+      customClass: {
+        popup: 'rounded-2xl',
+        title: 'text-sm font-bold',
+        confirmButton: 'w-full py-2.5 rounded-xl text-xs font-bold'
+      }
+    }).then(res => {
+      if (res.isConfirmed) {
+        router.push('/customer/menu')
+      }
+    })
+  } else {
+    Swal.fire({
+      title: 'Voucher & Diskon',
+      html: `
+        <p class="text-xs text-slate-600 mb-2 leading-relaxed">
+          Masuk atau daftar akun untuk klaim voucher potongan harga dan simpan poin dari setiap transaksi.
+        </p>
+      `,
+      showCancelButton: true,
+      confirmButtonText: 'Masuk / Daftar',
+      cancelButtonText: 'Tutup',
+      confirmButtonColor: '#F97316',
+      cancelButtonColor: '#64748b',
+      width: '310px',
+      customClass: {
+        popup: 'rounded-2xl',
+        title: 'text-sm font-bold',
+        confirmButton: 'px-4 py-2 rounded-xl text-xs font-bold',
+        cancelButton: 'px-4 py-2 rounded-xl text-xs font-medium'
+      }
+    }).then(res => {
+      if (res.isConfirmed) {
+        authStore.promptAuthChoice()
+      }
+    })
+  }
+}
+
+// Quick Add to Cart with clean toast
+function addPackageToCart(comb, event) {
+  if (event) event.stopPropagation()
+
+  cartStore.addItem({
+    type: 'package',
+    id: comb.package_id,
+    package_combination_id: comb.id,
+    name: comb.display_name || comb.name,
+    price: comb.final_price || comb.base_price,
+    image: comb.display_image,
+    quantity: 1,
+    is_frozen: 0
+  })
+
+  Swal.fire({
+    toast: true,
+    position: 'top-end',
+    icon: 'success',
+    title: `${comb.display_name || comb.name} ditambahkan`,
+    showConfirmButton: false,
+    timer: 1400,
+    timerProgressBar: false
+  })
+}
+
+// Table Management
+function changeTable() {
+  const hasItems = cartStore.cart.length > 0
+  Swal.fire({
+    title: 'Ganti Meja?',
+    text: hasItems 
+      ? `Ada ${cartStore.cart.length} item di keranjang. Keranjang tetap tersimpan.` 
+      : 'Sesi meja saat ini akan dilepas.',
+    showCancelButton: true,
+    confirmButtonText: 'Ya, Ganti',
+    cancelButtonText: 'Batal',
+    confirmButtonColor: '#F97316',
+    cancelButtonColor: '#64748b',
+    width: '300px',
+    customClass: {
+      popup: 'rounded-2xl',
+      title: 'text-sm font-bold',
+      confirmButton: 'px-4 py-2 text-xs rounded-xl font-bold',
+      cancelButton: 'px-4 py-2 text-xs rounded-xl'
+    }
+  }).then((result) => {
+    if (result.isConfirmed) {
+      cartStore.clearTable()
+      Swal.fire({
+        icon: 'success',
+        title: 'Meja Direset',
+        text: 'Silakan scan QR meja baru',
+        timer: 1600,
+        showConfirmButton: false,
+        width: '280px',
+        customClass: { popup: 'rounded-2xl', title: 'text-sm font-bold' }
+      })
+    }
+  })
+}
+
+// Table info for guest
+function promptManualTable() {
+  Swal.fire({
+    title: 'Makan di Tempat',
+    html: `
+      <div class="text-left text-xs text-slate-600 space-y-2">
+        <p>Silakan <strong>scan kode QR</strong> di meja untuk menghubungkan pesanan langsung.</p>
+        <p class="text-slate-400">Atau kamu bisa memilih menu terlebih dahulu sekarang.</p>
+      </div>
+    `,
+    confirmButtonText: 'Pilih Menu',
+    confirmButtonColor: '#F97316',
+    width: '300px',
+    customClass: {
+      popup: 'rounded-2xl',
+      title: 'text-sm font-bold',
+      confirmButton: 'w-full py-2.5 text-xs rounded-xl font-bold'
+    }
+  }).then(res => {
+    if (res.isConfirmed) {
+      router.push('/customer/menu')
+    }
+  })
+}
+
+function startCarousel() {
+  if (slideInterval) clearInterval(slideInterval)
+  slideInterval = setInterval(() => {
+    if (slides.value.length > 1) {
+      currentSlide.value = (currentSlide.value + 1) % slides.value.length
+    }
+  }, 5000)
+}
+
+function stopCarousel() {
+  if (slideInterval) clearInterval(slideInterval)
+}
+
+function formatCurrency(value) {
+  return new Intl.NumberFormat('id-ID', {
+    style: 'currency',
+    currency: 'IDR',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  }).format(value || 0)
+}
 
 onMounted(async () => {
   settingsStore.loadSettings()
 
+  // Handle table parameter from QR code
   const tableParam = route.query.table
   if (tableParam) {
     try {
       const response = await api.get(`/tables/code/${tableParam}`)
       if (response.data) {
         cartStore.setTable(response.data.code, response.data.name)
-        cartStore.setTableExpiry(Date.now() + 45 * 60 * 1000)
+        const expiryTime = Date.now() + (45 * 60 * 1000)
+        cartStore.setTableExpiry(expiryTime)
       }
-    } catch {}
+    } catch (error) {
+      console.error('Failed to load table from QR:', error)
+    }
   }
 
+  // Load user
   if (authStore.user) {
     user.value = authStore.user
   } else {
     const userData = localStorage.getItem('user')
-    if (userData) user.value = JSON.parse(userData)
+    if (userData) {
+      user.value = JSON.parse(userData)
+    }
   }
 
   if (authStore.token) {
-    authStore.fetchUser().then(u => { if (u) user.value = u })
+    authStore.fetchUser().then(updatedUser => {
+      if (updatedUser) {
+        user.value = updatedUser
+      }
+    })
   }
 
+  // Fetch carousel slides
   try {
     const res = await carouselApi.getActive()
-    carouselSlides.value = res.data
-  } catch {}
-  startCarousel()
+    if (res.data && res.data.length > 0) {
+      carouselSlides.value = res.data
+    }
+  } catch (err) {
+    console.log('Using default carousel slides')
+  }
 
+  // Fetch popular packages
   try {
+    loadingPopular.value = true
     const res = await api.get('/packages/popular')
-    popularPackages.value = res.data
-  } catch {}
+    popularPackages.value = res.data || []
+  } catch (err) {
+    console.error('Failed to fetch popular packages:', err)
+  } finally {
+    loadingPopular.value = false
+  }
+
+  startCarousel()
 })
 
-onUnmounted(stopCarousel)
+onUnmounted(() => {
+  stopCarousel()
+})
 </script>
 
 <template>
-  <div class="bg-white min-h-screen pb-28">
+  <div class="min-h-screen bg-slate-50 dark:bg-slate-900 pb-28 text-slate-800 dark:text-slate-100 transition-colors">
+    <div class="max-w-md mx-auto">
 
-    <!-- ── HERO ──────────────────────────────────────────────── -->
-    <div class="relative overflow-hidden bg-slate-900" style="border-radius: 0 0 24px 24px;">
-      <!-- Carousel -->
-      <div class="relative h-[260px]">
-        <div
-          v-for="(slide, i) in slides" :key="slide.id"
-          class="absolute inset-0 transition-opacity duration-700"
-          :class="i === currentSlide ? 'opacity-100' : 'opacity-0 pointer-events-none'"
-        >
-          <img :src="slide.image_url || slide.image" class="w-full h-full object-cover opacity-60" alt="" />
-        </div>
-        <!-- Gradient overlay selalu ada -->
-        <div class="absolute inset-0 bg-gradient-to-b from-slate-900/40 to-slate-900/80"></div>
-      </div>
+      <!-- ══════════════════════════════════════════
+           1. TOP APP BAR (Clean, Monochrome + Single Orange Accent)
+      ══════════════════════════════════════════ -->
+      <header class="sticky top-0 z-30 bg-slate-50/95 dark:bg-slate-900/95 backdrop-blur-md px-4 pt-3 pb-2.5 border-b border-slate-200/50 dark:border-slate-800">
+        <div class="flex items-center justify-between gap-3">
+          
+          <!-- Brand & Context -->
+          <div class="flex items-center gap-2.5 min-w-0">
+            <div v-if="settingsStore.storeLogo" class="w-8 h-8 rounded-lg overflow-hidden bg-white dark:bg-slate-800 p-0.5 border border-slate-200 dark:border-slate-700 shrink-0">
+              <img :src="settingsStore.storeLogo" class="w-full h-full object-contain" alt="Logo" />
+            </div>
+            <div v-else class="w-8 h-8 rounded-lg bg-slate-900 text-white font-bold flex items-center justify-center shrink-0 text-xs">
+              {{ settingsStore.storeName ? settingsStore.storeName.charAt(0) : 'D' }}
+            </div>
 
-      <!-- Top bar -->
-      <div class="absolute top-0 left-0 right-0 flex justify-between items-start px-5 pt-6 z-10">
-        <div>
-          <p class="text-[10px] font-semibold text-white/50 uppercase tracking-widest">Selamat datang di</p>
-          <h1 class="text-lg font-black text-white mt-0.5">
-            {{ settingsStore.settings?.store_name || 'Dimsum Sarang' }}
-          </h1>
-        </div>
-        <button @click="openHelpModal" class="mt-1 w-9 h-9 bg-white/10 backdrop-blur-md rounded-xl flex items-center justify-center border border-white/20 active:scale-90 transition-transform">
-          <svg class="w-4.5 h-4.5 text-white w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-          </svg>
-        </button>
-      </div>
-
-      <!-- Slide text -->
-      <div class="absolute bottom-0 left-0 right-0 px-5 pb-7 z-10">
-        <transition name="fade" mode="out-in">
-          <div :key="currentSlide">
-            <h2 v-if="slides[currentSlide]?.title" class="text-xl font-black text-white leading-snug">
-              {{ slides[currentSlide].title }}
-            </h2>
-            <p v-if="slides[currentSlide]?.period_text" class="text-[10px] text-white/60 mt-1 font-medium">
-              {{ slides[currentSlide].period_text }}
-            </p>
+            <div class="flex flex-col min-w-0">
+              <span class="text-[10px] font-semibold uppercase tracking-wider text-slate-400 truncate">
+                {{ settingsStore.storeName }}
+              </span>
+              <span class="text-sm font-bold text-slate-800 dark:text-gray-100 truncate leading-tight">
+                <template v-if="authStore.isAuthenticated">
+                  Hai, {{ userFirstName || 'Pelanggan' }} 👋
+                </template>
+                <template v-else-if="cartStore.hasTable">
+                  {{ cartStore.tableName }}
+                </template>
+                <template v-else>
+                  Selamat Datang
+                </template>
+              </span>
+            </div>
           </div>
-        </transition>
-      </div>
 
-      <!-- Indicators -->
-      <div v-if="slides.length > 1" class="absolute bottom-3 right-5 flex gap-1 z-10">
-        <button
-          v-for="(_, i) in slides" :key="i" @click="currentSlide = i"
-          class="h-1 rounded-full transition-all duration-300 bg-white"
-          :class="i === currentSlide ? 'w-5 opacity-100' : 'w-1.5 opacity-30'"
-        ></button>
-      </div>
-    </div>
+          <!-- Actions: Table Pill or Login + Help -->
+          <div class="flex items-center gap-2 shrink-0">
+            
+            <!-- Table Pill (Clean & Subtle) -->
+            <button 
+              v-if="cartStore.hasTable" 
+              @click="changeTable"
+              class="flex items-center gap-1.5 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200/80 dark:border-slate-700 px-2.5 py-1 rounded-full text-xs font-semibold hover:border-orange-300 transition-colors active:scale-95"
+            >
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+              <span>{{ cartStore.tableName }}</span>
+              <span class="text-[10px] text-slate-400 hover:text-orange-500">Ubah</span>
+            </button>
 
-    <!-- ── USER CARD ──────────────────────────────────────────── -->
-    <div class="px-4 -mt-5 relative z-20">
-      <div class="bg-white rounded-2xl shadow-md shadow-slate-200/80 border border-slate-100 p-4 flex items-center justify-between">
-        <div class="flex items-center gap-3">
-          <!-- Avatar -->
-          <div class="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center font-black text-slate-600 text-sm shrink-0">
-            <template v-if="cartStore.hasTable">
-              <svg class="w-4.5 h-4.5 w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M3 10V7h18v3m-3 0v11M6 10v11m-3-11h18"/>
+            <!-- Login Link if Guest -->
+            <router-link 
+              v-else-if="!authStore.isAuthenticated" 
+              to="/customer/login" 
+              class="bg-orange-500 hover:bg-orange-600 text-white px-3 py-1 rounded-full text-xs font-semibold shadow-xs active:scale-95 transition-all"
+            >
+              Masuk
+            </router-link>
+
+            <!-- WhatsApp / Help Trigger -->
+            <button 
+              @click="openHelpModal" 
+              aria-label="Kontak dan Bantuan"
+              class="w-8 h-8 rounded-full bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:text-orange-500 active:scale-90 transition-all"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-            </template>
-            <template v-else>{{ user.name ? user.name.charAt(0).toUpperCase() : '?' }}</template>
+            </button>
+
           </div>
-          <div>
-            <template v-if="authStore.isAuthenticated && cartStore.hasTable">
-              <p class="font-bold text-slate-800 text-sm leading-none">{{ user.name?.split(' ')[0] }}</p>
-              <div class="flex items-center gap-1.5 mt-1">
-                <span class="text-[9px] text-slate-400 font-medium uppercase tracking-wider">Meja</span>
-                <span class="text-[10px] font-bold text-slate-700">{{ cartStore.tableName }}</span>
-                <button @click="changeTable" class="text-[9px] text-slate-400 underline underline-offset-2">ganti</button>
+        </div>
+      </header>
+
+
+      <!-- ══════════════════════════════════════════
+           2. CONTEXT BAR (Clean, Calm & Unified)
+      ══════════════════════════════════════════ -->
+      <section class="px-4 mt-2.5">
+        
+        <!-- CASE A: LOGGED IN USER -->
+        <div 
+          v-if="authStore.isAuthenticated"
+          class="bg-white dark:bg-slate-800 rounded-2xl p-3 border border-slate-200/70 dark:border-slate-700/80 flex items-center justify-between gap-3 shadow-xs"
+        >
+          <!-- User info -->
+          <div class="flex items-center gap-2.5 min-w-0">
+            <div class="w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs flex items-center justify-center shrink-0 border border-slate-200/60 dark:border-slate-600">
+              {{ userFirstName ? userFirstName.charAt(0).toUpperCase() : 'M' }}
+            </div>
+            <div class="min-w-0">
+              <div class="flex items-center gap-1.5">
+                <span class="text-xs font-bold text-slate-800 dark:text-gray-100 truncate">
+                  {{ user.name || 'Member Setia' }}
+                </span>
               </div>
-            </template>
-            <template v-else-if="cartStore.hasTable">
-              <p class="text-[9px] text-slate-400 uppercase tracking-wider font-medium leading-none">Meja Anda</p>
-              <div class="flex items-center gap-2 mt-0.5">
-                <p class="font-black text-slate-800 text-base leading-none">{{ cartStore.tableName }}</p>
-                <button @click="changeTable" class="text-[9px] text-slate-400 underline underline-offset-2">ganti</button>
-              </div>
-            </template>
-            <template v-else-if="authStore.isAuthenticated">
-              <p class="font-bold text-slate-800 text-sm leading-none">{{ user.name?.split(' ')[0] }}</p>
-              <p class="text-[10px] text-slate-400 mt-0.5">Mau pesan apa hari ini?</p>
-            </template>
-            <template v-else>
-              <p class="font-bold text-slate-800 text-sm leading-none">Selamat Datang</p>
-              <p class="text-[10px] text-slate-400 mt-0.5">Login untuk akses lebih banyak</p>
-            </template>
+              <p class="text-[10px] text-slate-400 truncate">
+                <template v-if="cartStore.hasTable">
+                  Dine-in di {{ cartStore.tableName }}
+                </template>
+                <template v-else>
+                  Member Aktif
+                </template>
+              </p>
+            </div>
+          </div>
+
+          <!-- Neutral Loyalty Chips -->
+          <div class="flex items-center gap-1.5 shrink-0">
+            <div class="flex items-center gap-1 bg-slate-50 dark:bg-slate-700/50 border border-slate-200/60 dark:border-slate-600 px-2 py-1 rounded-xl text-slate-700 dark:text-slate-200">
+              <span class="text-[10px] text-orange-500 font-bold">★</span>
+              <span class="text-xs font-bold">{{ user.points || 0 }}</span>
+              <span class="text-[9px] text-slate-400">pts</span>
+            </div>
+
+            <button 
+              @click="openVoucherModal" 
+              class="flex items-center gap-1 bg-slate-50 dark:bg-slate-700/50 border border-slate-200/60 dark:border-slate-600 px-2 py-1 rounded-xl text-slate-700 dark:text-slate-200 active:scale-95 transition-all"
+            >
+              <span class="text-[10px] text-slate-500">🎟️</span>
+              <span class="text-xs font-bold">{{ user.coupons_count || 0 }}</span>
+            </button>
           </div>
         </div>
 
-        <!-- Kanan: stats atau tombol login -->
-        <div v-if="authStore.isAuthenticated" class="flex items-center gap-4">
-          <div class="text-center">
-            <p class="font-black text-slate-800 text-sm leading-none">{{ formatNumber(user.points || 0) }}</p>
-            <p class="text-[9px] text-slate-400 font-medium mt-0.5">Poin</p>
+        <!-- CASE B: GUEST WITH TABLE -->
+        <div 
+          v-else-if="cartStore.hasTable"
+          class="bg-white dark:bg-slate-800 rounded-2xl p-3 border border-slate-200/70 dark:border-slate-700/80 shadow-xs flex items-center justify-between"
+        >
+          <div class="flex items-center gap-2.5">
+            <div class="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 flex items-center justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3 10V7h18v3m-3 0v11M6 10v11m-3-11h18" />
+              </svg>
+            </div>
+            <div>
+              <div class="flex items-center gap-1.5">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Makan di Tempat</span>
+              </div>
+              <h3 class="text-xs font-bold text-slate-800 dark:text-gray-100 leading-tight">
+                {{ cartStore.tableName }}
+              </h3>
+            </div>
           </div>
-          <div class="w-px h-6 bg-slate-100"></div>
-          <div class="text-center">
-            <p class="font-black text-slate-800 text-sm leading-none">{{ user.coupons_count || 0 }}</p>
-            <p class="text-[9px] text-slate-400 font-medium mt-0.5">Voucher</p>
-          </div>
-        </div>
-        <div v-else>
-          <button @click="router.push('/customer/login')"
-            class="bg-slate-900 text-white text-[10px] font-bold px-4 py-2 rounded-xl active:scale-95 transition-transform">
-            Login
+          
+          <button 
+            @click="changeTable"
+            class="text-[11px] font-medium text-slate-500 hover:text-slate-800 dark:text-slate-300 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 active:scale-95 transition-all"
+          >
+            Ganti Meja
           </button>
         </div>
-      </div>
-    </div>
 
-    <!-- ── QUICK ACTIONS ──────────────────────────────────────── -->
-    <div class="px-4 mt-5">
-      <div class="grid grid-cols-4 gap-3">
-
-        <router-link to="/customer/menu" class="flex flex-col items-center gap-2">
-          <div class="w-full aspect-square bg-slate-900 rounded-2xl flex items-center justify-center active:scale-90 transition-transform">
-            <svg class="w-6 h-6 text-white" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M2.25 2.25a.75.75 0 000 1.5h1.386c.17 0 .318.114.362.278l2.558 9.592a3.752 3.752 0 00-2.806 3.63c0 .414.336.75.75.75h15.75a.75.75 0 000-1.5H5.378A2.25 2.25 0 017.5 15h11.218a.75.75 0 00.674-.421 60.358 60.358 0 002.96-7.228.75.75 0 00-.525-.965A60.864 60.864 0 005.68 4.509l-.232-.867A1.875 1.875 0 003.636 2.25H2.25zM3.75 20.25a1.5 1.5 0 113 0 1.5 1.5 0 01-3 0zM16.5 20.25a1.5 1.5 0 113 0 1.5 1.5 0 01-3 0z"/>
-            </svg>
-          </div>
-          <span class="text-[11px] font-semibold text-slate-600">Order</span>
-        </router-link>
-
-        <button @click="openVoucher" class="flex flex-col items-center gap-2">
-          <div class="relative w-full aspect-square bg-slate-100 rounded-2xl flex items-center justify-center active:scale-90 transition-transform">
-            <svg class="w-6 h-6 text-slate-600" viewBox="0 0 24 24" fill="currentColor">
-              <path fill-rule="evenodd" d="M1.5 6.375c0-1.036.84-1.875 1.875-1.875h17.25c1.035 0 1.875.84 1.875 1.875v3.026a.75.75 0 01-.375.65 2.249 2.249 0 000 3.898.75.75 0 01.375.65v3.026c0 1.035-.84 1.875-1.875 1.875H3.375A1.875 1.875 0 011.5 17.625v-3.026a.75.75 0 01.374-.65 2.249 2.249 0 000-3.898.75.75 0 01-.374-.65V6.375z" clip-rule="evenodd"/>
-            </svg>
-            <span v-if="user.coupons_count > 0"
-              class="absolute -top-1 -right-1 w-4 h-4 bg-slate-800 text-white text-[8px] font-black rounded-full flex items-center justify-center border border-white">
-              {{ user.coupons_count }}
-            </span>
-          </div>
-          <span class="text-[11px] font-semibold text-slate-600">Voucher</span>
-        </button>
-
-        <button @click="openReferral" class="flex flex-col items-center gap-2">
-          <div class="w-full aspect-square bg-slate-100 rounded-2xl flex items-center justify-center active:scale-90 transition-transform">
-            <svg class="w-6 h-6 text-slate-600" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M4.5 6.375a4.125 4.125 0 118.25 0 4.125 4.125 0 01-8.25 0zM14.25 8.625a3.375 3.375 0 116.75 0 3.375 3.375 0 01-6.75 0zM1.5 19.125a7.125 7.125 0 0114.25 0v.003l-.001.119a.75.75 0 01-.363.63 13.067 13.067 0 01-6.761 1.873c-2.472 0-4.786-.684-6.76-1.873a.75.75 0 01-.364-.63l-.001-.122zM17.25 19.128l-.001.144a2.25 2.25 0 01-.233.96 10.088 10.088 0 005.06-1.01.75.75 0 00.42-.643 4.875 4.875 0 00-6.957-4.611 8.586 8.586 0 011.71 5.157v.003z"/>
-            </svg>
-          </div>
-          <span class="text-[11px] font-semibold text-slate-600">Referral</span>
-        </button>
-
-        <router-link to="/customer/order" class="flex flex-col items-center gap-2">
-          <div class="w-full aspect-square bg-slate-100 rounded-2xl flex items-center justify-center active:scale-90 transition-transform">
-            <svg class="w-6 h-6 text-slate-600" viewBox="0 0 24 24" fill="currentColor">
-              <path fill-rule="evenodd" d="M7.502 6h7.128A3.375 3.375 0 0118 9.375v9.375a3 3 0 003-3V6.108c0-1.505-1.125-2.811-2.664-2.94a48.972 48.972 0 00-.673-.05A3 3 0 0015 1.5h-1.5a3 3 0 00-2.663 1.618c-.225.015-.45.032-.673.05C8.662 3.295 7.554 4.542 7.502 6zM13.5 3a1.5 1.5 0 00-1.5 1.5h3A1.5 1.5 0 0013.5 3z" clip-rule="evenodd"/>
-              <path fill-rule="evenodd" d="M3 9.375C3 8.339 3.84 7.5 4.875 7.5h9.75c1.036 0 1.875.84 1.875 1.875v11.25c0 1.035-.84 1.875-1.875 1.875h-9.75A1.875 1.875 0 013 20.625V9.375zm9.586 4.594a.75.75 0 00-1.172-.938l-2.476 3.096-.908-.907a.75.75 0 00-1.06 1.06l1.5 1.5a.75.75 0 001.116-.062l3-3.75z" clip-rule="evenodd"/>
-            </svg>
-          </div>
-          <span class="text-[11px] font-semibold text-slate-600">Pesanan</span>
-        </router-link>
-
-      </div>
-    </div>
-
-    <!-- ── MENU TERLARIS ──────────────────────────────────────── -->
-    <div class="px-4 mt-7">
-      <div class="flex justify-between items-center mb-3">
-        <h2 class="text-sm font-black text-slate-800">Menu Terlaris</h2>
-        <router-link to="/customer/menu" class="text-[11px] font-semibold text-slate-500 underline underline-offset-2">
-          Lihat semua
-        </router-link>
-      </div>
-
-      <div class="flex gap-3 overflow-x-auto hide-scrollbar pb-1">
-        <div
-          v-for="comb in popularPackages" :key="comb.id"
-          @click="router.push('/customer/menu')"
-          class="min-w-[140px] max-w-[140px] rounded-2xl overflow-hidden border border-slate-100 bg-white active:scale-95 transition-transform cursor-pointer"
+        <!-- CASE C: GUEST WITHOUT TABLE -->
+        <div 
+          v-else
+          class="bg-white dark:bg-slate-800 rounded-2xl p-3 border border-slate-200/70 dark:border-slate-700/80 shadow-xs flex items-center justify-between gap-2"
         >
-          <div class="relative h-24 bg-slate-50 overflow-hidden">
-            <LazyImage
-              v-if="comb.display_image"
-              :src="comb.display_image"
-              class="w-full h-full object-cover"
-              alt=""
-            />
-            <div v-else class="w-full h-full flex items-center justify-center text-3xl text-slate-200">🥟</div>
-            <div v-if="comb.total_sold > 0"
-              class="absolute bottom-2 left-2 bg-black/50 text-white text-[8px] font-semibold px-1.5 py-0.5 rounded-full">
-              {{ comb.total_sold }}+ terjual
+          <div class="flex items-center gap-2.5">
+            <div class="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 flex items-center justify-center shrink-0">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            </div>
+            <div>
+              <h4 class="text-xs font-bold text-slate-800 dark:text-gray-100 leading-tight">
+                Sedang di Resto?
+              </h4>
+              <p class="text-[10px] text-slate-400">
+                Scan QR meja atau pesan takeaway
+              </p>
             </div>
           </div>
-          <div class="p-2.5">
-            <p class="text-[9px] text-slate-400 uppercase tracking-tight font-semibold truncate">{{ comb.parent_name }}</p>
-            <p class="font-bold text-slate-800 text-[11px] truncate mt-0.5">{{ comb.display_name }}</p>
-            <p class="font-black text-slate-900 text-xs mt-1">{{ formatCurrency(comb.base_price) }}</p>
-          </div>
+
+          <button 
+            @click="promptManualTable"
+            class="text-[11px] font-semibold text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 px-3 py-1.5 rounded-xl active:scale-95 transition-all"
+          >
+            Pilih Meja
+          </button>
         </div>
 
-        <div v-if="popularPackages.length === 0"
-          class="flex items-center justify-center w-full py-10 text-slate-300">
-          <p class="text-xs">Memuat menu...</p>
-        </div>
-      </div>
-    </div>
-
-    <!-- ── CTA BANNER ──────────────────────────────────────────── -->
-    <div class="px-4 mt-6">
-      <div
-        @click="router.push('/customer/menu')"
-        class="bg-slate-900 rounded-2xl p-5 flex items-center justify-between cursor-pointer active:scale-[0.98] transition-transform overflow-hidden relative"
-      >
-        <div class="absolute right-0 top-0 bottom-0 w-32 opacity-5">
-          <svg viewBox="0 0 100 100" class="w-full h-full" fill="white">
-            <circle cx="80" cy="20" r="40"/>
-            <circle cx="90" cy="80" r="25"/>
-          </svg>
-        </div>
-        <div class="relative z-10">
-          <p class="text-[10px] text-white/50 uppercase tracking-widest font-semibold">Penawaran</p>
-          <h3 class="text-base font-black text-white mt-0.5 leading-snug">Coba Menu Baru<br>Sekarang</h3>
-          <div class="mt-3 inline-flex items-center gap-1.5 bg-white/10 text-white/80 text-[10px] font-semibold px-3 py-1.5 rounded-full border border-white/10">
-            Lihat Menu
-            <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
-            </svg>
-          </div>
-        </div>
-        <div class="text-5xl relative z-10 opacity-80">🥟</div>
-      </div>
-    </div>
-
-    <!-- ── INFO TOKO ──────────────────────────────────────────── -->
-    <div class="px-4 mt-5">
-      <div class="rounded-2xl border border-slate-100 p-4 space-y-3 bg-slate-50/50">
-        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Info Toko</p>
-        <div v-if="settingsStore.settings?.store_address" class="flex items-start gap-3">
-          <svg class="w-4 h-4 text-slate-400 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0zM15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
-          </svg>
-          <p class="text-[11px] text-slate-600 leading-relaxed">{{ settingsStore.settings.store_address }}</p>
-        </div>
-        <div v-if="settingsStore.settings?.store_phone" class="flex items-center gap-3">
-          <svg class="w-4 h-4 text-slate-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/>
-          </svg>
-          <a :href="`https://wa.me/${settingsStore.settings.store_phone.replace(/^0/, '62')}`" target="_blank"
-            class="text-[11px] text-slate-700 font-semibold">
-            {{ settingsStore.settings.store_phone }}
-          </a>
-        </div>
-        <div class="flex items-center gap-3">
-          <svg class="w-4 h-4 text-slate-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-          </svg>
-          <p class="text-[11px] text-slate-600">
-            {{ settingsStore.settings?.store_hours || 'Buka Setiap Hari · 08.00 – 21.00' }}
-          </p>
-        </div>
-      </div>
-    </div>
+      </section>
 
 
-    <!-- ════════════════════════════════════════════
-         MODAL: VOUCHER
-    ════════════════════════════════════════════ -->
-    <transition name="modal">
-      <div v-if="showVoucherModal" class="fixed inset-0 z-50 flex items-end" @click.self="showVoucherModal = false">
-        <div class="absolute inset-0 bg-black/40" @click="showVoucherModal = false"></div>
-        <div class="relative w-full bg-white rounded-t-3xl z-10" style="max-height: 75vh; overflow-y: auto;">
-          <div class="sticky top-0 bg-white border-b border-slate-100 px-5 pt-4 pb-3 flex items-center justify-between">
-            <h3 class="font-black text-slate-800 text-sm">Voucher Saya</h3>
-            <button @click="showVoucherModal = false" class="w-7 h-7 bg-slate-100 rounded-full flex items-center justify-center active:scale-90 transition-transform">
-              <svg class="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
-              </svg>
-            </button>
-          </div>
+      <!-- ══════════════════════════════════════════
+           3. INSET PROMO CAROUSEL (Subtle & Breathable)
+      ══════════════════════════════════════════ -->
+      <section class="px-4 mt-3">
+        <div class="relative h-[185px] w-full rounded-2xl overflow-hidden shadow-xs border border-slate-200/70 dark:border-slate-800 bg-slate-900">
+          
+          <!-- Slides -->
+          <div 
+            v-for="(slide, index) in slides" 
+            :key="slide.id || index"
+            class="absolute inset-0 transition-opacity duration-500 ease-in-out"
+            :class="index === currentSlide ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'"
+          >
+            <img 
+              :src="slide.image_url || slide.image" 
+              class="w-full h-full object-cover" 
+              alt="Promo Slide"
+            >
+            <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent"></div>
 
-          <div class="p-5 space-y-3">
-            <template v-if="user.coupons_count > 0">
-              <div v-for="i in (user.coupons_count || 0)" :key="i"
-                class="flex items-center gap-4 p-4 border border-slate-100 rounded-2xl bg-slate-50/50">
-                <div class="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center shrink-0">
-                  <svg class="w-5 h-5 text-slate-500" viewBox="0 0 24 24" fill="currentColor">
-                    <path fill-rule="evenodd" d="M1.5 6.375c0-1.036.84-1.875 1.875-1.875h17.25c1.035 0 1.875.84 1.875 1.875v3.026a.75.75 0 01-.375.65 2.249 2.249 0 000 3.898.75.75 0 01.375.65v3.026c0 1.035-.84 1.875-1.875 1.875H3.375A1.875 1.875 0 011.5 17.625v-3.026a.75.75 0 01.374-.65 2.249 2.249 0 000-3.898.75.75 0 01-.374-.65V6.375z" clip-rule="evenodd"/>
-                  </svg>
-                </div>
-                <div class="flex-1">
-                  <p class="font-bold text-slate-800 text-sm">Voucher Diskon</p>
-                  <p class="text-[10px] text-slate-400 mt-0.5">Gunakan saat checkout</p>
-                </div>
-                <span class="text-[9px] font-bold text-slate-800 bg-slate-100 px-2.5 py-1 rounded-lg uppercase tracking-wide">Aktif</span>
+            <div class="absolute inset-0 flex flex-col justify-end p-4 text-white z-20">
+              <div v-if="slide.period_text" class="mb-1">
+                <span class="bg-white/20 backdrop-blur-md px-2 py-0.5 rounded text-[9px] font-semibold text-slate-200">
+                  {{ slide.period_text }}
+                </span>
               </div>
-            </template>
 
-            <div v-else class="flex flex-col items-center py-10 text-center">
-              <div class="w-14 h-14 bg-slate-100 rounded-2xl flex items-center justify-center mb-3">
-                <svg class="w-7 h-7 text-slate-300" viewBox="0 0 24 24" fill="currentColor">
-                  <path fill-rule="evenodd" d="M1.5 6.375c0-1.036.84-1.875 1.875-1.875h17.25c1.035 0 1.875.84 1.875 1.875v3.026a.75.75 0 01-.375.65 2.249 2.249 0 000 3.898.75.75 0 01.375.65v3.026c0 1.035-.84 1.875-1.875 1.875H3.375A1.875 1.875 0 011.5 17.625v-3.026a.75.75 0 01.374-.65 2.249 2.249 0 000-3.898.75.75 0 01-.374-.65V6.375z" clip-rule="evenodd"/>
-                </svg>
-              </div>
-              <p class="font-bold text-slate-700 text-sm">Belum ada voucher</p>
-              <p class="text-[11px] text-slate-400 mt-1">Voucher diperoleh dari promo atau hadiah poin</p>
-              <button @click="showVoucherModal = false; router.push('/customer/menu')"
-                class="mt-4 bg-slate-900 text-white text-xs font-bold px-5 py-2.5 rounded-xl active:scale-95 transition-transform">
-                Pesan Sekarang
-              </button>
+              <h2 class="text-base sm:text-lg font-bold leading-tight drop-shadow-sm mb-1 line-clamp-2">
+                {{ slide.title }}
+              </h2>
+
+              <p v-if="slide.subtitle" class="text-[11px] text-slate-300 line-clamp-1 opacity-90">
+                {{ slide.subtitle }}
+              </p>
             </div>
           </div>
-        </div>
-      </div>
-    </transition>
 
-
-    <!-- ════════════════════════════════════════════
-         MODAL: REFERRAL
-    ════════════════════════════════════════════ -->
-    <transition name="modal">
-      <div v-if="showReferralModal" class="fixed inset-0 z-50 flex items-end" @click.self="showReferralModal = false">
-        <div class="absolute inset-0 bg-black/40" @click="showReferralModal = false"></div>
-        <div class="relative w-full bg-white rounded-t-3xl z-10">
-          <div class="px-5 pt-4 pb-3 flex items-center justify-between border-b border-slate-100">
-            <h3 class="font-black text-slate-800 text-sm">Referral Saya</h3>
-            <button @click="showReferralModal = false" class="w-7 h-7 bg-slate-100 rounded-full flex items-center justify-center active:scale-90 transition-transform">
-              <svg class="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
-              </svg>
-            </button>
+          <!-- Subtle Dots -->
+          <div v-if="slides.length > 1" class="absolute bottom-3 right-4 flex items-center gap-1.5 z-20">
+            <button 
+              v-for="(slide, index) in slides" 
+              :key="'dot-' + index"
+              @click="currentSlide = index"
+              class="h-1 rounded-full transition-all duration-200"
+              :class="index === currentSlide ? 'w-4 bg-white' : 'w-1 bg-white/40'"
+            ></button>
           </div>
 
-          <div class="p-5 space-y-4">
-            <p class="text-[11px] text-slate-500 leading-relaxed">
-              Bagikan kode kamu ke teman. Setiap teman yang daftar dan order pertama kali, kamu dapat poin bonus.
+        </div>
+      </section>
+
+
+      <!-- ══════════════════════════════════════════
+           4. QUICK SHORTCUTS (Unified Neutral Palette)
+      ══════════════════════════════════════════ -->
+      <section class="px-4 mt-3.5">
+        <div class="grid grid-cols-4 gap-2">
+          
+          <!-- Shortcut 1: Menu -->
+          <router-link 
+            to="/customer/menu" 
+            class="flex flex-col items-center gap-1.5 py-2.5 px-1 rounded-xl bg-white dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700/60 hover:border-orange-300 transition-all active:scale-95"
+          >
+            <div class="w-9 h-9 rounded-lg bg-slate-50 dark:bg-slate-700 text-slate-700 dark:text-slate-200 flex items-center justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4">
+                <path d="M11 2a1 1 0 011 1v1h7a1 1 0 011 1v14a1 1 0 01-1 1h-7v1a1 1 0 11-2 0v-1H3a1 1 0 01-1-1V5a1 1 0 011-1h7V3a1 1 0 011-1zm-1 4H4v12h6V6zm2 12h6V6h-6v12z"/>
+              </svg>
+            </div>
+            <span class="text-[10px] font-semibold text-slate-700 dark:text-slate-300">
+              Menu
+            </span>
+          </router-link>
+
+          <!-- Shortcut 2: Paket Hemat -->
+          <router-link 
+            to="/customer/menu" 
+            class="flex flex-col items-center gap-1.5 py-2.5 px-1 rounded-xl bg-white dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700/60 hover:border-orange-300 transition-all active:scale-95"
+          >
+            <div class="w-9 h-9 rounded-lg bg-slate-50 dark:bg-slate-700 text-slate-700 dark:text-slate-200 flex items-center justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4">
+                <path d="M9.375 3a1.875 1.875 0 000 3.75h1.875v4.5H3.75A1.875 1.875 0 011.875 9.375v-1.5A1.875 1.875 0 013.75 6h5.625V3z" />
+                <path d="M12.75 6.75h1.875a1.875 1.875 0 011.875 1.875v1.5a1.875 1.875 0 01-1.875 1.875H12.75V6.75z" />
+                <path fill-rule="evenodd" d="M1.5 13.5A1.5 1.5 0 013 12h18a1.5 1.5 0 011.5 1.5v6A1.5 1.5 0 0121 21H3a1.5 1.5 0 01-1.5-1.5v-6z" clip-rule="evenodd" />
+              </svg>
+            </div>
+            <span class="text-[10px] font-semibold text-slate-700 dark:text-slate-300">
+              Paket
+            </span>
+          </router-link>
+
+          <!-- Shortcut 3: Voucher -->
+          <button 
+            @click="openVoucherModal" 
+            class="flex flex-col items-center gap-1.5 py-2.5 px-1 rounded-xl bg-white dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700/60 hover:border-orange-300 transition-all active:scale-95"
+          >
+            <div class="w-9 h-9 rounded-lg bg-slate-50 dark:bg-slate-700 text-slate-700 dark:text-slate-200 flex items-center justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4">
+                <path fill-rule="evenodd" d="M1.5 6.375c0-1.036.84-1.875 1.875-1.875h17.25c1.035 0 1.875.84 1.875 1.875v3.026a.75.75 0 01-.375.65 2.249 2.249 0 000 3.898.75.75 0 01.375.65v3.026c0 1.035-.84 1.875-1.875 1.875H3.375A1.875 1.875 0 011.5 17.625v-3.026a.75.75 0 01.374-.65 2.249 2.249 0 000-3.898.75.75 0 01-.374-.65V6.375z" clip-rule="evenodd" />
+              </svg>
+            </div>
+            <span class="text-[10px] font-semibold text-slate-700 dark:text-slate-300">
+              Voucher
+            </span>
+          </button>
+
+          <!-- Shortcut 4: Bantuan -->
+          <button 
+            @click="openHelpModal" 
+            class="flex flex-col items-center gap-1.5 py-2.5 px-1 rounded-xl bg-white dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700/60 hover:border-orange-300 transition-all active:scale-95"
+          >
+            <div class="w-9 h-9 rounded-lg bg-slate-50 dark:bg-slate-700 text-slate-700 dark:text-slate-200 flex items-center justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4">
+                <path fill-rule="evenodd" d="M4.848 2.771A49.144 49.144 0 0112 2.25c2.43 0 4.817.177 7.152.52 1.28.187 2.26 1.264 2.33 2.553a48.56 48.56 0 010 13.354c-.07 1.29-1.05 2.366-2.33 2.553a49.18 49.18 0 01-4.717.472A8.995 8.995 0 0012 19.5c-.868 0-1.705.123-2.435.352a49.198 49.198 0 01-4.717-.472c-1.28-.187-2.26-1.264-2.33-2.553a48.56 48.56 0 010-13.354c.07-1.29 1.05-2.366 2.33-2.553z" clip-rule="evenodd" />
+              </svg>
+            </div>
+            <span class="text-[10px] font-semibold text-slate-700 dark:text-slate-300">
+              Bantuan
+            </span>
+          </button>
+
+        </div>
+      </section>
+
+
+      <!-- ══════════════════════════════════════════
+           5. MENU TERLARIS (Clean Cards)
+      ══════════════════════════════════════════ -->
+      <section class="mt-5 px-4">
+        
+        <!-- Header -->
+        <div class="flex items-center justify-between mb-2.5">
+          <div>
+            <h2 class="text-sm font-bold text-slate-800 dark:text-gray-100 leading-none">
+              Menu Terlaris
+            </h2>
+            <p class="text-[10px] text-slate-400 mt-0.5">
+              Pilihan favorit pelanggan
             </p>
+          </div>
 
-            <!-- Kode referral -->
-            <div class="flex items-center gap-3 bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3.5">
-              <span class="flex-1 font-black text-xl text-slate-800 tracking-widest">{{ referralCode }}</span>
-              <button @click="copyReferral"
-                class="flex items-center gap-1.5 text-[10px] font-bold px-3 py-1.5 rounded-xl border transition-all active:scale-90"
-                :class="referralCopied
-                  ? 'bg-slate-800 text-white border-slate-800'
-                  : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'">
-                <svg v-if="!referralCopied" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
-                </svg>
-                <svg v-else class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
-                </svg>
-                {{ referralCopied ? 'Tersalin' : 'Salin' }}
-              </button>
+          <router-link 
+            to="/customer/menu" 
+            class="text-xs font-semibold text-orange-600 hover:text-orange-700 dark:text-orange-400 active:scale-95 transition-all"
+          >
+            Lihat Semua →
+          </router-link>
+        </div>
+
+        <!-- Cards Scroll -->
+        <div class="flex gap-3 overflow-x-auto hide-scrollbar -mx-4 px-4 pb-1">
+          
+          <template v-if="loadingPopular">
+            <div v-for="i in 3" :key="'skel-' + i" class="min-w-[145px] max-w-[145px] bg-white dark:bg-slate-800 rounded-2xl p-2 border border-slate-200/60 dark:border-slate-700/60 animate-pulse">
+              <div class="h-24 bg-slate-200 dark:bg-slate-700 rounded-xl mb-2"></div>
+              <div class="h-2.5 bg-slate-200 dark:bg-slate-700 rounded w-10 mb-1"></div>
+              <div class="h-3 bg-slate-200 dark:bg-slate-700 rounded w-24 mb-2"></div>
+              <div class="h-4 bg-slate-200 dark:bg-slate-700 rounded w-16"></div>
             </div>
+          </template>
 
-            <!-- Steps -->
-            <div class="space-y-2">
-              <div v-for="(step, i) in [
-                'Bagikan kode ke teman kamu',
-                'Teman daftar & masukkan kode saat registrasi',
-                'Kamu dapat poin setelah teman pertama kali order'
-              ]" :key="i" class="flex items-start gap-3">
-                <span class="w-5 h-5 bg-slate-100 rounded-full flex items-center justify-center text-[9px] font-black text-slate-500 shrink-0 mt-0.5">{{ i + 1 }}</span>
-                <p class="text-[11px] text-slate-600">{{ step }}</p>
+          <template v-else-if="popularPackages.length > 0">
+            <div 
+              v-for="comb in popularPackages" 
+              :key="comb.id"
+              @click="router.push('/customer/menu')"
+              class="min-w-[145px] max-w-[145px] bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/70 dark:border-slate-700/70 p-2 flex flex-col justify-between group cursor-pointer active:scale-98 transition-all"
+            >
+              <!-- Image Container -->
+              <div class="h-24 rounded-xl overflow-hidden relative bg-slate-100 dark:bg-slate-700">
+                <LazyImage 
+                  v-if="comb.display_image"
+                  :src="comb.display_image" 
+                  class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" 
+                  alt="Menu" 
+                />
+                <div v-else class="w-full h-full flex items-center justify-center text-2xl">
+                  🥟
+                </div>
+
+                <div v-if="comb.total_sold > 0" class="absolute bottom-1 right-1 bg-black/60 backdrop-blur-xs text-white px-1.5 py-0.5 rounded text-[8px] font-medium">
+                  {{ comb.total_sold }}+ terjual
+                </div>
               </div>
-            </div>
 
-            <!-- Share -->
-            <button @click="shareReferral"
-              class="w-full bg-slate-900 text-white font-bold py-3.5 rounded-2xl active:scale-95 transition-transform flex items-center justify-center gap-2 text-sm">
-              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/>
-              </svg>
-              Bagikan ke Teman
-            </button>
+              <!-- Product Info -->
+              <div class="pt-2 px-0.5">
+                <span class="text-[8px] font-semibold text-slate-400 uppercase tracking-wider block truncate">
+                  {{ comb.parent_name || 'Paket' }}
+                </span>
+                <h3 class="font-bold text-slate-800 dark:text-gray-100 text-xs truncate">
+                  {{ comb.display_name }}
+                </h3>
+
+                <!-- Price & Add Button -->
+                <div class="flex items-center justify-between mt-2 pt-1 border-t border-slate-100 dark:border-slate-700/60">
+                  <span class="text-xs font-bold text-slate-900 dark:text-gray-100">
+                    {{ formatCurrency(comb.final_price || comb.base_price) }}
+                  </span>
+
+                  <button 
+                    @click="addPackageToCart(comb, $event)"
+                    title="Tambah ke keranjang"
+                    class="w-6 h-6 rounded-full bg-slate-900 hover:bg-orange-500 text-white flex items-center justify-center active:scale-90 transition-all shrink-0"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+
+            </div>
+          </template>
+
+          <div v-else class="w-full text-center py-5 text-slate-400 text-xs">
+            Belum ada menu terlaris.
+          </div>
+
+        </div>
+
+      </section>
+
+
+      <!-- ══════════════════════════════════════════
+           6. BOTTOM CARD (Clean & Non-Loud)
+      ══════════════════════════════════════════ -->
+      <section class="px-4 mt-4">
+        
+        <!-- CASE 1: FOR LOGGED IN USERS -->
+        <div 
+          v-if="authStore.isAuthenticated"
+          class="bg-white dark:bg-slate-800 border border-slate-200/70 dark:border-slate-700/70 rounded-2xl p-4 shadow-xs"
+        >
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-bold text-slate-800 dark:text-gray-100">Member Loyalty</span>
+            <span class="text-[10px] text-slate-400">ID #{{ user.id || '001' }}</span>
+          </div>
+
+          <div class="flex items-baseline gap-1 mb-1">
+            <span class="text-2xl font-black text-slate-900 dark:text-gray-100">{{ user.points || 0 }}</span>
+            <span class="text-xs font-medium text-slate-500">Poin Aktif</span>
+          </div>
+          <p class="text-[11px] text-slate-400 leading-tight mb-3">
+            Poin otomatis bertambah di setiap transaksi dan dapat digunakan untuk potongan belanja.
+          </p>
+
+          <div class="pt-2.5 border-t border-slate-100 dark:border-slate-700/60 flex items-center justify-between">
+            <router-link to="/customer/order" class="text-xs font-semibold text-orange-600 hover:text-orange-700 dark:text-orange-400">
+              Riwayat Pesanan →
+            </router-link>
+            <router-link to="/customer/settings" class="text-xs text-slate-400 hover:text-slate-600">
+              Pengaturan Akun
+            </router-link>
           </div>
         </div>
-      </div>
-    </transition>
 
+        <!-- CASE 2: FOR GUESTS -->
+        <div 
+          v-else
+          class="bg-white dark:bg-slate-800 border border-slate-200/70 dark:border-slate-700/70 rounded-2xl p-4 shadow-xs"
+        >
+          <h3 class="text-xs font-bold text-slate-800 dark:text-gray-100 mb-1">
+            Gabung Member Outlet
+          </h3>
+          <p class="text-[11px] text-slate-500 leading-relaxed mb-3">
+            Kumpulkan poin di setiap transaksi dan nikmati voucher potongan belanja khusus pengguna terdaftar.
+          </p>
+
+          <div class="flex items-center gap-2">
+            <router-link 
+              to="/customer/register" 
+              class="flex-1 text-center bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs py-2 rounded-xl active:scale-95 transition-all"
+            >
+              Daftar Akun
+            </router-link>
+
+            <router-link 
+              to="/customer/login" 
+              class="text-center bg-slate-50 dark:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-600 font-semibold text-xs py-2 px-4 rounded-xl active:scale-95 transition-all"
+            >
+              Masuk
+            </router-link>
+          </div>
+        </div>
+
+      </section>
+
+    </div>
   </div>
 </template>
 
 <style scoped>
-.hide-scrollbar::-webkit-scrollbar { display: none; }
-.hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-
-.modal-enter-active, .modal-leave-active { transition: opacity 0.2s ease; }
-.modal-enter-active .relative, .modal-leave-active .relative { transition: transform 0.25s cubic-bezier(0.32, 0.72, 0, 1); }
-.modal-enter-from, .modal-leave-to { opacity: 0; }
-.modal-enter-from .relative, .modal-leave-to .relative { transform: translateY(100%); }
-
-.fade-enter-active, .fade-leave-active { transition: opacity 0.3s; }
-.fade-enter-from, .fade-leave-to { opacity: 0; }
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
 </style>
