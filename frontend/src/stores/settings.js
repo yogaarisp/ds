@@ -3,12 +3,18 @@ import { ref, computed } from 'vue'
 import { settingApi, STORAGE_BASE_URL } from '../api'
 
 export const useSettingsStore = defineStore('settings', () => {
-  const settings = ref({
+  let initialSettings = {
     store_name: 'Dimsum Sarang',
     store_logo: null,
     store_address: '',
     store_phone: '',
-  })
+  }
+  try {
+    const cached = localStorage.getItem('cached_store_settings')
+    if (cached) initialSettings = { ...initialSettings, ...JSON.parse(cached) }
+  } catch (e) {}
+
+  const settings = ref(initialSettings)
   const loading = ref(false)
 
   const storeName = computed(() => settings.value.store_name || 'Dimsum Sarang')
@@ -43,6 +49,7 @@ export const useSettingsStore = defineStore('settings', () => {
     try {
       const response = await settingApi.getAll()
       settings.value = { ...settings.value, ...response.data }
+      localStorage.setItem('cached_store_settings', JSON.stringify(settings.value))
     } catch (error) {
       console.error('Error loading settings:', error)
     } finally {

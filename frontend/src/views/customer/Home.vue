@@ -14,29 +14,32 @@ const settingsStore = useSettingsStore()
 const authStore = useAuthStore()
 const cartStore = useCartStore()
 
-const user = ref({})
-const popularPackages = ref([])
-const loadingPopular = ref(true)
+// Popular packages state with instant session cache hydration
+let cachedPopular = []
+try {
+  const stored = sessionStorage.getItem('ds_cached_popular')
+  if (stored) cachedPopular = JSON.parse(stored)
+} catch (e) {}
 
-// Carousel State
+const popularPackages = ref(cachedPopular)
+const loadingPopular = ref(cachedPopular.length === 0)
+
+// Carousel State with instant session cache hydration
 const currentSlide = ref(0)
-const carouselSlides = ref([])
+const loadingSlides = ref(true)
 
-// Fallback slides
-const defaultSlides = [
-  {
-    id: 'default-1',
-    title: 'Kelezatan Dimsum Hangat Pilihan',
-    period_text: 'Promo Hari Ini',
-    badge_label: 'Pilihan',
-    badge_value: 'Best Seller',
-    image: 'https://images.unsplash.com/photo-1541696432-82c6da8ce7bf?auto=format&fit=crop&w=900&q=80'
-  }
-]
+let cachedSlides = []
+try {
+  const stored = sessionStorage.getItem('ds_cached_slides')
+  if (stored) cachedSlides = JSON.parse(stored)
+} catch (e) {}
 
-const slides = computed(() => {
-  return carouselSlides.value.length > 0 ? carouselSlides.value : defaultSlides
-})
+const carouselSlides = ref(cachedSlides)
+if (carouselSlides.value.length > 0) {
+  loadingSlides.value = false
+}
+
+const slides = computed(() => carouselSlides.value)
 
 let slideInterval
 
@@ -302,18 +305,23 @@ onMounted(async () => {
   // Fetch carousel slides
   try {
     const res = await carouselApi.getActive()
-    if (res.data && res.data.length > 0) {
+    if (res.data) {
       carouselSlides.value = res.data
+      sessionStorage.setItem('ds_cached_slides', JSON.stringify(res.data))
     }
   } catch (err) {
-    console.log('Using default carousel slides')
+    console.log('Error fetching carousel slides:', err)
+  } finally {
+    loadingSlides.value = false
   }
 
   // Fetch popular packages
   try {
-    loadingPopular.value = true
     const res = await api.get('/packages/popular')
-    popularPackages.value = res.data || []
+    if (res.data) {
+      popularPackages.value = res.data
+      sessionStorage.setItem('ds_cached_popular', JSON.stringify(res.data))
+    }
   } catch (err) {
     console.error('Failed to fetch popular packages:', err)
   } finally {
@@ -520,8 +528,17 @@ onUnmounted(() => {
       <!-- ══════════════════════════════════════════
            3. INSET PROMO CAROUSEL (Subtle & Breathable)
       ══════════════════════════════════════════ -->
-      <section class="px-4 mt-3">
-        <div class="relative h-[185px] w-full rounded-2xl overflow-hidden shadow-xs border border-slate-200/70 dark:border-slate-800 bg-slate-900">
+      <section v-if="loadingSlides || slides.length > 0" class="px-4 mt-3">
+        <!-- Skeleton when initial load and no cached slides -->
+        <div 
+          v-if="loadingSlides && slides.length === 0" 
+          class="h-[185px] w-full rounded-2xl bg-slate-200/70 dark:bg-slate-800 animate-pulse border border-slate-200/60 dark:border-slate-800 flex items-center justify-center text-slate-400 text-xs"
+        >
+          Memuat Promo...
+        </div>
+
+        <!-- Real Slides from Database -->
+        <div v-else-if="slides.length > 0" class="relative h-[185px] w-full rounded-2xl overflow-hidden shadow-xs border border-slate-200/70 dark:border-slate-800 bg-slate-900">
           
           <!-- Slides -->
           <div 
