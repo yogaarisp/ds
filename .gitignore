@@ -12,9 +12,6 @@ frontend/.env
 # Build outputs
 dist/
 frontend/dist/
-backend/public/assets/
-backend/public/index.html
-backend/public/vite.svg
 
 # OS files
 .DS_Store
