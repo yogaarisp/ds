@@ -18,7 +18,10 @@ frontend/dist/
 Thumbs.db
 
 # Laravel specific
+backend/public/storage
 backend/bootstrap/cache/*.php
+backend/bootstrap/cache/packages.php
+backend/bootstrap/cache/services.php
 !backend/bootstrap/cache/.gitkeep
 backend/storage/*.log
 backend/storage/framework/sessions/*

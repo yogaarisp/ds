@@ -43,6 +43,18 @@ const slides = computed(() => carouselSlides.value)
 
 let slideInterval
 
+const logoError = ref(false)
+
+function getSlideImageUrl(slide) {
+  if (!slide) return ''
+  const img = slide.image_url || slide.image
+  if (!img) return ''
+  if (img.startsWith('http')) return img
+  const clean = img.startsWith('/') ? img.substring(1) : img
+  if (clean.startsWith('storage/')) return `/${clean}`
+  return `/storage/${clean}`
+}
+
 // Friendly first name for greeting
 const userFirstName = computed(() => {
   if (user.value?.name) {
@@ -348,8 +360,8 @@ onUnmounted(() => {
           
           <!-- Brand & Context -->
           <div class="flex items-center gap-2.5 min-w-0">
-            <div v-if="settingsStore.storeLogo" class="w-8 h-8 rounded-lg overflow-hidden bg-white dark:bg-slate-800 p-0.5 border border-slate-200 dark:border-slate-700 shrink-0">
-              <img :src="settingsStore.storeLogo" class="w-full h-full object-contain" alt="Logo" />
+            <div v-if="settingsStore.storeLogo && !logoError" class="w-8 h-8 rounded-lg overflow-hidden bg-white dark:bg-slate-800 p-0.5 border border-slate-200 dark:border-slate-700 shrink-0">
+              <img :src="settingsStore.storeLogo" @error="logoError = true" class="w-full h-full object-contain" alt="Logo" />
             </div>
             <div v-else class="w-8 h-8 rounded-lg bg-slate-900 text-white font-bold flex items-center justify-center shrink-0 text-xs">
               {{ settingsStore.storeName ? settingsStore.storeName.charAt(0) : 'D' }}
@@ -548,7 +560,7 @@ onUnmounted(() => {
             :class="index === currentSlide ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'"
           >
             <img 
-              :src="slide.image_url || slide.image" 
+              :src="getSlideImageUrl(slide)" 
               class="w-full h-full object-cover" 
               alt="Promo Slide"
             >

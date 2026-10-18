@@ -39,9 +39,13 @@ const computedSrc = computed(() => {
   if (props.src.startsWith('storage/')) {
     return getStorageUrl(props.src)
   }
+
+  if (props.src.startsWith('/')) {
+    return props.src
+  }
   
-  // Otherwise use as is
-  return props.src
+  // Otherwise treat as relative path inside storage/
+  return getStorageUrl(`storage/${props.src}`)
 })
 
 const isMounted = ref(false)
