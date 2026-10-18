@@ -14,6 +14,9 @@ const settingsStore = useSettingsStore()
 const authStore = useAuthStore()
 const cartStore = useCartStore()
 
+// Reactive user state
+const user = ref(authStore.user || null)
+
 // Popular packages state with instant session cache hydration
 let cachedPopular = []
 try {
@@ -442,7 +445,7 @@ onUnmounted(() => {
             <div class="min-w-0">
               <div class="flex items-center gap-1.5">
                 <span class="text-xs font-bold text-slate-800 dark:text-gray-100 truncate">
-                  {{ user.name || 'Member Setia' }}
+                  {{ user?.name || authStore.user?.name || 'Member Setia' }}
                 </span>
               </div>
               <p class="text-[10px] text-slate-400 truncate">
@@ -460,7 +463,7 @@ onUnmounted(() => {
           <div class="flex items-center gap-1.5 shrink-0">
             <div class="flex items-center gap-1 bg-slate-50 dark:bg-slate-700/50 border border-slate-200/60 dark:border-slate-600 px-2 py-1 rounded-xl text-slate-700 dark:text-slate-200">
               <span class="text-[10px] text-orange-500 font-bold">★</span>
-              <span class="text-xs font-bold">{{ user.points || 0 }}</span>
+              <span class="text-xs font-bold">{{ user?.points ?? authStore.user?.points ?? 0 }}</span>
               <span class="text-[9px] text-slate-400">pts</span>
             </div>
 
@@ -469,7 +472,7 @@ onUnmounted(() => {
               class="flex items-center gap-1 bg-slate-50 dark:bg-slate-700/50 border border-slate-200/60 dark:border-slate-600 px-2 py-1 rounded-xl text-slate-700 dark:text-slate-200 active:scale-95 transition-all"
             >
               <span class="text-[10px] text-slate-500">🎟️</span>
-              <span class="text-xs font-bold">{{ user.coupons_count || 0 }}</span>
+              <span class="text-xs font-bold">{{ user?.coupons_count ?? authStore.user?.coupons_count ?? 0 }}</span>
             </button>
           </div>
         </div>
@@ -781,11 +784,11 @@ onUnmounted(() => {
         >
           <div class="flex items-center justify-between mb-2">
             <span class="text-xs font-bold text-slate-800 dark:text-gray-100">Member Loyalty</span>
-            <span class="text-[10px] text-slate-400">ID #{{ user.id || '001' }}</span>
+            <span class="text-[10px] text-slate-400">ID #{{ user?.id || authStore.user?.id || '001' }}</span>
           </div>
 
           <div class="flex items-baseline gap-1 mb-1">
-            <span class="text-2xl font-black text-slate-900 dark:text-gray-100">{{ user.points || 0 }}</span>
+            <span class="text-2xl font-black text-slate-900 dark:text-gray-100">{{ user?.points ?? authStore.user?.points ?? 0 }}</span>
             <span class="text-xs font-medium text-slate-500">Poin Aktif</span>
           </div>
           <p class="text-[11px] text-slate-400 leading-tight mb-3">
