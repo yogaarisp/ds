@@ -23,7 +23,9 @@ class CarouselSlideController extends Controller
      */
     public function active()
     {
-        $slides = CarouselSlide::active()->ordered()->get();
+        $slides = \Illuminate\Support\Facades\Cache::remember('carousel_slides_active', 600, function() {
+            return CarouselSlide::active()->ordered()->get();
+        });
         return response()->json($slides);
     }
 

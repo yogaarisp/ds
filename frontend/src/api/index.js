@@ -73,24 +73,12 @@ api.interceptors.request.use((config) => {
     config.headers['X-App-Version'] = '1.0.5'
   }
 
-  console.log('API Request:', {
-    url: config.url,
-    method: config.method,
-    baseURL: config.baseURL,
-    headers: config.headers
-  })
-
   return config
 })
 
 // Response interceptor untuk handle error
 api.interceptors.response.use(
   (response) => {
-    console.log('API Response:', {
-      url: response.config.url,
-      status: response.status,
-      data: response.data
-    })
     return response
   },
   (error) => {

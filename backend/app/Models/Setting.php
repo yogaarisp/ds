@@ -10,8 +10,8 @@ class Setting extends Model
 
     public static function get(string $key, $default = null)
     {
-        $setting = static::where('key', $key)->first();
-        return $setting ? $setting->value : $default;
+        $all = static::getAll();
+        return $all[$key] ?? $default;
     }
 
     public static function set(string $key, $value): void
@@ -20,10 +20,13 @@ class Setting extends Model
             ['key' => $key],
             ['value' => $value]
         );
+        \Illuminate\Support\Facades\Cache::forget('app_settings_all');
     }
 
     public static function getAll(): array
     {
-        return static::pluck('value', 'key')->toArray();
+        return \Illuminate\Support\Facades\Cache::remember('app_settings_all', 3600, function () {
+            return static::pluck('value', 'key')->toArray();
+        });
     }
 }

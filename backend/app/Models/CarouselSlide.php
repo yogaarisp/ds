@@ -32,6 +32,17 @@ class CarouselSlide extends Model
 
     protected $appends = ['image_url'];
 
+    protected static function booted()
+    {
+        static::saved(function () {
+            \Illuminate\Support\Facades\Cache::forget('carousel_slides_active');
+        });
+
+        static::deleted(function () {
+            \Illuminate\Support\Facades\Cache::forget('carousel_slides_active');
+        });
+    }
+
     /**
      * Get full image URL
      */

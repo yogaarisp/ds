@@ -255,46 +255,47 @@ class PackageController extends Controller
 
     public function popular(Request $request)
     {
-        $limit = $request->get('limit', 5);
-        
-        $combinations = PackageCombination::active()
-            ->whereHas('package', function($q) {
-                $q->active();
-            })
-            ->with(['package', 'items.product'])
-            ->select('package_combinations.*')
-            ->leftJoin('transaction_items', 'package_combinations.id', '=', 'transaction_items.package_combination_id')
-            ->selectRaw('package_combinations.*, SUM(COALESCE(transaction_items.quantity, 0)) as total_sold')
-            ->groupBy('package_combinations.id')
-            ->orderByDesc('total_sold')
-            ->orderByDesc('package_combinations.created_at')
-            ->limit($limit)
-            ->get()
-            ->map(function($comb) {
-                $pkg = $comb->package;
-                
-                // Formulate display details
-                $comb->display_name = $comb->name;
-                $comb->parent_name = $pkg->name;
-                
-                // Generate contents summary
-                $comb->contents = $comb->items->map(function($item) {
-                    return $item->quantity . 'x ' . ($item->product->name ?? 'Produk');
-                })->implode(', ');
-                
-                // User wants icons for missing images, so we remove the product fallback.
-                // Only use combination image or package image.
-                $imagePath = $comb->image ?? $pkg->image;
-                
-                // Prepend 'storage/' if it's a local path and not already prefixed
-                if ($imagePath && !str_starts_with($imagePath, 'http') && !str_starts_with($imagePath, 'storage/')) {
-                    $imagePath = 'storage/' . $imagePath;
-                }
-                
-                $comb->display_image = $imagePath;
-                
-                return $comb;
-            });
+        $limit = (int) $request->get('limit', 5);
+        $cacheKey = "packages_popular_limit_{$limit}";
+
+        $combinations = \Illuminate\Support\Facades\Cache::remember($cacheKey, 600, function() use ($limit) {
+            return PackageCombination::active()
+                ->whereHas('package', function($q) {
+                    $q->active();
+                })
+                ->with(['package', 'items.product'])
+                ->select('package_combinations.*')
+                ->leftJoin('transaction_items', 'package_combinations.id', '=', 'transaction_items.package_combination_id')
+                ->selectRaw('package_combinations.*, SUM(COALESCE(transaction_items.quantity, 0)) as total_sold')
+                ->groupBy('package_combinations.id')
+                ->orderByDesc('total_sold')
+                ->orderByDesc('package_combinations.created_at')
+                ->limit($limit)
+                ->get()
+                ->map(function($comb) {
+                    $pkg = $comb->package;
+                    
+                    // Formulate display details
+                    $comb->display_name = $comb->name;
+                    $comb->parent_name = $pkg ? $pkg->name : 'Paket';
+                    
+                    // Generate contents summary
+                    $comb->contents = $comb->items->map(function($item) {
+                        return $item->quantity . 'x ' . ($item->product->name ?? 'Produk');
+                    })->implode(', ');
+                    
+                    $imagePath = $comb->image ?? $pkg?->image;
+                    
+                    // Prepend 'storage/' if it's a local path and not already prefixed
+                    if ($imagePath && !str_starts_with($imagePath, 'http') && !str_starts_with($imagePath, 'storage/')) {
+                        $imagePath = 'storage/' . $imagePath;
+                    }
+                    
+                    $comb->display_image = $imagePath;
+                    
+                    return $comb;
+                });
+        });
 
         return response()->json($combinations);
     }

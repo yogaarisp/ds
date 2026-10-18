@@ -44,17 +44,37 @@ export const useSettingsStore = defineStore('settings', () => {
     return null
   })
 
-  async function loadSettings() {
-    loading.value = true
-    try {
-      const response = await settingApi.getAll()
-      settings.value = { ...settings.value, ...response.data }
-      localStorage.setItem('cached_store_settings', JSON.stringify(settings.value))
-    } catch (error) {
-      console.error('Error loading settings:', error)
-    } finally {
-      loading.value = false
+  let loadPromise = null
+  let lastLoaded = 0
+
+  async function loadSettings(force = false) {
+    const now = Date.now()
+    // If loaded recently (< 5 minutes) and not forced, return cached
+    if (!force && lastLoaded > 0 && (now - lastLoaded < 300000)) {
+      return settings.value
     }
+
+    if (loadPromise) {
+      return loadPromise
+    }
+
+    loading.value = true
+    loadPromise = (async () => {
+      try {
+        const response = await settingApi.getAll()
+        settings.value = { ...settings.value, ...response.data }
+        lastLoaded = Date.now()
+        localStorage.setItem('cached_store_settings', JSON.stringify(settings.value))
+        return settings.value
+      } catch (error) {
+        console.error('Error loading settings:', error)
+      } finally {
+        loading.value = false
+        loadPromise = null
+      }
+    })()
+
+    return loadPromise
   }
 
   function updateSettings(newSettings) {
